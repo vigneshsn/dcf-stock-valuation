@@ -18,7 +18,7 @@ import { XlsxService } from './services/xlsx.service';
 
 
 @NgModule({
-    declarations: [AppComponent, DcfCalculatorComponent],
+    declarations: [],
     imports: [
         BrowserModule,
         BrowserAnimationsModule,
@@ -29,9 +29,13 @@ import { XlsxService } from './services/xlsx.service';
         MatCardModule,
         MatTableModule,
         MatIconModule,
-        MatFormFieldModule
+        MatFormFieldModule,
+        AppComponent,
+        DcfCalculatorComponent
     ],
     providers: [CsvService, XlsxService],
-    bootstrap: [AppComponent]
+    bootstrap: [
+
+    ]
 })
 export class AppModule {}
