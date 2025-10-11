@@ -1,4 +1,17 @@
-.card{padding:16px}
-.form-field{width:100%}
-input.editable{width:100px}
-@media (max-width:800px){ input.editable{width:100%} }
+.card {
+    padding: 16px
+}
+
+.form-field {
+    width: 100%
+}
+
+input.editable {
+    width: 100px
+}
+
+@media (max-width: 800px) {
+    input.editable {
+        width: 100%
+    }
+}

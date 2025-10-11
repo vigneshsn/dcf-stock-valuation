@@ -1,14 +1,9 @@
 import { Component } from '@angular/core';
-import {MatToolbar} from "@angular/material/toolbar";
-import {DcfCalculatorComponent} from "./dcf-calculator/dcf-calculator.component";
-
 
 @Component({
     selector: 'app-root',
-    imports: [
-        MatToolbar,
-        DcfCalculatorComponent
-    ],
+    standalone: false,
+    styleUrls: ['./app.component.css'],
     template: `
         <mat-toolbar color="primary">
             <span>DCF Stock Valuation</span>

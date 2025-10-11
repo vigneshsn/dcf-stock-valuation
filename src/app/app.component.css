@@ -1,3 +1,9 @@
 /* Simple Material theme overrides (uses Angular Material theming by default when installed) */
-mat-toolbar{background:#0b66ff;color:#fff}
-.mat-card{border-radius:12px}
+mat-toolbar {
+    background: #0b66ff;
+    color: #fff
+}
+
+.mat-card {
+    border-radius: 12px
+}

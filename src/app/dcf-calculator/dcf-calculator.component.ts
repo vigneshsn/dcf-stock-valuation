@@ -24,7 +24,7 @@ export class DcfCalculatorComponent implements OnInit {
     constructor(private csv: CsvService, private xlsx: XlsxService) {}
 
     ngOnInit(): void {
-        throw new Error("Method not implemented.");
+       // throw new Error("Method not implemented.");
     }
 
 
