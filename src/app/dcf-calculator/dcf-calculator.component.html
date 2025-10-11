@@ -1,0 +1,32 @@
+<mat-card class="card">
+    <h2>1) Why value a stock?</h2>
+    <p class="small">Valuing a stock gives you a reasoned estimate of what a business is worth based on its future cash generation, instead of blindly following market price. Benjamin Graham's "Mr. Market" analogy explains that the market often overreacts — valuation helps you decide whether the market price is an opportunity or a warning.</p>
+</mat-card>
+
+
+<mat-card class="card">
+    <h2>Free Cash Flow & Step-by-step calculation</h2>
+    <!-- detailed example text omitted for brevity (same as earlier) -->
+</mat-card>
+
+
+<mat-card class="card">
+    <h3>Inputs</h3>
+    <div class="row">
+        <div class="col">
+            <mat-form-field appearance="fill" class="form-field"><mat-label>Base Revenue (millions)</mat-label><input matInput type="number" [(ngModel)]="baseRevenue" (ngModelChange)="calculate()"></mat-input></mat-form-field>
+            <!-- other inputs similarly using mat-form-field -->
+        </div>
+        <div class="col">
+            <!-- right column inputs -->
+        </div>
+    </div>
+
+
+    <div style="margin-top:10px">
+        <button mat-raised-button color="primary" (click)="calculate()">Recalculate</button>
+        <button mat-raised-button color="accent" (click)="exportCsv()">Export CSV</button>
+        <button mat-raised-button color="accent" style="margin-left:8px" (click)="exportXlsx()">Export XLSX</button>
+        <button mat-raised-button (click)="printReport()" style="margin-left:8px">Printable Report</button>
+    </div>
+</mat-card>
