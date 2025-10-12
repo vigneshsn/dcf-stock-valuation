@@ -1,38 +1,194 @@
-<mat-card class="card">
-    <h2>1) Why value a stock?</h2>
-    <p class="small">Valuing a stock gives you a reasoned estimate of what a business is worth based on its future cash
-        generation, instead of blindly following market price. Benjamin Graham's "Mr. Market" analogy explains that the
-        market often overreacts — valuation helps you decide whether the market price is an opportunity or a
-        warning.</p>
-</mat-card>
-
-
-<mat-card class="card">
-    <h2>Free Cash Flow & Step-by-step calculation</h2>
-    <!-- detailed example text omitted for brevity (same as earlier) -->
-</mat-card>
-
-
-<mat-card class="card">
-    <h3>Inputs</h3>
+<div class="card">
+    <h2>Calculate revenue growth rate</h2>
     <div class="row">
         <div class="col">
-            <mat-form-field appearance="fill" class="form-field">
-                <mat-label>Base Revenue (millions)</mat-label>
-                <input matInput type="number" [(ngModel)]="baseRevenue" (ngModelChange)="calculate()"/>
-            </mat-form-field>
-            <!-- other inputs similarly using mat-form-field -->
+            <label>Most recent Revenue (in millions)</label>
+            <input type="number" [(ngModel)]="revenueCurrentYear"/>
         </div>
         <div class="col">
-            <!-- right column inputs -->
+            <label>Revenue before X years (in millions)</label>
+            <input type="number" [(ngModel)]="revenueBeforeXYears"/>
+        </div>
+        <div class="col">
+            <label>Number of years</label>
+            <input type="number" [(ngModel)]="revenueYears"/>
         </div>
     </div>
-
-
-    <div style="margin-top:10px">
-        <button mat-raised-button color="primary" (click)="calculate()">Recalculate</button>
-        <button mat-raised-button color="accent" (click)="exportCsv()">Export CSV</button>
-        <button mat-raised-button color="accent" style="margin-left:8px" (click)="exportXlsx()">Export XLSX</button>
-        <button mat-raised-button (click)="printReport()" style="margin-left:8px">Printable Report</button>
+    <div class="row button-row">
+        <button class="btn" (click)="calculateGrowthRate()">calculate</button>
     </div>
-</mat-card>
+    <div class="row">
+        The growth rate is calculated based on the revenue values and number of years provided.
+        {{ growthRate }}
+    </div>
+    <div class="note small">Defaults: growth 10%, years 5, margin 12%, FCF% 80% (of net profit), discount 15%, terminal
+        growth 6%.
+    </div>
+</div>
+
+<div class="card">
+    <h2>Calculate profit margin</h2>
+    <div class="row">
+        <div class="col">
+            <label>Most recent Revenue (in millions)</label>
+            <input type="number" [(ngModel)]="revenueCurrentYear"/>
+        </div>
+        <div class="col">
+            <label>Revenue previous year</label>
+            <input type="number" [(ngModel)]="revenuePreviousYear"/>
+        </div>
+        <div class="col">
+            <label>Revenue before two years</label>
+            <input type="number" [(ngModel)]="revenueBeforeTwoYears"/>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <label>Most recent net profit (in millions)</label>
+            <input type="number" [(ngModel)]="netProfitCurrentYear"/>
+        </div>
+        <div class="col">
+            <label>Net profit previous year</label>
+            <input type="number" [(ngModel)]="netProfitPreviousYear"/>
+        </div>
+        <div class="col">
+            <label>Net profit before 2 year</label>
+            <input type="number" [(ngModel)]="netProfitBeforeTwoYears"/>
+        </div>
+    </div>
+    <div class="row button-row">
+        <button class="btn" (click)="calculateProfitMargin()">calculate</button>
+    </div>
+    <div class="row">
+        The profit margin is calculated as average based on last 3 years net profit.
+        {{ profitMargin }}
+    </div>
+    <div class="note small">Defaults: growth 10%, years 5, margin 12%, FCF% 80% (of net profit), discount 15%, terminal
+        growth 6%.
+    </div>
+</div>
+
+<div class="card">
+    <h2>Capital Expenditure</h2>
+    <div class="row">
+        <div class="col">
+            <label>Capital expenditure current year (in millions)</label>
+            <input type="number" [(ngModel)]="capExCurrentYear"/>
+        </div>
+        <div class="col">
+            <label>Capital expenditure previous year</label>
+            <input type="number" [(ngModel)]="capExPreviousYear"/>
+        </div>
+        <div class="col">
+            <label>Capital expenditure before two years</label>
+            <input type="number" [(ngModel)]="capExPreviousBeforeTwoYears"/>
+        </div>
+    </div>
+    <div class="row button-row">
+        <button class="btn" (click)="calculateAverageCapEx()">calculate</button>
+    </div>
+    <div class="row">
+        The average capital expenditure is calculated based on last 3 years data.
+        {{ capExAverage }}
+    </div>
+    <div class="note small">Defaults: growth 10%, years 5, margin 12%, FCF% 80% (of net profit), discount 15%, terminal
+        growth 6%.
+    </div>
+</div>
+
+<div class="card">
+    <h2>Non-Cash Expenditure</h2>
+    <div class="row">
+        <div class="col">
+            <label>Non-cash expenditure current year (in millions)</label>
+            <input type="number" [(ngModel)]="nonCashExCurrentYear"/>
+        </div>
+        <div class="col">
+            <label>Non-cash expenditure previous year</label>
+            <input type="number" [(ngModel)]="nonCashExPreviousYear"/>
+        </div>
+        <div class="col">
+            <label>Non-cash expenditure before two years</label>
+            <input type="number" [(ngModel)]="nonCashExBeforeTwoYears"/>
+        </div>
+    </div>
+    <div class="row button-row">
+        <button class="btn" (click)="calculateAverageNonCashEx()">calculate</button>
+    </div>
+    <div class="row">
+        The average non-cash expenditure is calculated based on last 3 years data.
+        {{ nonCashExAverage }}
+    </div>
+    <div class="note small">Defaults: growth 10%, years 5, margin 12%, FCF% 80% (of net profit), discount 15%, terminal
+        growth 6%.
+    </div>
+</div>
+
+<div class="card">
+    <h2>Calculate Free cash flow</h2>
+    <div class="row button-row">
+        <button class="btn" (click)="calculateFreeCashFlow()">calculate</button>
+    </div>
+    <div class="row">
+        The free cash flow rate is calculated based on the previous calculations.
+        {{ freeCashFlowRate }}
+    </div>
+    <div class="note small">Defaults: growth 10%, years 5, margin 12%, FCF% 80% (of net profit), discount 15%, terminal
+        growth 6%.
+    </div>
+</div>
+
+<div class="card" *ngIf="projections.length > 0">
+    <h2>Projections Summary</h2>
+    <table class="projections-table">
+        <thead>
+        <tr>
+            <th>Year</th>
+            <th>Revenue (M)</th>
+            <th>Net Profit (M)</th>
+            <th>CapEx (M)</th>
+            <th>Non-Cash Ex (M)</th>
+            <th>Free Cash Flow (M)</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let projection of projections">
+            <td>{{ projection.year }}</td>
+            <td>{{ projection.revenue }}</td>
+            <td>{{ projection.netProfit }}</td>
+            <td>{{ projection.capEx }}</td>
+            <td>{{ projection.nonCashEx }}</td>
+            <td>{{ projection.freeCashFlow }}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Calculate intrinsic value</h2>
+    <div class="row">
+        <div class="col">
+            <label>Discount rate %</label>
+            <input type="number" [(ngModel)]="discountRate"/>
+        </div>
+        <div class="col">
+            <label>Terminal growth rate %</label>
+            <input type="number" [(ngModel)]="terminalGrowthRate"/>
+        </div>
+        <div class="col">
+            <label>Total number of shares</label>
+            <input type="number" [(ngModel)]="totalNoOfShares"/>
+        </div>
+    </div>
+    <div class="row button-row">
+        <button class="btn" (click)="calculateIntrinsicValue()">calculate</button>
+    </div>
+    <div class="row">
+        The intrinsic value per share is calculated based on the projected free cash flows, discount rate, terminal
+        growth rate, and total number of shares.
+        {{ intrinsicValuePerShare }}
+    </div>
+    <div class="note small">Defaults: growth 10%, years 5, margin 12%, FCF% 80% (of net profit), discount 15%, terminal
+        growth 6%.
+    </div>
+</div>

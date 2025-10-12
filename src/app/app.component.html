@@ -2,5 +2,40 @@
     <span>DCF Stock Valuation</span>
 </mat-toolbar>
 <div class="container">
+    <h1>Value a Stock with Discounted Cash Flow (DCF)</h1>
+    <p class="lead">A simple, step-by-step guide for stock valuation. By following this article you learn how to value a stock </p>
+
+    <div class="card">
+        <h2>1) Why value a stock?</h2>
+        <p class="muted">Valuing a stock gives you a reasonable estimate of what the business is worth based on the cash it can generate in the future instead of blindly buying or selling based on the market price. Benjamin Graham author of book intelligent investor calls the market a person named "Mr. Market": sometimes he's euphoric and offers you bargains, sometimes he's panicked and overpriced. By valuing the company yourself, you decide whether Mr. Market's price is an opportunity or a warning.</p>
+    </div>
+
+    <div class="card">
+        <h2>2) What is Discounted Cash Flow (DCF)?</h2>
+        <p class="muted">Think of a business as a machine that prints cash every year. DCF asks: "How much are all those future cash prints worth in today's money?" Because a euro today is worth more than a euro in the future, we "discount" (shrink) future cash to today's value. Add up the discounted cash for a number of years, add a terminal value for cash beyond your forecast horizon, and you get an estimate of the company's total worth.</p>
+    </div>
+
+    <div class="card">
+        <h2>3) What is Free Cash Flow (FCF)?</h2>
+        <p class="muted">Free Cash Flow is the actual cash the company generates that can be used for paying shareholders, paying down debt, or reinvesting. Roughly: cash left after the company pays all operating costs and keeps enough money to maintain or grow its assets (capital expenditure).</p>
+    </div>
+
+    <div class="card">
+        <h2>4) How we will calculate Free Cash Flow (step-by-step)</h2>
+        <ol class="muted">
+            <li>Forecast revenue for each future year using a yearly revenue growth rate.</li>
+            <li>Estimate profit margin (%): net profit divided by revenue. This gives estimated net profit from forecast revenue.</li>
+            <li>Estimate Free Cash Flow as a percentage of net profit (you can use historical ratio). Example formula here: (Net profit - CapEx + D&amp;A) / Net profit = FCF %.</li>
+            <li>Compute projected FCF per year: Revenue × Profit margin × FCF %.</li>
+            <li>Discount each year's FCF to present value using your discount rate (e.g., 15%).</li>
+            <li>Calculate Terminal Value at the end of the projection using perpetual growth (Gordon Growth): FCF_n × (1+g) / (r - g). Then discount the terminal value back to present value.</li>
+            <li>Sum discounted FCFs + discounted terminal value = estimated enterprise value (intrinsic value of equity before adjustments).</li>
+        </ol>
+    </div>
     <app-dcf-calculator></app-dcf-calculator>
+
+    <div class="card">
+        <h2>How to use this — practical tips</h2>
+        <p class="muted">Start with historical figures from the company (revenue, net profit, capex, D&amp;A). Use conservative growth and discount rates — DCF is sensitive to assumptions. Try several scenarios: optimistic, base, pessimistic. The goal is a reasonable estimate, not a precise prediction.</p>
+    </div>
 </div>

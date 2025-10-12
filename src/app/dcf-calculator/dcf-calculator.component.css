@@ -15,3 +15,31 @@ input.editable {
         width: 100%
     }
 }
+
+.button-row {
+    margin: 10px 0;
+    text-align: center;
+}
+
+.button-row .btn {
+    min-width: 120px;
+    padding: 8px 16px;
+}
+
+.projections-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.projections-table th,
+.projections-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.projections-table th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+}
