@@ -43,3 +43,31 @@ input.editable {
     background-color: #f4f4f4;
     font-weight: bold;
 }
+
+.button-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin: 15px 0;
+}
+
+.result-section {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 15px 0;
+}
+
+.description {
+    margin-top: 10px;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.col label {
+    margin-bottom: 8px;
+    display: block;
+}

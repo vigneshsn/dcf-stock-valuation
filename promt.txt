@@ -1,0 +1,54 @@
+I would like to act as a content creator and front end engineer,
+
+I would to write an article explaining the users with step by step to value a stock based.
+I'm going to use discounted cash flow model for valuation. The article should explain to the users
+in very simple layman terms. Also, the article has a input forms to guide the user to calculate valuation of stock.
+Html, css & angular stack for creating a front end
+
+
+First setup the context,
+
+1. why we need to value a stock?
+The answer includes it gives the uses a some sense to value a stock rather than blindly buying selling based
+on market price. Use the Mr market analogy from Benjamin Graham intelligent investor book.
+
+2. Explain discounted cash flow in layman terms
+
+3. Explain Free cash flow in layman terms
+
+4. Now explain how to calculate free cash flow.The steps involves,
+  a. forecasting revenue based on past revenue growth percentage (show text box revenue growth rate)
+  b. profit margin percentage based on net profit/revenue (show text box profit margin)
+  c. free cash flow percentage , (net profit - capital expenditure + Depreciation & amortization)/net profit (show text box free cash flow %)
+  d. project free cash flow based on revenue * profit margin % * free cash flow * (show free cash flow projection in table)
+  e. calculate the discounted value of cash flow using discounted rate (eg: 15%) (show calculated discounted value in table)
+  f. finally calculate the terminal value using perpetual growth rate (eg: 6%) (show the terminal value)
+  g. sum all discounted free cash flow and terminal value and show the total
+
+
+please do the following changes,
+Convert the app to modern Angular (TypeScript) with components and a build setup.
+I want the pages to be responsive and adapt for mobile devices.
+I would like to explain the section 4 in detail, each step to calculate with an example.
+The section 3 explains Free cash flow can be moved to section 4.
+Add CSV export / printable report
+changes to summary table
+  1. Allow the user to edit the value is the summary table to edit and calculate.
+  2. Remove discount factor column from the table and add column for revenue growth %, profit margin %, free cash flow rate %.
+finally, add a input for total number of shares and calculate per share value by dividing the calculated value .
+
+Do the following,
+- Convert this into a GitHub-ready repo with detailed README and unit tests.
+- Add export to Excel (XLSX) support.
+- Improve visual design using material design
+- Move HTML & CSS into separate files
+
+
+-  Generate the full repo file tree (including angular.json, tsconfig.json, karma.conf.js) ready to paste into GitHub.
+-  prepare a ZIP of the completed project you can download.
+
+
+- for project folder name use dcf-stock-valuation
+- use angular 17 latest stable version
+
+
