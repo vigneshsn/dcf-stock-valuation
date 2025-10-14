@@ -1,121 +1,182 @@
+<div class="guide-toggle">
+    <button class="btn-link" (click)="toggleGuides()">
+        {{ showGuides ? 'Hide Guide' : 'Guide me' }}
+    </button>
+</div>
+
 <!-- Revenue Card -->
 <div class="card">
     <h2>Revenue</h2>
+    <p>Revenue is the total amount of money a company earns from selling its products or services before subtracting any expenses. It's often called the "top line" because it appears at the very top of a company's income statement.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="revenueMostRecentAvg"/>
+            <input type="number" [(ngModel)]="revenueMostRecentAvg" (ngModelChange)="calculateGrowthRate()" required/>
         </div>
         <div class="col">
             <label>First 3 year average</label>
-            <input type="number" [(ngModel)]="revenueLeastRecentAvg"/>
+            <input type="number" [(ngModel)]="revenueLeastRecentAvg" (ngModelChange)="calculateGrowthRate()" required/>
         </div>
         <div class="col">
             <label>Growth period in years</label>
-            <input type="number" [(ngModel)]="revenueYears"/>
+            <input type="number" [(ngModel)]="revenueYears" (ngModelChange)="calculateGrowthRate()" required/>
         </div>
     </div>
+    <img *ngIf="showGuides"  src="assets/images/revenue.png" alt="Revenue" class="card-image">
 </div>
 
 <!-- Net Profit Card -->
 <div class="card">
     <h2>Net Profit</h2>
+    <p>Net profit is the money a company has left after paying all its expenses — including salaries, rent, taxes, interest, and other costs. It's often called the "bottom line" because it appears at the bottom of the income statement.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="netProfitAverage"/>
+            <input type="number" [(ngModel)]="netProfitAverage" required/>
         </div>
     </div>
+    <img *ngIf="showGuides"  src="assets/images/profit.png" alt="profit" class="card-image">
 </div>
 
 <!-- Capital Expenditure Card -->
 <div class="card">
     <h2>Capital Expenditure</h2>
+    <p>Capital Expenditure — often called "CapEx" — is the money a company spends to buy, maintain, or upgrade its long-term assets like buildings, machines, vehicles, or technology. These are investments that help the business operate and grow over many years.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="capExAverage"/>
+            <input type="number" [(ngModel)]="capExAverage" required/>
         </div>
     </div>
+    <img *ngIf="showGuides"  src="assets/images/capex.png" alt="capex" class="card-image">
 </div>
 
 <!-- Non-Cash Expenditure Card -->
 <div class="card">
     <h2>Non-Cash Expenditure</h2>
+    <p>Non-Cash Expenditure refers to expenses that a company records on its income statement but does not actually pay out in cash. The most common type of non-cash expense is Depreciation and Amortization (D&A), which accounts for the gradual reduction in value of tangible and intangible assets over time.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="nonCashExAverage"/>
+            <input type="number" [(ngModel)]="nonCashExAverage" required/>
         </div>
     </div>
+    <img *ngIf="showGuides"  src="assets/images/d&a.png" alt="non-cash expense" class="card-image">
 </div>
 
 <div class="card">
     <h2>Final step: Fair value of stock</h2>
-    <div class="row">
+   <div class="row">
+       <div class="col">
+           <label>
+               Growth rate %
+               <span class="info-icon"
+                     title="Calculated based on revenue growth over the years">
+                    ℹ️
+                </span>
+           </label>
+           <input type="number" [(ngModel)]="growthRate" required/>
+       </div>
         <div class="col">
-            <label>Discount rate %</label>
-            <input type="number" [(ngModel)]="discountRate"/>
+            <label>
+                Discount rate %
+                <span class="info-icon"
+                      title="The rate used to discount future cash flows to present value, basically the required rate of return (typically 8-12% for indian stock market)">
+                    ℹ️
+                </span>
+            </label>
+            <input type="number" [(ngModel)]="discountRate" required/>
         </div>
         <div class="col">
-            <label>Terminal growth rate %</label>
-            <input type="number" [(ngModel)]="terminalGrowthRate"/>
+            <label>
+                Terminal growth rate %
+                <span class="info-icon"
+                      title="The expected growth rate of the company's cash flows after the projection period, typically 2-4%">
+                    ℹ️
+                </span>
+            </label>
+            <input type="number" [(ngModel)]="terminalGrowthRate" required/>
         </div>
         <div class="col">
-            <label>Current Market value</label>
-            <input type="number" [(ngModel)]="marketValue"/>
+            <label>
+                Current Market value
+                <span class="info-icon"
+                      title="The total market capitalization of the company (current stock price × number of shares outstanding)">
+                    ℹ️
+                </span>
+            </label>
+            <input type="number" [(ngModel)]="marketValue" required/>
         </div>
         <div class="col">
-            <label>Current price</label>
-            <input type="number" [(ngModel)]="currentPrice"/>
+            <label>
+                Current price
+                <span class="info-icon"
+                      title="The current trading price per share of the company's stock">
+                    ℹ️
+                </span>
+            </label>
+            <input type="number" [(ngModel)]="currentPrice" required/>
         </div>
     </div>
-
+    <img *ngIf="showGuides"  src="assets/images/marktcap.png" alt="market cap" class="card-image">
     <div class="row">
         <div class="col button-container">
             <button class="btn" (click)="calculateIntrinsicValue()">Calculate</button>
         </div>
     </div>
 
-    <div class="note small">Growth rate: {{this.growthRate}}%,  profit margin: {{this.profitMargin}}%, total no of shares: {{this.totalNoOfShares}}.</div>
-</div>
+    <div *ngIf="calculationResults" class="results-section">
+        <h3>DCF Analysis Results</h3>
 
-<div class="card" *ngIf="projections.length > 0">
-    <h2>Owner earning projections</h2>
-    <div class="table-container">
-        <table class="projections-table">
-            <thead>
-            <tr>
-                <th>Year</th>
-                <th>Revenue (M)</th>
-                <th>Net Profit (M)</th>
-                <th>CapEx (M)</th>
-                <th>Non-Cash Ex (M)</th>
-                <th>Free Cash Flow (M)</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr *ngFor="let projection of projections">
-                <td>{{ projection.year }}</td>
-                <td>{{ projection.revenue }}</td>
-                <td>{{ projection.netProfit }}</td>
-                <td>{{ projection.capEx }}</td>
-                <td>{{ projection.nonCashEx }}</td>
-                <td>{{ projection.ownerEarning }}</td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
-
-
-    <div class="result-section" *ngIf="intrinsicValuePerShare">
-        <div class="row">
-            <div class="col">
-                <strong>Intrinsic Value Per Share: {{ intrinsicValuePerShare }}</strong>
-                <p class="description">
-                    The intrinsic value per share is calculated based on the projected free cash flows, discount rate, terminal growth rate, and total number of shares.
-                </p>
-            </div>
+        <!-- Projections Table -->
+        <div class="table-container">
+            <h4>Owner Earnings Projections</h4>
+            <table class="projections-table">
+                <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Present Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr *ngFor="let projection of projections; let i = index">
+                    <td>{{ projection.year }}</td>
+                    <td>{{ projection.discountedOwnerEarning }}</td>
+                </tr>
+                <tr class="terminal-row">
+                    <td>Discounted terminal value</td>
+                    <td>{{ discountedTerminalValue }}</td>
+                </tr>
+                </tbody>
+                <tfoot>
+                <tr class="total-row">
+                    <td><strong>Total Present Value</strong></td>
+                    <td><strong>{{ dcfValue }}</strong></td>
+                </tr>
+                </tfoot>
+            </table>
         </div>
+
+        <!-- Fair Value Summary -->
+        <div class="fair-value-summary">
+            <h4>Fair Value Analysis</h4>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <label>Fair Value per Share:</label>
+                    <span>{{ intrinsicValuePerShare }}</span>
+                </div>
+                <div class="summary-item">
+                    <label>Current Market Price:</label>
+                    <span>{{ currentPrice }}</span>
+                </div>
+                <div class="summary-item" [class]="getValuationClass()">
+                    <label>Valuation:</label>
+                    <span>{{ getValuationText() }}</span>
+                </div>
+            </div>
+            <div class="note small">Fair value is calculated based on margin of safety: 20%</div>
+        </div>
+
     </div>
 </div>
+

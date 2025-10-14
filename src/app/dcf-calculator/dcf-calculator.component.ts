@@ -40,8 +40,18 @@ export class DcfCalculatorComponent {
     intrinsicValuePerShare = 0; // $
     marketValue: number = 0;
     currentPrice: number = 0;
+    calculationResults = false;
+    marginOfSafety = 0; // %
+
+    showGuides = false;
+    discountedTerminalValue = 0;
+    dcfValue = 0;
 
     constructor(private csv: CsvService, private xlsx: XlsxService) {
+    }
+
+    toggleGuides() {
+        this.showGuides = !this.showGuides;
     }
 
     toDec(x: number) {
@@ -56,7 +66,6 @@ export class DcfCalculatorComponent {
         // CAGR formula: (Ending Value / Beginning Value)^(1/years) - 1
         const cagr = Math.pow(this.revenueMostRecentAvg / this.revenueLeastRecentAvg, 1 / this.revenueYears) - 1;
         this.growthRate = Number((cagr * 100).toFixed(2)); // Convert to percentage and round to 2 decimal places
-        //this.revenueAverage = (this.revenueCurrentYear + this.revenuePreviousYear + this.revenueBeforeTwoYears) / 3;
     }
 
     calculateProfitMargin(): void {
@@ -69,16 +78,13 @@ export class DcfCalculatorComponent {
         this.totalNoOfShares = (this.marketValue / this.currentPrice);
     }
 
-
     calculateOwnerEarnings(): void {
-        this.calculateGrowthRate();
         this.calculateProfitMargin();
         this.ownerEarningAverage = this.netProfitAverage - this.capExAverage + this.nonCashExAverage;
-        this.ownerEarningRate = this.toFixed((this.ownerEarningAverage/this.netProfitAverage) * 100);
-        this.calculateProjections();
+        this.ownerEarningRate = this.toFixed((this.ownerEarningAverage / this.netProfitAverage) * 100);
     }
 
-    calculateProjections(): void {
+    generateProjections(): void {
         this.projections = [];
         let year: number;
         for (year = 1; year <= this.projectionsYears; year++) {
@@ -90,23 +96,24 @@ export class DcfCalculatorComponent {
 
             this.projections.push({
                 year: year,
-                revenue: Number(projectedRevenue.toFixed(2)),
-                netProfit: Number(projectedNetProfit.toFixed(2)),
-                capEx: Number(projectedCapEx.toFixed(2)),
-                nonCashEx: Number(projectedNonCashEx.toFixed(2)),
-                ownerEarning: Number(projectedFreeCashFlow.toFixed(2))
+                revenue: this.toFixed(projectedRevenue),
+                netProfit: this.toFixed(projectedNetProfit),
+                capEx: this.toFixed(projectedCapEx),
+                nonCashEx: this.toFixed(projectedNonCashEx),
+                ownerEarning: this.toFixed(projectedFreeCashFlow),
+                discountedOwnerEarning: this.toFixed(projectedFreeCashFlow / Math.pow((1 + this.toDec(this.discountRate)), year))
             });
         }
     }
 
     calculateIntrinsicValue(): void {
         this.calculateOwnerEarnings();
+        this.generateProjections()
         this.calculateTotalNoOfShares();
+
         let dcf = 0;
         for (const element of this.projections) {
-            const year = element.year;
-            const ownerEarning = element.ownerEarning;
-            dcf += ownerEarning / Math.pow((1 + this.toDec(this.discountRate)), year);
+            dcf += element.discountedOwnerEarning;
         }
 
         // Terminal Value using Gordon Growth Model
@@ -115,8 +122,22 @@ export class DcfCalculatorComponent {
             (this.toDec(this.discountRate) - this.toDec(this.terminalGrowthRate));
 
         // Discount Terminal Value to Present Value
-        const discountedTerminalValue = terminalValue / Math.pow((1 + this.toDec(this.discountRate)), this.projections.length);
-        const totalValue = dcf + discountedTerminalValue;
-        this.intrinsicValuePerShare = Number((totalValue / this.totalNoOfShares).toFixed(2));
+        this.discountedTerminalValue = this.toFixed(terminalValue / Math.pow((1 + this.toDec(this.discountRate)), this.projections.length));
+        this.dcfValue = dcf + this.discountedTerminalValue;
+        this.intrinsicValuePerShare = this.toFixed((this.dcfValue / this.totalNoOfShares));
+        this.marginOfSafety = ((this.intrinsicValuePerShare - this.currentPrice) / this.intrinsicValuePerShare) * 100;
+        this.calculationResults = true;
+    }
+
+    getValuationClass(): string {
+        if (this.marginOfSafety > 20) return 'undervalued';
+        if (this.marginOfSafety < -10) return 'overvalued';
+        return 'fairly-valued';
+    }
+
+    getValuationText(): string {
+        if (this.marginOfSafety > 20) return 'Undervalued';
+        if (this.marginOfSafety < -10) return 'Overvalued';
+        return 'Fairly Valued';
     }
 }
