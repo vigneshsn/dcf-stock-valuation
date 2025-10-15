@@ -3,60 +3,104 @@
 </mat-toolbar>
 <div class="container">
     <h1>Value a Stock with Discounted Cash Flow (DCF)</h1>
-    <p class="lead">A simple, step-by-step guide for stock valuation. By following this article you learn how to value a
-        stock </p>
+    <p class="lead">
+        Learn how to estimate what a stock is truly worth not just what the market says.
+        This simple step-by-step guide helps you value a company using future cash flow projections.
+    </p>
 
     <div class="card">
-        <h2>Why value a stock?</h2>
-        <p class="muted">Valuing a stock gives you a reasonable estimate of what the business is worth based on the cash
-            it can generate in the future instead of blindly buying or selling based on the market price. Benjamin
-            Graham author of book intelligent investor calls the stock market a person named "Mr. Market" sometimes he's
-            euphoric and offers you bargains, sometimes he's panicked and overpriced. By valuing the company yourself,
-            you decide whether Mr. Market's price is an opportunity or a warning.</p>
+        <h2>Why Value a Stock?</h2>
+        <p class="muted">
+            Valuing a stock helps you make smarter investing decisions. Instead of blindly buying or selling
+            based on the market price, you understand what the business is <em>actually worth</em>
+            based on the cash it can generate in the future.
+        </p>
+        <p>
+            Benjamin Graham, the legendary value investor and author of <strong>The Intelligent Investor</strong>,
+            compared the stock market to a person named <strong>“Mr. Market.”</strong> Sometimes he’s excited
+            and offers stocks at high prices, sometimes he’s fearful and sells them cheap.
+            By doing your own valuation, you can decide whether Mr. Market’s price is a bargain or a trap.
+        </p>
+        <div class="note">
+            💡 Example: If Mr. Market offers a stock at ₹100 but your valuation says it’s worth ₹150 —
+            that’s a potential buying opportunity!
+        </div>
     </div>
 
     <div class="card">
-        <h2>Discounted Cash Flow</h2>
+        <h2>What is Discounted Cash Flow (DCF)?</h2>
+        <p>
+            Think of a business as a <strong>machine that prints cash every year</strong>.
+            Warren Buffett often calls this the business’s <strong>“owner earnings”</strong> —
+            the real cash a company can generate for its owners after paying for all necessary
+            expenses and maintenance.
+        </p>
+        <p>
+            The <strong>Discounted Cash Flow (DCF)</strong> model asks:
+            “How much are all those future cash prints worth in today’s money?”
+            Because a rupee today is worth more than a rupee in the future,
+            we <strong>discount</strong> future cash to its present value.
+        </p>
+        <p>
+            Add up these discounted future cash flows, include a <strong>terminal value</strong>
+            for the years beyond your forecast, and you’ll get a reasonable estimate
+            of what the company is worth today — its <strong>intrinsic value</strong>.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>Owner Earnings</h2>
+        <p class="muted">
+            Owner earnings represent the <strong>real cash</strong> a company makes for its owners
+            after paying all necessary expenses and maintaining its operations.
+            Unlike accounting profits, it shows how much money is truly available for shareholders —
+            to pay dividends, reduce debt, or reinvest for growth.
+        </p>
+        <p>
+            Think of this as the company’s “take-home pay” — what’s left after running the business
+            and maintaining its assets.
+        </p>
+        <div class="note">
+            <strong>Formula:</strong><br>
+            Owner Earnings = Net Income + Depreciation & Amortization − Capital Expenditures
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>How to Use This Calculator</h2>
+        <p class="muted">
+            Start by entering a few key financial figures — such as revenue, net profit, capital expenditure,
+            and depreciation — which you can easily find on
+            <a href="https://www.screener.in/" target="_blank">Screener.in</a>
+            or in the company’s annual report.
+            It’s best to take the <strong>3-year average</strong> to smooth out one-time spikes.
+        </p>
+
+<!--        <ol>-->
+<!--            <li><strong>Estimate future revenue growth</strong> — based on past performance or your own assumptions.</li>-->
+<!--            <li><strong>Enter profit margin %</strong> — how much profit is made per ₹100 of sales.</li>-->
+<!--            <li><strong>Set a free cash flow %</strong> — the portion of profits that become actual cash.</li>-->
+<!--            <li><strong>Apply a discount rate (expected return)</strong> — usually 10–15% for Indian equities.</li>-->
+<!--            <li><strong>Add a terminal growth rate</strong> — long-term steady growth (e.g., 4–6%).</li>-->
+<!--        </ol>-->
 
         <p>
-            Think of a business as a machine that prints cash every year. Warren Buffett often calls this the business’s
-            <strong>“owner earnings”</strong> — the real cash a company can generate for its owners after all the
-            necessary
-            expenses to maintain the business.
+            The calculator projects the company’s future <strong>owner earnings</strong>,
+            discounts them to the present value, and adds the terminal value.
+            The result is your estimate of <strong>intrinsic value</strong>.
         </p>
 
         <p>
-            The <strong>Discounted Cash Flow (DCF)</strong> model asks: “How much are all those future cash prints worth
-            in
-            today’s money?” Because a euro today is worth more than a euro in the future, we “discount” (shrink) future
-            cash
-            to today’s value. Add up the discounted cash for a number of years, include a <strong>terminal
-            value</strong> for
-            cash beyond your forecast horizon, and you get an estimate of the company’s total worth.
+            Finally, apply the <strong>Margin of Safety</strong> principle:
+            buy only if the current market price is <strong>20–30% below</strong> your estimated value.
+            This cushions you against forecast errors and market volatility.
         </p>
-
-        <div class="note">Key insight: Focus on real cash generation (owner earnings) — that’s what DCF is trying to
-            value.
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Owner earning</h2>
-        <p class="muted">Owner earnings represent the real cash a company makes for its owners after paying all necessary expenses and maintaining its business operations. Unlike accounting profits, it shows how much money is truly available for investors — to pay dividends, reduce debt, or reinvest for growth</p>
-        <div class="note">
-            Owner Earnings = Net Income + Depreciation & Amortization − Capital Expenditures ± Changes in Working Capital
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>How to use this calculator</h2>
-        <p class="muted">We start by entering the historical figures from the company (revenue, net profit, capex, D&amp;A) easily available data. Also, we will use the 3 years
-            average inorder to avoid screwed information like revenue or profit spike in one particular year.</p>
-        <p>Our goal is to make a projection of Owner earning for next 5 year, then
-        we discount the future value to present value using Discount rate. Our goal is to make a reasonable estimation not a precise one.</p>
-        <div class="note">
-           I will be using the data from www.screener.in website to get the historical data.
-        </div>
+        <p>A 20% margin of safety is applied to the fair value for a conservative estimate.</p>
+        <p>
+            <strong>Disclaimer:</strong> This calculator is for educational purposes only.
+            It simplifies valuation concepts and may not capture every real-world factor.
+            Always research thoroughly or consult a financial advisor before making investment decisions.
+        </p>
     </div>
 
     <app-dcf-calculator></app-dcf-calculator>

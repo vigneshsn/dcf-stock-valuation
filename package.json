@@ -7,7 +7,8 @@
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "deploy": "ng build --base-href \"/dcf-stock-valuation/\" && npx angular-cli-ghpages --dir=dist/dcf-stock-valuation"
   },
   "private": true,
   "dependencies": {
@@ -30,6 +31,7 @@
     "@angular/cli": "^20.0.0",
     "@angular/compiler-cli": "^20.0.0",
     "@types/jasmine": "~5.1.4",
+    "angular-cli-ghpages": "^2.0.3",
     "jasmine-core": "~5.1.2",
     "karma": "~6.4.2",
     "karma-chrome-launcher": "~3.2.0",

@@ -17,13 +17,13 @@ import {NgForOf, NgIf} from "@angular/common";
 })
 export class DcfCalculatorComponent {
 
-    revenueMostRecentAvg = 10000;
-    revenueLeastRecentAvg = 8000;
-    revenueYears = 5; // years
+    revenueMostRecentAvg = 100000;
+    revenueLeastRecentAvg = 50000;
+    revenueYears = 10; // years
 
-    netProfitAverage = 1000; // millions
-    nonCashExAverage: number = 120; // millions
-    capExAverage = 100; // millions
+    netProfitAverage = 30000; // millions
+    nonCashExAverage: number = 3000; // millions
+    capExAverage = 3000; // millions
 
 
     growthRate = 0; // %
@@ -34,12 +34,12 @@ export class DcfCalculatorComponent {
     projectionsYears = 5; // years
     projections: any[] = [];
 
-    discountRate = 10; // %
-    terminalGrowthRate = 3; // %
-    totalNoOfShares = 100; // millions
+    discountRate = 15; // %
+    terminalGrowthRate = 4; // %
+    totalNoOfShares = 0; // millions
     intrinsicValuePerShare = 0; // $
-    marketValue: number = 0;
-    currentPrice: number = 0;
+    marketValue: number = 200000;
+    currentPrice: number = 200;
     calculationResults = false;
     marginOfSafety = 0; // %
 
@@ -123,7 +123,7 @@ export class DcfCalculatorComponent {
 
         // Discount Terminal Value to Present Value
         this.discountedTerminalValue = this.toFixed(terminalValue / Math.pow((1 + this.toDec(this.discountRate)), this.projections.length));
-        this.dcfValue = dcf + this.discountedTerminalValue;
+        this.dcfValue = this.toFixed(dcf + this.discountedTerminalValue);
         this.intrinsicValuePerShare = this.toFixed((this.dcfValue / this.totalNoOfShares));
         this.marginOfSafety = ((this.intrinsicValuePerShare - this.currentPrice) / this.intrinsicValuePerShare) * 100;
         this.calculationResults = true;
@@ -139,5 +139,31 @@ export class DcfCalculatorComponent {
         if (this.marginOfSafety > 20) return 'Undervalued';
         if (this.marginOfSafety < -10) return 'Overvalued';
         return 'Fairly Valued';
+    }
+
+    resetForm(): void {
+        this.revenueMostRecentAvg = 100000;
+        this.revenueLeastRecentAvg = 50000;
+        this.revenueYears = 10;
+        this.netProfitAverage = 30000;
+        this.nonCashExAverage = 3000;
+        this.capExAverage = 3000;
+        this.growthRate = 0;
+        this.profitMargin = 0;
+        this.ownerEarningAverage = 0;
+        this.ownerEarningRate = 0;
+        this.projectionsYears = 5;
+        this.projections = [];
+        this.discountRate = 15;
+        this.terminalGrowthRate = 4;
+        this.totalNoOfShares = 0;
+        this.intrinsicValuePerShare = 0;
+        this.marketValue = 200000;
+        this.currentPrice = 200;
+        this.calculationResults = false;
+        this.marginOfSafety = 0;
+        this.showGuides = false;
+        this.discountedTerminalValue = 0;
+        this.dcfValue = 0;
     }
 }

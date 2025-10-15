@@ -1,13 +1,13 @@
 <div class="guide-toggle">
     <button class="btn-link" (click)="toggleGuides()">
-        {{ showGuides ? 'Hide Guide' : 'Guide me' }}
+        {{ showGuides ? 'Hide visual guides' : 'Show visual guides' }}
     </button>
 </div>
 
 <!-- Revenue Card -->
 <div class="card">
     <h2>Revenue</h2>
-    <p>Revenue is the total amount of money a company earns from selling its products or services before subtracting any expenses. It's often called the "top line" because it appears at the very top of a company's income statement.</p>
+    <p>Revenue is the total money a company earns from selling products or services before paying any costs or expenses.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
@@ -28,7 +28,7 @@
 <!-- Net Profit Card -->
 <div class="card">
     <h2>Net Profit</h2>
-    <p>Net profit is the money a company has left after paying all its expenses — including salaries, rent, taxes, interest, and other costs. It's often called the "bottom line" because it appears at the bottom of the income statement.</p>
+    <p>Net profit is what remains after paying all expenses like salaries, rent, taxes, interest, and other costs. It’s the company’s “real earnings.”</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
@@ -41,7 +41,7 @@
 <!-- Capital Expenditure Card -->
 <div class="card">
     <h2>Capital Expenditure</h2>
-    <p>Capital Expenditure — often called "CapEx" — is the money a company spends to buy, maintain, or upgrade its long-term assets like buildings, machines, vehicles, or technology. These are investments that help the business operate and grow over many years.</p>
+    <p>Capital Expenditure often called "CapEx" is the money a company spends to buy, maintain, or upgrade its long-term assets like buildings, machines, vehicles, or technology. These are investments that help the business operate and grow over many years.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
@@ -53,8 +53,8 @@
 
 <!-- Non-Cash Expenditure Card -->
 <div class="card">
-    <h2>Non-Cash Expenditure</h2>
-    <p>Non-Cash Expenditure refers to expenses that a company records on its income statement but does not actually pay out in cash. The most common type of non-cash expense is Depreciation and Amortization (D&A), which accounts for the gradual reduction in value of tangible and intangible assets over time.</p>
+    <h2>Depreciation and Amortization </h2>
+    <p>Depreciation & Amortization (D&A) are non-cash expenses recorded on the income statement, but not paid out in actual cash. They represent the gradual reduction in value of assets over time.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
@@ -65,7 +65,7 @@
 </div>
 
 <div class="card">
-    <h2>Final step: Fair value of stock</h2>
+    <h2>Calculate Fair value of stock</h2>
    <div class="row">
        <div class="col">
            <label>
@@ -81,7 +81,7 @@
             <label>
                 Discount rate %
                 <span class="info-icon"
-                      title="The rate used to discount future cash flows to present value, basically the required rate of return (typically 8-12% for indian stock market)">
+                      title="The rate used to bring future cash flows to today’s value — essentially your expected rate of return for investing in this stock.">
                     ℹ️
                 </span>
             </label>
@@ -91,7 +91,7 @@
             <label>
                 Terminal growth rate %
                 <span class="info-icon"
-                      title="The expected growth rate of the company's cash flows after the projection period, typically 2-4%">
+                      title="The expected growth rate of the company's cash flows after the projection period. I will generally use inflation rate for conservative estimate (typically 4-6% for indian stock market)">
                     ℹ️
                 </span>
             </label>
@@ -122,6 +122,9 @@
     <div class="row">
         <div class="col button-container">
             <button class="btn" (click)="calculateIntrinsicValue()">Calculate</button>
+        </div>
+        <div class="col button-container">
+            <button class="btn" (click)="resetForm()">Reset</button>
         </div>
     </div>
 
@@ -174,7 +177,20 @@
                     <span>{{ getValuationText() }}</span>
                 </div>
             </div>
-            <div class="note small">Fair value is calculated based on margin of safety: 20%</div>
+            <div class="note small">
+                <h4>💡 Tips</h4>
+                <p>
+                    DCF results depend on your assumptions. Try three versions —
+                    <strong>Optimistic</strong> (higher growth rate),
+                    <strong>Realistic</strong> (average past performance), and
+                    <strong>Pessimistic</strong> (lower growth rate).
+                </p>
+                <p>
+                    Use a sensible <strong>discount rate</strong> (10–15%) and keep growth expectations realistic.
+                    Always apply a <strong>margin of safety</strong> — buy only if the stock price is at least
+                    <strong>20–30% below</strong> your estimated value.
+                </p>
+            </div>
         </div>
 
     </div>
