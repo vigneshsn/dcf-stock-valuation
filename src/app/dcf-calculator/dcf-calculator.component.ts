@@ -11,7 +11,8 @@ import {NgForOf, NgIf} from "@angular/common";
     imports: [
         FormsModule,
         NgIf,
-        NgForOf
+        NgForOf,
+
     ],
     styleUrls: ['./dcf-calculator.component.css']
 })

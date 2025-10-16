@@ -15,6 +15,7 @@ import {AppComponent} from './app.component';
 import {DcfCalculatorComponent} from './dcf-calculator/dcf-calculator.component';
 import {CsvService} from './services/csv.service';
 import {XlsxService} from './services/xlsx.service';
+import {AppRoutingModule} from "./app-routing.module";
 
 
 @NgModule({
@@ -32,7 +33,8 @@ import {XlsxService} from './services/xlsx.service';
         MatTableModule,
         MatIconModule,
         MatFormFieldModule,
-        DcfCalculatorComponent
+        DcfCalculatorComponent,
+        AppRoutingModule
     ],
     providers: [CsvService, XlsxService],
     bootstrap: [AppComponent]
