@@ -21,3 +21,9 @@
 
 ### other ides
 - use the screener excel to get the data
+
+
+### tech improvements
+- improve test coverage
+- move tooltip into separate component
+- normalize text input

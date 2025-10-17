@@ -110,15 +110,15 @@
     <div class="row">
         <div class="col">
             <label>First 3 year average</label>
-            <input type="number" [(ngModel)]="revenueLeastRecentAvg" (ngModelChange)="calculateGrowthRate()" required/>
+            <input type="number" [(ngModel)]="revenueLeastRecentAvg" (ngModelChange)="calculateGrowthRate()" [min]=0 required/>
         </div>
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="revenueMostRecentAvg" (ngModelChange)="calculateGrowthRate()" required/>
+            <input type="number" [(ngModel)]="revenueMostRecentAvg" (ngModelChange)="calculateGrowthRate()" [min]=0  required/>
         </div>
         <div class="col">
             <label>Growth period in years</label>
-            <input type="number" [(ngModel)]="revenueYears" (ngModelChange)="calculateGrowthRate()" required/>
+            <input type="number" [(ngModel)]="revenueYears" (ngModelChange)="calculateGrowthRate()" [min]=0  required/>
         </div>
     </div>
     <img *ngIf="showGuides"  src="assets/images/revenue.png" alt="Revenue" class="card-image">
@@ -137,7 +137,7 @@
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="netProfitAverage" required/>
+            <input type="number" [(ngModel)]="netProfitAverage"  [min]=0  required/>
         </div>
     </div>
     <img *ngIf="showGuides"  src="assets/images/profit.png" alt="profit" class="card-image">
@@ -151,7 +151,7 @@
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="nonCashExAverage" required/>
+            <input type="number" [(ngModel)]="nonCashExAverage" [min]=0  required/>
         </div>
     </div>
     <img *ngIf="showGuides"  src="assets/images/d&a.png" alt="non-cash expense" class="card-image">
@@ -166,7 +166,7 @@
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="capExAverage" required/>
+            <input type="number" [(ngModel)]="capExAverage" [min]=0  required/>
         </div>
     </div>
     <img *ngIf="showGuides"  src="assets/images/capex.png" alt="capex" class="card-image">
@@ -290,7 +290,7 @@
                   </span>
                 </span>
             </label>
-            <input type="number" [(ngModel)]="marketValue" required/>
+            <input type="number" [(ngModel)]="marketValue" [min]=0 required/>
         </div>
         <div class="col">
             <label>
@@ -300,7 +300,7 @@
                     ℹ️
                 </span>
             </label>
-            <input type="number" [(ngModel)]="currentPrice" required/>
+            <input type="number" [(ngModel)]="currentPrice" [min]=0 required/>
         </div>
     </div>
     <img *ngIf="showGuides"  src="assets/images/marktcap.png" alt="market cap" class="card-image">
