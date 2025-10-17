@@ -259,9 +259,11 @@
         <div class="col">
             <label>
                 Discount rate %
-                <span class="info-icon"
-                      title="The rate used to bring future cash flows to today’s value — essentially your expected rate of return for investing in this stock.">
-                    ℹ️
+                <span class="info-icon tooltip-container">
+                  ℹ️
+                  <span class="custom-tooltip">
+                    The rate used to bring future cash flows to today’s value — essentially your expected rate of return for investing in this stock.
+                  </span>
                 </span>
             </label>
             <input type="number" [(ngModel)]="discountRate" required/>
@@ -281,9 +283,11 @@
         <div class="col">
             <label>
                 Current Market cap
-                <span class="info-icon"
-                      title="The total market capitalization of the company (current stock price × number of shares outstanding)">
-                    ℹ️
+                <span class="info-icon tooltip-container">
+                  ℹ️
+                  <span class="custom-tooltip">
+                    The current market value of the company (current stock price × number of shares outstanding)
+                  </span>
                 </span>
             </label>
             <input type="number" [(ngModel)]="marketValue" required/>
