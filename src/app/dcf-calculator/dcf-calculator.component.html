@@ -84,20 +84,22 @@
             buy only if the current market price is <strong>20–30% below</strong> your estimated value.
             This cushions you against forecast errors and market volatility.
         </p>
-        <p>A 20% margin of safety is applied to the fair value for a conservative estimate.</p>
         <p>
             <strong>Disclaimer:</strong> This calculator is for educational purposes only.
             It simplifies valuation concepts and may not capture every real-world factor.
             Always research thoroughly or consult a financial advisor before making investment decisions.
         </p>
+        <div class="guide-toggle">
+            <label class="switch">
+                <input type="checkbox" [(ngModel)]="showGuides" />
+                <span class="slider"></span>
+            </label>
+            <span style="margin-left: 0.5rem;">
+                {{ showGuides ? 'Hide visual guides' : 'Show visual guides' }}
+            </span>
+        </div>
     </div>
 
-</div>
-
-<div class="guide-toggle">
-    <button class="btn-link" (click)="toggleGuides()">
-        {{ showGuides ? 'Hide visual guides' : 'Show visual guides' }}
-    </button>
 </div>
 
 <!-- Revenue Card -->
@@ -107,12 +109,12 @@
     <p>You can find this information in income statement or profit & loss statement.</p>
     <div class="row">
         <div class="col">
-            <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="revenueMostRecentAvg" (ngModelChange)="calculateGrowthRate()" required/>
-        </div>
-        <div class="col">
             <label>First 3 year average</label>
             <input type="number" [(ngModel)]="revenueLeastRecentAvg" (ngModelChange)="calculateGrowthRate()" required/>
+        </div>
+        <div class="col">
+            <label>Last 3 year average</label>
+            <input type="number" [(ngModel)]="revenueMostRecentAvg" (ngModelChange)="calculateGrowthRate()" required/>
         </div>
         <div class="col">
             <label>Growth period in years</label>
@@ -120,6 +122,11 @@
         </div>
     </div>
     <img *ngIf="showGuides"  src="assets/images/revenue.png" alt="Revenue" class="card-image">
+
+    <div class="note">
+        <strong>Compounded annual growth rate of revenue is used in DCF</strong><br>
+        GrowthRate % = ((Ending Value / Beginning Value)^(1/years) - 1) * 100
+    </div>
 </div>
 
 <!-- Net Profit Card -->
@@ -136,20 +143,6 @@
     <img *ngIf="showGuides"  src="assets/images/profit.png" alt="profit" class="card-image">
 </div>
 
-<!-- Capital Expenditure Card -->
-<div class="card">
-    <h2>Capital Expenditure</h2>
-    <p>Capital Expenditure often called "CapEx" is the money a company spends to buy, maintain, or upgrade its long-term assets like buildings, machines, vehicles, or technology. These are investments that help the business operate and grow over many years.</p>
-    <p>You can find this information in cash flow statement. sometimes stated as purchase of property plant equipment (PPE).</p>
-    <div class="row">
-        <div class="col">
-            <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="capExAverage" required/>
-        </div>
-    </div>
-    <img *ngIf="showGuides"  src="assets/images/capex.png" alt="capex" class="card-image">
-</div>
-
 <!-- Non-Cash Expenditure Card -->
 <div class="card">
     <h2>Depreciation and Amortization </h2>
@@ -162,6 +155,21 @@
         </div>
     </div>
     <img *ngIf="showGuides"  src="assets/images/d&a.png" alt="non-cash expense" class="card-image">
+</div>
+
+
+<!-- Capital Expenditure Card -->
+<div class="card">
+    <h2>Capital Expenditure</h2>
+    <p>Capital Expenditure often called "CapEx" is the money a company spends to buy, maintain, or upgrade its long-term assets like buildings, machines, vehicles, or technology. These are investments that help the business operate and grow over many years.</p>
+    <p>You can find this information in cash flow statement. sometimes stated as purchase of property plant equipment (PPE).</p>
+    <div class="row">
+        <div class="col">
+            <label>Last 3 year average</label>
+            <input type="number" [(ngModel)]="capExAverage" required/>
+        </div>
+    </div>
+    <img *ngIf="showGuides"  src="assets/images/capex.png" alt="capex" class="card-image">
 </div>
 
 <div *ngIf="calculationResults" class="results-section">
@@ -198,7 +206,7 @@
 
     <!-- Fair Value Summary -->
     <div class="fair-value-summary">
-        <h4>Fair Value Analysis</h4>
+        <h4>Intrinsic Value Analysis</h4>
         <div class="summary-grid">
             <div class="summary-item">
                 <label>Fair Value per Share:</label>
@@ -209,12 +217,16 @@
                 <span>{{ currentPrice }}</span>
             </div>
             <div class="summary-item" [class]="getValuationClass()">
-                <label>Valuation:</label>
+                <label>Valuation:
+                    <span class="info-icon"
+                          title="margin of safety 20% is applied to intrinsic value to determine if stock is undervalued or overvalued">
+                    ℹ️
+                </span></label>
                 <span>{{ getValuationText() }}</span>
             </div>
         </div>
         <div class="note small">
-            <h4>💡 Tips</h4>
+            <h4>💡 Practical tips</h4>
             <p>
                 DCF results depend on your assumptions. Try three versions —
                 <strong>Optimistic</strong> (higher growth rate),
@@ -232,7 +244,7 @@
 </div>
 
 <div class="card">
-    <h2>Calculate Fair value of stock</h2>
+    <h2>Calculate intrinsic value of stock</h2>
    <div class="row">
        <div class="col">
            <label>
@@ -266,7 +278,7 @@
         </div>
         <div class="col">
             <label>
-                Current Market value
+                Current Market cap
                 <span class="info-icon"
                       title="The total market capitalization of the company (current stock price × number of shares outstanding)">
                     ℹ️

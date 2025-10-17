@@ -40,10 +40,4 @@ describe('DcfCalculatorComponent', () => {
         expect(component.calculationResults).toBeTrue();
         expect(component.intrinsicValuePerShare).toBeGreaterThan(0);
     });
-
-    it('should toggle guides', () => {
-        const initial = component.showGuides;
-        component.toggleGuides();
-        expect(component.showGuides).toBe(!initial);
-    });
 });

@@ -26,13 +26,12 @@ export class DcfCalculatorComponent {
     nonCashExAverage: number = 3000; // millions
     capExAverage = 3000; // millions
 
-
     growthRate = 0; // %
     profitMargin = 0; // %
 
     ownerEarningAverage = 0; // millions
     ownerEarningRate = 0; // %
-    projectionsYears = 5; // years
+    projectionsYears = 10; // years
     projections: any[] = [];
 
     discountRate = 15; // %
@@ -49,10 +48,6 @@ export class DcfCalculatorComponent {
     dcfValue = 0;
 
     constructor(private csv: CsvService, private xlsx: XlsxService) {
-    }
-
-    toggleGuides() {
-        this.showGuides = !this.showGuides;
     }
 
     toDec(x: number) {
@@ -153,7 +148,7 @@ export class DcfCalculatorComponent {
         this.profitMargin = 0;
         this.ownerEarningAverage = 0;
         this.ownerEarningRate = 0;
-        this.projectionsYears = 5;
+        this.projectionsYears = 10;
         this.projections = [];
         this.discountRate = 15;
         this.terminalGrowthRate = 4;

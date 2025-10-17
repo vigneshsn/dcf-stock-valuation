@@ -11,15 +11,13 @@
 - explain situation DCF works best
 - explain margin of safety
 - add disclaimer
-
 - show support mobile devices
-
 
 ## Release 2
 - editable summary of future projections
-- tools for calculating averages
+- export options (csv, xlsx)
+- API to get raw data
 - incorporate feedback from users
-
 
 ### other ides
 - use the screener excel to get the data
