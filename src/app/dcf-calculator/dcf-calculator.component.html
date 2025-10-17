@@ -269,9 +269,11 @@
         <div class="col">
             <label>
                 Terminal growth rate %
-                <span class="info-icon"
-                      title="The expected growth rate of the company's cash flows after the projection period. I will generally use inflation rate for conservative estimate (typically 4-6% for indian stock market)">
-                    ℹ️
+                <span class="info-icon tooltip-container">
+                  ℹ️
+                  <span class="custom-tooltip">
+                    The expected growth rate of the company's cash flows after the projection period. I will generally use inflation rate for conservative estimate (typically 4-6% for indian stock market)
+                  </span>
                 </span>
             </label>
             <input type="number" [(ngModel)]="terminalGrowthRate" required/>
