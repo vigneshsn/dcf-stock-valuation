@@ -14,6 +14,7 @@ import {NgForOf, NgIf} from "@angular/common";
         NgForOf,
 
     ],
+    standalone: true,
     styleUrls: ['./dcf-calculator.component.css']
 })
 export class DcfCalculatorComponent {

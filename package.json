@@ -8,7 +8,7 @@
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e",
-    "deploy": "ng build --base-href \"/dcf-stock-valuation/\" && npx angular-cli-ghpages --dir=dist/dcf-stock-valuation"
+    "deploy": "ng build --base-href \"/\" && npx angular-cli-ghpages --dir=dist/dcf-stock-valuation --cname=valuestock360.com"
   },
   "private": true,
   "dependencies": {

@@ -4,6 +4,7 @@ import {RouterLink} from "@angular/router";
 
 @Component({
     templateUrl: './feedback.html',
+    standalone: true,
     imports: [
         MatButton,
         RouterLink
