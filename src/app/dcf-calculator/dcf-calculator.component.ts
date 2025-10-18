@@ -44,7 +44,7 @@ export class DcfCalculatorComponent {
     calculationResults = false;
     marginOfSafety = 0; // %
 
-    showGuides = false;
+    showGuides = true;
     discountedTerminalValue = 0;
     dcfValue = 0;
 
