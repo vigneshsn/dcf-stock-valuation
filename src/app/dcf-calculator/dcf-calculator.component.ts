@@ -1,4 +1,4 @@
-import {Component} from '@angular/core';
+import {Component, OnInit} from '@angular/core';
 import {CsvService} from '../services/csv.service';
 import {FormsModule} from '@angular/forms';
 import {XlsxService} from '../services/xlsx.service';
@@ -17,15 +17,15 @@ import {NgForOf, NgIf} from "@angular/common";
     standalone: true,
     styleUrls: ['./dcf-calculator.component.css']
 })
-export class DcfCalculatorComponent {
+export class DcfCalculatorComponent implements OnInit {
 
-    revenueMostRecentAvg = 100000;
-    revenueLeastRecentAvg = 50000;
+    revenueMostRecentAvg = 240558;
+    revenueLeastRecentAvg = 95034;
     revenueYears = 10; // years
 
-    netProfitAverage = 30000; // millions
-    nonCashExAverage: number = 3000; // millions
-    capExAverage = 3000; // millions
+    netProfitAverage = 45733; // millions
+    nonCashExAverage: number = 5083; // millions
+    capExAverage = 2923; // millions
 
     growthRate = 0; // %
     profitMargin = 0; // %
@@ -35,12 +35,12 @@ export class DcfCalculatorComponent {
     projectionsYears = 10; // years
     projections: any[] = [];
 
-    discountRate = 15; // %
-    terminalGrowthRate = 4; // %
+    discountRate = 12; // %
+    terminalGrowthRate = 5; // %
     totalNoOfShares = 0; // millions
     intrinsicValuePerShare = 0; // $
-    marketValue: number = 200000;
-    currentPrice: number = 200;
+    marketValue: number = 1071080;
+    currentPrice: number = 2960;
     calculationResults = false;
     marginOfSafety = 0; // %
 
@@ -49,6 +49,10 @@ export class DcfCalculatorComponent {
     dcfValue = 0;
 
     constructor(private csv: CsvService, private xlsx: XlsxService) {
+    }
+
+    ngOnInit(): void {
+        this.calculateGrowthRate();
     }
 
     toDec(x: number) {
@@ -139,13 +143,16 @@ export class DcfCalculatorComponent {
     }
 
     resetForm(): void {
-        this.revenueMostRecentAvg = 100000;
-        this.revenueLeastRecentAvg = 50000;
-        this.revenueYears = 10;
-        this.netProfitAverage = 30000;
-        this.nonCashExAverage = 3000;
-        this.capExAverage = 3000;
-        this.growthRate = 0;
+        this.revenueMostRecentAvg = 240558;
+        this.revenueLeastRecentAvg = 95034;
+        this.revenueYears = 10; // years
+
+        this.netProfitAverage = 45733; // millions
+        this.nonCashExAverage = 5083; // millions
+        this.capExAverage = 2923; // millions
+
+        this.calculateGrowthRate();
+
         this.profitMargin = 0;
         this.ownerEarningAverage = 0;
         this.ownerEarningRate = 0;
@@ -159,7 +166,6 @@ export class DcfCalculatorComponent {
         this.currentPrice = 200;
         this.calculationResults = false;
         this.marginOfSafety = 0;
-        this.showGuides = false;
         this.discountedTerminalValue = 0;
         this.dcfValue = 0;
     }
