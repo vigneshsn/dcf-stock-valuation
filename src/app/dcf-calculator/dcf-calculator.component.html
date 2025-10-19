@@ -124,7 +124,7 @@
     <img *ngIf="showGuides"  src="assets/images/revenue.png" alt="Revenue" class="card-image">
 
     <div class="note">
-        <strong>Compounded annual growth rate of revenue is used in DCF</strong><br>
+        <strong>we use Revenue information to calculate Growth Rate over the period of stated years</strong><br>
         GrowthRate % = ((Ending Value / Beginning Value)^(1/years) - 1) * 100
     </div>
 </div>
@@ -228,6 +228,10 @@
         <div class="note small">
             <h4>💡 Practical tips</h4>
             <p>
+                DCF works best for stable, mature companies with predictable cash flows.
+                High-growth or cyclical businesses can be harder to value accurately.
+            </p>
+            <p>
                 DCF results depend on your assumptions. Try three versions —
                 <strong>Optimistic</strong> (higher growth rate),
                 <strong>Realistic</strong> (average past performance), and
@@ -262,7 +266,7 @@
                 <span class="info-icon tooltip-container">
                   ℹ️
                   <span class="custom-tooltip">
-                    The rate used to bring future cash flows to today’s value — essentially your expected rate of return for investing in this stock.
+                    The expected rate of return from this investment. Also, the rate used to bring future cash flows to today’s value.
                   </span>
                 </span>
             </label>
