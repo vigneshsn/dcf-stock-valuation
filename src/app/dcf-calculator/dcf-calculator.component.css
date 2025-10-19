@@ -154,13 +154,6 @@ input:required:invalid {
     z-index: 1000;
 }
 
-.results-section {
-    margin-top: 30px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-}
-
 .projections-table tbody tr:hover {
     background: #f8f9fa;
 }
