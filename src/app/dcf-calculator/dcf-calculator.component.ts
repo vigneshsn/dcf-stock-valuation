@@ -4,7 +4,7 @@ import {FormsModule} from '@angular/forms';
 import {XlsxService} from '../services/xlsx.service';
 import {NgForOf, NgIf} from "@angular/common";
 import {Tooltip} from "../tooltip/tooltip";
-
+import {Projections} from "../models/projections";
 
 @Component({
     selector: 'app-dcf-calculator',
@@ -34,7 +34,7 @@ export class DcfCalculatorComponent implements OnInit {
     ownerEarningAverage = 0; // millions
     ownerEarningRate = 0; // %
     projectionsYears = 10; // years
-    projections: any[] = [];
+    projections: Projections[] = [];
 
     discountRate = 12; // %
     terminalGrowthRate = 5; // %
@@ -119,7 +119,7 @@ export class DcfCalculatorComponent implements OnInit {
         }
 
         // Terminal Value using Gordon Growth Model
-        const lastYearFCF = this.projections.at(this.projections.length - 1).ownerEarning;
+        const lastYearFCF = this.projections.at(- 1)?.ownerEarning ?? 0;
         const terminalValue = (lastYearFCF * (1 + this.toDec(this.terminalGrowthRate))) /
             (this.toDec(this.discountRate) - this.toDec(this.terminalGrowthRate));
 

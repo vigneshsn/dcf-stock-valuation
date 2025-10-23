@@ -91,7 +91,7 @@
         </p>
         <div class="guide-toggle">
             <label class="switch">
-                <input type="checkbox" [(ngModel)]="showGuides" />
+                <input type="checkbox" [(ngModel)]="showGuides"/>
                 <span class="slider"></span>
             </label>
             <span style="margin-left: 0.5rem;">
@@ -105,23 +105,27 @@
 <!-- Revenue Card -->
 <div class="card">
     <h2>Revenue</h2>
-    <p>Revenue is the total money a company earns from selling products or services before paying any costs or expenses.</p>
+    <p>Revenue is the total money a company earns from selling products or services before paying any costs or
+        expenses.</p>
     <p>You can find this information in Income Statement or Profit & loss statement.</p>
     <div class="row">
         <div class="col">
             <label>First 3 year average</label>
-            <input type="number" [(ngModel)]="revenueLeastRecentAvg" step="any" (ngModelChange)="calculateGrowthRate()" [min]=0 required/>
+            <input type="number" [(ngModel)]="revenueLeastRecentAvg" step="any" (ngModelChange)="calculateGrowthRate()"
+                   [min]=0 required/>
         </div>
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="revenueMostRecentAvg" step="any" (ngModelChange)="calculateGrowthRate()" [min]=0  required/>
+            <input type="number" [(ngModel)]="revenueMostRecentAvg" step="any" (ngModelChange)="calculateGrowthRate()"
+                   [min]=0 required/>
         </div>
         <div class="col">
             <label>Growth period in years</label>
-            <input type="number" [(ngModel)]="revenueYears" step="any" (ngModelChange)="calculateGrowthRate()" [min]=0  required/>
+            <input type="number" [(ngModel)]="revenueYears" step="any" (ngModelChange)="calculateGrowthRate()" [min]=0
+                   required/>
         </div>
     </div>
-    <img *ngIf="showGuides"  src="assets/images/revenue.png" alt="Revenue" class="card-image">
+    <img *ngIf="showGuides" src="assets/images/revenue.png" alt="Revenue" class="card-image">
 
     <div class="note">
         <strong>we use Revenue information to calculate Growth Rate over the period of stated years</strong><br>
@@ -132,44 +136,49 @@
 <!-- Net Profit Card -->
 <div class="card">
     <h2>Net Profit</h2>
-    <p>Net profit is what remains after paying all expenses like salaries, rent, taxes, interest, and other costs. It’s the company’s “real earnings.”</p>
+    <p>Net profit is what remains after paying all expenses like salaries, rent, taxes, interest, and other costs. It’s
+        the company’s “real earnings.”</p>
     <p>You can find this information in Income Statement or Profit & loss statement.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="netProfitAverage" step="any"  [min]=0  required/>
+            <input type="number" [(ngModel)]="netProfitAverage" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides"  src="assets/images/profit.png" alt="profit" class="card-image">
+    <img *ngIf="showGuides" src="assets/images/profit.png" alt="profit" class="card-image">
 </div>
 
 <!-- Non-Cash Expenditure Card -->
 <div class="card">
     <h2>Depreciation and Amortization </h2>
-    <p>Depreciation & Amortization (D&A) are non-cash expenses recorded on the income statement, but not paid out in actual cash. They represent the gradual reduction in value of assets over time.</p>
+    <p>Depreciation & Amortization (D&A) are non-cash expenses recorded on the income statement, but not paid out in
+        actual cash. They represent the gradual reduction in value of assets over time.</p>
     <p>You can find this information in Income Statement or Profit & loss statement.</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="nonCashExAverage" step="any" [min]=0  required/>
+            <input type="number" [(ngModel)]="nonCashExAverage" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides"  src="assets/images/d&a.png" alt="non-cash expense" class="card-image">
+    <img *ngIf="showGuides" src="assets/images/d&a.png" alt="non-cash expense" class="card-image">
 </div>
 
 
 <!-- Capital Expenditure Card -->
 <div class="card">
     <h2>Capital Expenditure</h2>
-    <p>Capital Expenditure often called "CapEx" is the money a company spends to buy, maintain, or upgrade its long-term assets like buildings, machines, vehicles, or technology. These are investments that help the business operate and grow over many years.</p>
-    <p>You can find this information in Cash Flow statement under the Investing Activities section. sometimes stated as purchase of Property Plant & Equipment (PPE).</p>
+    <p>Capital Expenditure often called "CapEx" is the money a company spends to buy, maintain, or upgrade its long-term
+        assets like buildings, machines, vehicles, or technology. These are investments that help the business operate
+        and grow over many years.</p>
+    <p>You can find this information in Cash Flow statement under the Investing Activities section. sometimes stated as
+        purchase of Property Plant & Equipment (PPE).</p>
     <div class="row">
         <div class="col">
             <label>Last 3 year average</label>
-            <input type="number" [(ngModel)]="capExAverage" step="any" [min]=0  required/>
+            <input type="number" [(ngModel)]="capExAverage" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides"  src="assets/images/capex.png" alt="capex" class="card-image">
+    <img *ngIf="showGuides" src="assets/images/capex.png" alt="capex" class="card-image">
 </div>
 
 <div *ngIf="calculationResults" class="card">
@@ -218,10 +227,9 @@
             </div>
             <div class="summary-item" [class]="getValuationClass()">
                 <label>Valuation:
-                    <span class="info-icon"
-                          title="margin of safety 20% is applied to intrinsic value to determine if stock is undervalued or overvalued">
-                    ℹ️
-                </span></label>
+                    <app-tooltip
+                            desc="margin of safety 20% is applied to intrinsic value to determine if stock is undervalued or overvalued"></app-tooltip>
+                </label>
                 <span>{{ getValuationText() }}</span>
             </div>
         </div>
@@ -249,32 +257,35 @@
 
 <div class="card">
     <h2>Calculate intrinsic value of stock</h2>
-   <div class="row">
-       <div class="col">
-           <label>
-               Growth rate %
-               <app-tooltip desc="Calculated based on revenue growth over the years"></app-tooltip>
-           </label>
-           <input type="number" [(ngModel)]="growthRate" step="any" required/>
-       </div>
+    <div class="row">
+        <div class="col">
+            <label>
+                Growth rate %
+                <app-tooltip desc="Calculated based on revenue growth over the years"></app-tooltip>
+            </label>
+            <input type="number" [(ngModel)]="growthRate" step="any" required/>
+        </div>
         <div class="col">
             <label>
                 Discount rate %
-                <app-tooltip desc="The expected rate of return from this investment. Also, the rate used to bring future cash flows to today’s value."></app-tooltip>
+                <app-tooltip
+                        desc="The expected rate of return from this investment. Also, the rate used to bring future cash flows to today’s value."></app-tooltip>
             </label>
             <input type="number" [(ngModel)]="discountRate" step="any" required/>
         </div>
         <div class="col">
             <label>
                 Terminal growth rate %
-                <app-tooltip desc=" The expected growth rate of the company's cash flows after the projection period. I will generally use inflation rate for conservative estimate (typically 4-6% for indian stock market)"></app-tooltip>
+                <app-tooltip
+                        desc=" The expected growth rate of the company's cash flows after the projection period. I will generally use inflation rate for conservative estimate (typically 4-6% for indian stock market)"></app-tooltip>
             </label>
             <input type="number" [(ngModel)]="terminalGrowthRate" step="any" required/>
         </div>
         <div class="col">
             <label>
                 Current Market cap
-                <app-tooltip desc="The current market value of the company (current stock price × number of shares outstanding)"></app-tooltip>
+                <app-tooltip
+                        desc="The current market value of the company (current stock price × number of shares outstanding)"></app-tooltip>
             </label>
             <input type="number" [(ngModel)]="marketValue" step="any" [min]=0 required/>
         </div>
@@ -286,7 +297,7 @@
             <input type="number" [(ngModel)]="currentPrice" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides"  src="assets/images/marktcap.png" alt="market cap" class="card-image">
+    <img *ngIf="showGuides" src="assets/images/marktcap.png" alt="market cap" class="card-image">
     <div class="row">
         <div class="col button-container">
             <button class="btn" (click)="calculateIntrinsicValue()">Calculate</button>
