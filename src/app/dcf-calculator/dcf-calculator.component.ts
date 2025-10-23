@@ -3,6 +3,7 @@ import {CsvService} from '../services/csv.service';
 import {FormsModule} from '@angular/forms';
 import {XlsxService} from '../services/xlsx.service';
 import {NgForOf, NgIf} from "@angular/common";
+import {Tooltip} from "../tooltip/tooltip";
 
 
 @Component({
@@ -12,7 +13,7 @@ import {NgForOf, NgIf} from "@angular/common";
         FormsModule,
         NgIf,
         NgForOf,
-
+        Tooltip
     ],
     standalone: true,
     styleUrls: ['./dcf-calculator.component.css']

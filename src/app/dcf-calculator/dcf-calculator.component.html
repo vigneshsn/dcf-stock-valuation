@@ -253,56 +253,35 @@
        <div class="col">
            <label>
                Growth rate %
-               <span class="info-icon"
-                     title="Calculated based on revenue growth over the years">
-                    ℹ️
-                </span>
+               <app-tooltip desc="Calculated based on revenue growth over the years"></app-tooltip>
            </label>
            <input type="number" [(ngModel)]="growthRate" step="any" required/>
        </div>
         <div class="col">
             <label>
                 Discount rate %
-                <span class="info-icon tooltip-container">
-                  ℹ️
-                  <span class="custom-tooltip">
-                    The expected rate of return from this investment. Also, the rate used to bring future cash flows to today’s value.
-                  </span>
-                </span>
+                <app-tooltip desc="The expected rate of return from this investment. Also, the rate used to bring future cash flows to today’s value."></app-tooltip>
             </label>
             <input type="number" [(ngModel)]="discountRate" step="any" required/>
         </div>
         <div class="col">
             <label>
                 Terminal growth rate %
-                <span class="info-icon tooltip-container">
-                  ℹ️
-                  <span class="custom-tooltip">
-                    The expected growth rate of the company's cash flows after the projection period. I will generally use inflation rate for conservative estimate (typically 4-6% for indian stock market)
-                  </span>
-                </span>
+                <app-tooltip desc=" The expected growth rate of the company's cash flows after the projection period. I will generally use inflation rate for conservative estimate (typically 4-6% for indian stock market)"></app-tooltip>
             </label>
             <input type="number" [(ngModel)]="terminalGrowthRate" step="any" required/>
         </div>
         <div class="col">
             <label>
                 Current Market cap
-                <span class="info-icon tooltip-container">
-                  ℹ️
-                  <span class="custom-tooltip">
-                    The current market value of the company (current stock price × number of shares outstanding)
-                  </span>
-                </span>
+                <app-tooltip desc="The current market value of the company (current stock price × number of shares outstanding)"></app-tooltip>
             </label>
             <input type="number" [(ngModel)]="marketValue" step="any" [min]=0 required/>
         </div>
         <div class="col">
             <label>
                 Current price
-                <span class="info-icon"
-                      title="The current trading price per share of the company's stock">
-                    ℹ️
-                </span>
+                <app-tooltip desc="The current trading price per share of the company's stock"></app-tooltip>
             </label>
             <input type="number" [(ngModel)]="currentPrice" step="any" [min]=0 required/>
         </div>
