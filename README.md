@@ -58,8 +58,7 @@ npm run build
 
 
 ## Notes
-- Shares are expected in millions to match revenue units. Change units in the UI if needed.
-- Be conservative with assumptions — DCF is sensitive to discount rate and terminal growth.
+- This app uses mock data for demonstration. Replace with real financial data as needed.
 
 
 ## Contributions

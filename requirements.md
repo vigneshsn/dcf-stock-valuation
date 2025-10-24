@@ -25,5 +25,3 @@
 
 ### tech improvements
 - improve test coverage
-- move tooltip into separate component
-- normalize text input

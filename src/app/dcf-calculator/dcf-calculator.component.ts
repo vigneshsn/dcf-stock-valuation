@@ -2,7 +2,6 @@ import {Component, OnInit} from '@angular/core';
 import {CsvService} from '../services/csv.service';
 import {FormsModule} from '@angular/forms';
 import {XlsxService} from '../services/xlsx.service';
-import {NgForOf, NgIf} from "@angular/common";
 import {Tooltip} from "../tooltip/tooltip";
 import {Projections} from "../models/projections";
 
@@ -11,8 +10,6 @@ import {Projections} from "../models/projections";
     templateUrl: './dcf-calculator.component.html',
     imports: [
         FormsModule,
-        NgIf,
-        NgForOf,
         Tooltip
     ],
     standalone: true,
@@ -159,15 +156,16 @@ export class DcfCalculatorComponent implements OnInit {
         this.ownerEarningRate = 0;
         this.projectionsYears = 10;
         this.projections = [];
-        this.discountRate = 15;
-        this.terminalGrowthRate = 4;
+        this.discountRate = 12;
+        this.terminalGrowthRate = 5;
         this.totalNoOfShares = 0;
         this.intrinsicValuePerShare = 0;
-        this.marketValue = 200000;
-        this.currentPrice = 200;
+        this.marketValue = 1071080;
+        this.currentPrice = 2960;
         this.calculationResults = false;
         this.marginOfSafety = 0;
         this.discountedTerminalValue = 0;
         this.dcfValue = 0;
     }
+
 }

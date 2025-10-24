@@ -125,8 +125,9 @@
                    required/>
         </div>
     </div>
-    <img *ngIf="showGuides" src="assets/images/revenue.png" alt="Revenue" class="card-image">
-
+    @if (showGuides) {
+        <img src="assets/images/revenue.png" alt="Revenue" class="card-image">
+    }
     <div class="note">
         <strong>we use Revenue information to calculate Growth Rate over the period of stated years</strong><br>
         GrowthRate % = ((Ending Value / Beginning Value)^(1/years) - 1) * 100
@@ -145,7 +146,9 @@
             <input type="number" [(ngModel)]="netProfitAverage" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides" src="assets/images/profit.png" alt="profit" class="card-image">
+    @if (showGuides) {
+        <img src="assets/images/netprofit.png" alt="net profit" class="card-image">
+    }
 </div>
 
 <!-- Non-Cash Expenditure Card -->
@@ -160,7 +163,9 @@
             <input type="number" [(ngModel)]="nonCashExAverage" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides" src="assets/images/d&a.png" alt="non-cash expense" class="card-image">
+    @if (showGuides) {
+        <img src="assets/images/d&a.png" alt="non-cash expense" class="card-image">
+    }
 </div>
 
 
@@ -178,82 +183,89 @@
             <input type="number" [(ngModel)]="capExAverage" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides" src="assets/images/capex.png" alt="capex" class="card-image">
+    @if (showGuides) {
+        <img *ngIf="showGuides" src="assets/images/capex.png" alt="capex" class="card-image">
+    }
 </div>
 
-<div *ngIf="calculationResults" class="card">
-    <h3>DCF Analysis Results</h3>
+@if (calculationResults) {
+    <div class="card">
+        <h3>DCF Analysis Results</h3>
 
-    <!-- Projections Table -->
-    <div class="table-container">
-        <h4>Owner Earnings Projections</h4>
-        <table class="projections-table">
-            <thead>
-            <tr>
-                <th>Year</th>
-                <th>Present Value</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr *ngFor="let projection of projections; let i = index">
-                <td>{{ projection.year }}</td>
-                <td>{{ projection.discountedOwnerEarning }}</td>
-            </tr>
-            <tr class="terminal-row">
-                <td>Discounted terminal value</td>
-                <td>{{ discountedTerminalValue }}</td>
-            </tr>
-            </tbody>
-            <tfoot>
-            <tr class="total-row">
-                <td><strong>Total Present Value</strong></td>
-                <td><strong>{{ dcfValue }}</strong></td>
-            </tr>
-            </tfoot>
-        </table>
-    </div>
+        <!-- Projections Table -->
+        <div class="table-container">
+            <h4>Owner Earnings Projections</h4>
+            <table class="projections-table">
+                <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Present Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                    @for (projection of projections; track projection.year) {
+                        <tr>
+                            <td>{{ projection.year }}</td>
+                            <td>{{ projection.discountedOwnerEarning }}</td>
+                        </tr>
+                    }
 
-    <!-- Fair Value Summary -->
-    <div class="fair-value-summary">
-        <h4>Intrinsic Value Analysis</h4>
-        <div class="summary-grid">
-            <div class="summary-item">
-                <label>Fair Value per Share:</label>
-                <span>{{ intrinsicValuePerShare }}</span>
+                <tr class="terminal-row">
+                    <td>Discounted terminal value</td>
+                    <td>{{ discountedTerminalValue }}</td>
+                </tr>
+                </tbody>
+                <tfoot>
+                <tr class="total-row">
+                    <td><strong>Total Present Value</strong></td>
+                    <td><strong>{{ dcfValue }}</strong></td>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Fair Value Summary -->
+        <div class="fair-value-summary">
+            <h4>Intrinsic Value Analysis</h4>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <label>Fair Value per Share:</label>
+                    <span>{{ intrinsicValuePerShare }}</span>
+                </div>
+                <div class="summary-item">
+                    <label>Current Market Price:</label>
+                    <span>{{ currentPrice }}</span>
+                </div>
+                <div class="summary-item" [class]="getValuationClass()">
+                    <label>Valuation:
+                        <app-tooltip
+                                desc="margin of safety 20% is applied to intrinsic value to determine if stock is undervalued or overvalued"></app-tooltip>
+                    </label>
+                    <span>{{ getValuationText() }}</span>
+                </div>
             </div>
-            <div class="summary-item">
-                <label>Current Market Price:</label>
-                <span>{{ currentPrice }}</span>
-            </div>
-            <div class="summary-item" [class]="getValuationClass()">
-                <label>Valuation:
-                    <app-tooltip
-                            desc="margin of safety 20% is applied to intrinsic value to determine if stock is undervalued or overvalued"></app-tooltip>
-                </label>
-                <span>{{ getValuationText() }}</span>
+            <div class="note small">
+                <h4>💡 Practical tips</h4>
+                <p>
+                    DCF works best for stable, mature companies with predictable cash flows.
+                    High-growth or cyclical businesses can be harder to value accurately.
+                </p>
+                <p>
+                    DCF results depend on your assumptions. Try three versions —
+                    <strong>Optimistic</strong> (higher growth rate),
+                    <strong>Realistic</strong> (average past performance), and
+                    <strong>Pessimistic</strong> (lower growth rate).
+                </p>
+                <p>
+                    Use a sensible <strong>discount rate</strong> (10–15%) and keep growth expectations realistic.
+                    Always apply a <strong>margin of safety</strong> — buy only if the stock price is at least
+                    <strong>20–30% below</strong> your estimated value.
+                </p>
             </div>
         </div>
-        <div class="note small">
-            <h4>💡 Practical tips</h4>
-            <p>
-                DCF works best for stable, mature companies with predictable cash flows.
-                High-growth or cyclical businesses can be harder to value accurately.
-            </p>
-            <p>
-                DCF results depend on your assumptions. Try three versions —
-                <strong>Optimistic</strong> (higher growth rate),
-                <strong>Realistic</strong> (average past performance), and
-                <strong>Pessimistic</strong> (lower growth rate).
-            </p>
-            <p>
-                Use a sensible <strong>discount rate</strong> (10–15%) and keep growth expectations realistic.
-                Always apply a <strong>margin of safety</strong> — buy only if the stock price is at least
-                <strong>20–30% below</strong> your estimated value.
-            </p>
-        </div>
-    </div>
 
-</div>
+    </div>
+}
 
 <div class="card">
     <h2>Calculate intrinsic value of stock</h2>
