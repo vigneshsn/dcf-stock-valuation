@@ -309,7 +309,9 @@
             <input type="number" [(ngModel)]="currentPrice" step="any" [min]=0 required/>
         </div>
     </div>
-    <img *ngIf="showGuides" src="assets/images/marktcap.png" alt="market cap" class="card-image">
+    @if (showGuides) {
+        <img src="assets/images/marktcap.png" alt="market cap" class="card-image">
+    }
     <div class="row">
         <div class="col button-container">
             <button class="btn" (click)="calculateIntrinsicValue()">Calculate</button>
