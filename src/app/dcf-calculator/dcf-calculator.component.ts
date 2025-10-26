@@ -2,6 +2,7 @@ import {Component, OnInit} from '@angular/core';
 import {CsvService} from '../services/csv.service';
 import {FormsModule} from '@angular/forms';
 import {XlsxService} from '../services/xlsx.service';
+import {DcfHelperService} from '../services/dcf-helper.service';
 import {Tooltip} from "../tooltip/tooltip";
 import {Projections} from "../models/projections";
 
@@ -30,7 +31,7 @@ export class DcfCalculatorComponent implements OnInit {
 
     ownerEarningAverage = 0; // millions
     ownerEarningRate = 0; // %
-    projectionsYears = 10; // years
+    projectionsYears = 5; // years
     projections: Projections[] = [];
 
     discountRate = 12; // %
@@ -46,31 +47,22 @@ export class DcfCalculatorComponent implements OnInit {
     discountedTerminalValue = 0;
     dcfValue = 0;
 
-    constructor(private csv: CsvService, private xlsx: XlsxService) {
-    }
+    constructor(
+        private csv: CsvService,
+        private xlsx: XlsxService,
+        private helper: DcfHelperService
+    ) {}
 
     ngOnInit(): void {
         this.calculateGrowthRate();
     }
 
-    toDec(x: number) {
-        return Number(x) / 100
-    }
-
-    toFixed(x: number) {
-        return Number(x.toFixed(2))
-    }
-
     calculateGrowthRate(): void {
-        // CAGR formula: (Ending Value / Beginning Value)^(1/years) - 1
-        const cagr = Math.pow(this.revenueMostRecentAvg / this.revenueLeastRecentAvg, 1 / this.revenueYears) - 1;
-        this.growthRate = Number((cagr * 100).toFixed(2)); // Convert to percentage and round to 2 decimal places
+        this.growthRate =  this.helper.cagr(this.revenueLeastRecentAvg, this.revenueMostRecentAvg, this.revenueYears)
     }
 
     calculateProfitMargin(): void {
-        // Calculate profit margin for current year: (Net Profit / Revenue) * 100
-        const avg = (this.netProfitAverage / this.revenueMostRecentAvg) * 100;
-        this.profitMargin = this.toFixed(avg); // Round to 2 decimal places
+        this.profitMargin = this.helper.percentage(this.netProfitAverage, this.revenueMostRecentAvg)
     }
 
     calculateTotalNoOfShares(): void {
@@ -80,27 +72,28 @@ export class DcfCalculatorComponent implements OnInit {
     calculateOwnerEarnings(): void {
         this.calculateProfitMargin();
         this.ownerEarningAverage = this.netProfitAverage - this.capExAverage + this.nonCashExAverage;
-        this.ownerEarningRate = this.toFixed((this.ownerEarningAverage / this.netProfitAverage) * 100);
+        this.ownerEarningRate = this.helper.percentage(this.ownerEarningAverage, this.netProfitAverage)
     }
 
     generateProjections(): void {
         this.projections = [];
         let year: number;
         for (year = 1; year <= this.projectionsYears; year++) {
-            const projectedRevenue = this.revenueMostRecentAvg * Math.pow((1 + this.toDec(this.growthRate)), year);
-            const projectedNetProfit = projectedRevenue * this.toDec(this.profitMargin);
-            const projectedCapEx = this.capExAverage; // Assuming CapEx remains constant
-            const projectedNonCashEx = this.nonCashExAverage; // Assuming Non-Cash Expenses remain constant
+            const projectedRevenue = this.helper.futureValue(this.revenueMostRecentAvg, this.growthRate, year);
+            const projectedNetProfit = projectedRevenue * this.helper.toDec(this.profitMargin);
+            const projectedCapEx = this.capExAverage;
+            const projectedNonCashEx = this.nonCashExAverage;
             const projectedFreeCashFlow = projectedNetProfit - projectedCapEx + projectedNonCashEx;
+            const discountedOwnerEarning = this.helper.discountedValue(projectedFreeCashFlow, this.discountRate, year);
 
             this.projections.push({
                 year: year,
-                revenue: this.toFixed(projectedRevenue),
-                netProfit: this.toFixed(projectedNetProfit),
-                capEx: this.toFixed(projectedCapEx),
-                nonCashEx: this.toFixed(projectedNonCashEx),
-                ownerEarning: this.toFixed(projectedFreeCashFlow),
-                discountedOwnerEarning: this.toFixed(projectedFreeCashFlow / Math.pow((1 + this.toDec(this.discountRate)), year))
+                revenue: this.helper.toFixed(projectedRevenue),
+                netProfit: this.helper.toFixed(projectedNetProfit),
+                capEx: this.helper.toFixed(projectedCapEx),
+                nonCashEx: this.helper.toFixed(projectedNonCashEx),
+                ownerEarning: this.helper.toFixed(projectedFreeCashFlow),
+                discountedOwnerEarning: discountedOwnerEarning
             });
         }
     }
@@ -116,14 +109,11 @@ export class DcfCalculatorComponent implements OnInit {
         }
 
         // Terminal Value using Gordon Growth Model
-        const lastYearFCF = this.projections.at(- 1)?.ownerEarning ?? 0;
-        const terminalValue = (lastYearFCF * (1 + this.toDec(this.terminalGrowthRate))) /
-            (this.toDec(this.discountRate) - this.toDec(this.terminalGrowthRate));
-
-        // Discount Terminal Value to Present Value
-        this.discountedTerminalValue = this.toFixed(terminalValue / Math.pow((1 + this.toDec(this.discountRate)), this.projections.length));
-        this.dcfValue = this.toFixed(dcf + this.discountedTerminalValue);
-        this.intrinsicValuePerShare = this.toFixed((this.dcfValue / this.totalNoOfShares));
+    const lastYearFCF = this.projections.at(- 1)?.ownerEarning ?? 0;
+    const terminalValue = this.helper.terminalValue(lastYearFCF, this.terminalGrowthRate, this.discountRate, this.terminalGrowthRate);
+    this.discountedTerminalValue = this.helper.discountedValue(terminalValue, this.discountRate, this.projections.length);
+    this.dcfValue = this.helper.toFixed(dcf + this.discountedTerminalValue);
+    this.intrinsicValuePerShare = this.helper.toFixed((this.dcfValue / this.totalNoOfShares));
         this.marginOfSafety = ((this.intrinsicValuePerShare - this.currentPrice) / this.intrinsicValuePerShare) * 100;
         this.calculationResults = true;
     }
@@ -149,12 +139,10 @@ export class DcfCalculatorComponent implements OnInit {
         this.nonCashExAverage = 5083; // millions
         this.capExAverage = 2923; // millions
 
-        this.calculateGrowthRate();
-
         this.profitMargin = 0;
         this.ownerEarningAverage = 0;
         this.ownerEarningRate = 0;
-        this.projectionsYears = 10;
+        this.projectionsYears = 5;
         this.projections = [];
         this.discountRate = 12;
         this.terminalGrowthRate = 5;
@@ -166,6 +154,8 @@ export class DcfCalculatorComponent implements OnInit {
         this.marginOfSafety = 0;
         this.discountedTerminalValue = 0;
         this.dcfValue = 0;
+
+        this.calculateGrowthRate();
     }
 
 }

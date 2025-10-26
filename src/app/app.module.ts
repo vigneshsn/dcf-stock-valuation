@@ -14,6 +14,7 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {AppComponent} from './app.component';
 import {DcfCalculatorComponent} from './dcf-calculator/dcf-calculator.component';
 import {CsvService} from './services/csv.service';
+import {DcfHelperService} from './services/dcf-helper.service';
 import {XlsxService} from './services/xlsx.service';
 import {AppRoutingModule} from "./app-routing.module";
 
@@ -36,7 +37,7 @@ import {AppRoutingModule} from "./app-routing.module";
         DcfCalculatorComponent,
         AppRoutingModule
     ],
-    providers: [CsvService, XlsxService],
+    providers: [CsvService, XlsxService, DcfHelperService],
     bootstrap: [AppComponent]
 })
 export class AppModule {
