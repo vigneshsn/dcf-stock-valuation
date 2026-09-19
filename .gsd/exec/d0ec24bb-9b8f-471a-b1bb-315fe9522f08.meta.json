@@ -1,0 +1,27 @@
+{
+  "id": "d0ec24bb-9b8f-471a-b1bb-315fe9522f08",
+  "runtime": "bash",
+  "purpose": "UAT M001/S01/start-server (uat-service-start)",
+  "metadata": {
+    "kind": "uat_exec",
+    "milestoneId": "M001",
+    "sliceId": "S01",
+    "checkId": "start-server",
+    "intent": "uat-service-start"
+  },
+  "script_chars": 90,
+  "started_at": "2026-09-19T20:15:52.387Z",
+  "finished_at": "2026-09-19T20:15:56.419Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "aborted": false,
+  "force_resolved": false,
+  "duration_ms": 4032,
+  "stdout_bytes": 259,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/d0ec24bb-9b8f-471a-b1bb-315fe9522f08.stdout",
+  "stderr_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/d0ec24bb-9b8f-471a-b1bb-315fe9522f08.stderr"
+}

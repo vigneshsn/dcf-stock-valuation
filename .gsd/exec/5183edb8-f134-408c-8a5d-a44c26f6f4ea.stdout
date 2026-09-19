@@ -1,0 +1,23 @@
+{"error":"Upstream fetch failed"}
+HTTP_STATUS:502
+---
+> tsx watch src/index.ts
+
+[yahoo-finance2] v2 is no longer maintained nor supported.  Please migrate to v3. See https://github.com/gadicc/yahoo-finance2/blob/dev/docs/UPGRADING.md for details.
+Server listening on port 3000
+[cache MISS] NOTAREALTICKERXYZ
+Please consider completing the survey at https://bit.ly/yahoo-finance-api-feedback if you haven't already; for more info see https://github.com/gadicc/node-yahoo-finance2/issues/764#issuecomment-2056623851.  This will only be shown once, but you can suppress this message in future with `yahooFinance.suppressNotices(['yahooSurvey'])`.
+Fetching crumb and cookies from https://finance.yahoo.com/quote/AAPL...
+We expected a redirect to guce.yahoo.com, but got https://finance.yahoo.com/quote/AAPL/
+We'll try to continue anyway - you can safely ignore this if the request succeeds
+Success. Cookie expires on Mon Sep 20 2027 04:16:00 GMT+0200 (Central European Summer Time)
+fetch https://query1.finance.yahoo.com/v1/test/getcrumb
+New crumb: KlfqzgikiOj
+[upstream error] NOTAREALTICKERXYZ: Unexpected token 'T', "Too Many Requests
+" is not valid JSON
+[cache MISS] RELIANCE.NS
+[upstream error] RELIANCE.NS: Unexpected token 'T', "Too Many Requests
+" is not valid JSON
+[cache MISS] RELIANCE.NS
+[upstream error] RELIANCE.NS: Unexpected token 'T', "Too Many Requests
+" is not valid JSON

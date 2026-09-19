@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M001/S02/T01",
+  "timestamp": 1789849598531,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "npx tsx --test src/finance.test.ts",
+      "exitCode": 1,
+      "durationMs": 1508,
+      "verdict": "fail",
+      "stderrExcerpt": "Could not find 'src/finance.test.ts'\n"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "03deceb9-e2f4-498e-afaf-73a5860dc0e1",
+  "runtime": "bash",
+  "purpose": "UAT M001/S01/check-nm (uat-artifact-check)",
+  "metadata": {
+    "kind": "uat_exec",
+    "milestoneId": "M001",
+    "sliceId": "S01",
+    "checkId": "check-nm",
+    "intent": "uat-artifact-check"
+  },
+  "script_chars": 67,
+  "started_at": "2026-09-19T20:15:50.058Z",
+  "finished_at": "2026-09-19T20:15:50.067Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "aborted": false,
+  "force_resolved": false,
+  "duration_ms": 9,
+  "stdout_bytes": 36,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/03deceb9-e2f4-498e-afaf-73a5860dc0e1.stdout",
+  "stderr_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/03deceb9-e2f4-498e-afaf-73a5860dc0e1.stderr"
+}

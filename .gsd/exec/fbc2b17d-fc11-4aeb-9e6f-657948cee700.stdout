@@ -1,0 +1,16 @@
+✔ calculateROCE: normal case with known inputs (0.475792ms)
+✔ calculateROCE: zero denominator (capital employed = 0) (0.507625ms)
+✔ calculateROCE: negative denominator (0.053959ms)
+✔ calculateROCE: missing/undefined inputs (0.046833ms)
+✔ calculateROE: normal case with known inputs (0.052625ms)
+✔ calculateROE: zero denominator (equity = 0) (0.037459ms)
+✔ calculateROE: negative denominator (0.055291ms)
+✔ calculateROE: missing/undefined inputs (0.050625ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 159.246709

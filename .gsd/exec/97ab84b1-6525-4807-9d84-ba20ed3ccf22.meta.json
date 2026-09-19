@@ -1,0 +1,27 @@
+{
+  "id": "97ab84b1-6525-4807-9d84-ba20ed3ccf22",
+  "runtime": "bash",
+  "purpose": "UAT M001/S01/notfound-check (uat-runtime-check)",
+  "metadata": {
+    "kind": "uat_exec",
+    "milestoneId": "M001",
+    "sliceId": "S01",
+    "checkId": "notfound-check",
+    "intent": "uat-runtime-check"
+  },
+  "script_chars": 92,
+  "started_at": "2026-09-19T20:16:00.204Z",
+  "finished_at": "2026-09-19T20:16:00.702Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "aborted": false,
+  "force_resolved": false,
+  "duration_ms": 498,
+  "stdout_bytes": 50,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/97ab84b1-6525-4807-9d84-ba20ed3ccf22.stdout",
+  "stderr_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/97ab84b1-6525-4807-9d84-ba20ed3ccf22.stderr"
+}

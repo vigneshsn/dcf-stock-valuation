@@ -1,0 +1,20 @@
+{
+  "id": "7aa64448-db24-4b84-934e-6bb7c93d7567",
+  "runtime": "bash",
+  "purpose": "Verify T01 build and tests from correct server directory",
+  "script_chars": 67,
+  "started_at": "2026-09-19T20:19:21.461Z",
+  "finished_at": "2026-09-19T20:19:25.211Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "aborted": false,
+  "force_resolved": false,
+  "duration_ms": 3750,
+  "stdout_bytes": 588,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/7aa64448-db24-4b84-934e-6bb7c93d7567.stdout",
+  "stderr_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/7aa64448-db24-4b84-934e-6bb7c93d7567.stderr"
+}
