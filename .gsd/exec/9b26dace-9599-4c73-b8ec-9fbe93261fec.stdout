@@ -1,0 +1,7 @@
+{"error":"Upstream fetch failed"}
+[cache MISS] AAPL
+[upstream error] AAPL: Unexpected token 'T', "Too Many Requests
+" is not valid JSON
+[cache MISS] MSFT
+[upstream error] MSFT: Unexpected token 'T', "Too Many Requests
+" is not valid JSON

@@ -1,0 +1,20 @@
+{
+  "id": "200899a4-7df4-4d7a-9fb0-824194d48ad3",
+  "runtime": "bash",
+  "purpose": "Start dev server and curl RELIANCE.NS to verify live fields",
+  "script_chars": 227,
+  "started_at": "2026-09-19T20:11:02.081Z",
+  "finished_at": "2026-09-19T20:11:09.283Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "aborted": false,
+  "force_resolved": false,
+  "duration_ms": 7202,
+  "stdout_bytes": 1700,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/200899a4-7df4-4d7a-9fb0-824194d48ad3.stdout",
+  "stderr_path": "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001/.gsd/exec/200899a4-7df4-4d7a-9fb0-824194d48ad3.stderr"
+}

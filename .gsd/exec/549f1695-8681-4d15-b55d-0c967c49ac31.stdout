@@ -1,0 +1,5 @@
+src/routes/stock.ts(51,26): error TS2339: Property 'dividendYield' does not exist on type '{ currency?: string | undefined; regularMarketTime?: Date | undefined; regularMarketPrice?: number | undefined; typeDisp?: string | undefined; quoteSourceName?: string | undefined; ... 96 more ...; lastMarket: string; } | ... 6 more ... | { ...; }'.
+  Property 'dividendYield' does not exist on type '{ currency?: string | undefined; regularMarketTime?: Date | undefined; regularMarketPrice?: number | undefined; typeDisp?: string | undefined; quoteSourceName?: string | undefined; ... 96 more ...; lastMarket: string; }'.
+TSC_EXIT=0
+health_status=200
+done

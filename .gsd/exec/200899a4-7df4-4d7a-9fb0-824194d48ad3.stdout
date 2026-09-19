@@ -1,0 +1,23 @@
+{"error":"Upstream fetch failed"}
+200
+
+> dcf-stock-proxy-server@1.0.0 dev
+> tsx watch src/index.ts
+
+[yahoo-finance2] v2 is no longer maintained nor supported.  Please migrate to v3. See https://github.com/gadicc/yahoo-finance2/blob/dev/docs/UPGRADING.md for details.
+Server listening on port 3000
+[cache MISS] RELIANCE.NS
+Please consider completing the survey at https://bit.ly/yahoo-finance-api-feedback if you haven't already; for more info see https://github.com/gadicc/node-yahoo-finance2/issues/764#issuecomment-2056623851.  This will only be shown once, but you can suppress this message in future with `yahooFinance.suppressNotices(['yahooSurvey'])`.
+Fetching crumb and cookies from https://finance.yahoo.com/quote/AAPL...
+fetch https://guce.yahoo.com/consent?brandType=nonEu&gcrumb=Ye9yuek&done=https%3A%2F%2Ffinance.yahoo.com%2Fquote%2FAAPL
+fetch https://consent.yahoo.com/v2/collectConsent?sessionId=3_cc-session_475838ad-5408-4665-91dc-ad20b4dfa5bb
+fetch https://consent.yahoo.com/v2/collectConsent?sessionId=3_cc-session_475838ad-5408-4665-91dc-ad20b4dfa5bb
+fetch https://guce.yahoo.com/copyConsent?sessionId=3_cc-session_475838ad-5408-4665-91dc-ad20b4dfa5bb&lang=nl-NL
+Fetching crumb and cookies from https://finance.yahoo.com/quote/AAPL?guccounter=1...
+We expected a redirect to guce.yahoo.com, but got https://finance.yahoo.com/quote/AAPL/
+We'll try to continue anyway - you can safely ignore this if the request succeeds
+Success. Cookie expires on Mon Sep 20 2027 04:11:08 GMT+0200 (Central European Summer Time)
+fetch https://query1.finance.yahoo.com/v1/test/getcrumb
+New crumb: kDmngCaX5mO
+[upstream error] RELIANCE.NS: Unexpected token 'T', "Too Many Requests
+" is not valid JSON
