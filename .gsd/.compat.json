@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "lastWriter": "gsd-pi",
-  "lastProjectedAt": "2026-09-19T20:13:56.147Z",
+  "lastProjectedAt": "2026-09-19T20:14:22.328Z",
   "projections": {
     "phases/01-new-milestone-m001/01-ROADMAP.md": {
       "sha": "86fa2e2d11220069",
@@ -10,7 +10,7 @@
       ]
     },
     "phases/01-new-milestone-m001/01-01-PLAN.md": {
-      "sha": "d45fcbdaafc4bedb",
+      "sha": "7396d0cf79d15585",
       "entities": [
         "M001",
         "M001/S01"
@@ -38,6 +38,14 @@
         "M001",
         "M001/S01",
         "M001/S01/T03"
+      ]
+    },
+    "phases/01-new-milestone-m001/S01-T04-SUMMARY.md": {
+      "sha": "9485f9d1064241be",
+      "entities": [
+        "M001",
+        "M001/S01",
+        "M001/S01/T04"
       ]
     }
   },
