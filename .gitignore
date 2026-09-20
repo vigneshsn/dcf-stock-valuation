@@ -72,3 +72,9 @@ tmp/
 .gsd/DISCUSSION-MANIFEST.json
 .gsd/milestones/**/*-CONTINUE.md
 .gsd/milestones/**/continue.md
+.gsd/.compat.json
+.gsd/hook-state.json
+.gsd/phases
+.claude
+skills-lock.json
+.agents/
