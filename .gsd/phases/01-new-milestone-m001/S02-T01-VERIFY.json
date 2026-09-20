@@ -2,18 +2,15 @@
   "schemaVersion": 1,
   "taskId": "T01",
   "unitId": "M001/S02/T01",
-  "timestamp": 1789896126555,
-  "passed": false,
+  "timestamp": 1789899092854,
+  "passed": true,
   "discoverySource": "task-plan",
   "checks": [
     {
       "command": "npx tsx --test src/finance.test.ts",
-      "exitCode": 1,
-      "durationMs": 7360,
-      "verdict": "fail",
-      "stderrExcerpt": "npm warn exec The following package was not found and will be installed: tsx@4.23.15\nCould not find 'src/finance.test.ts'\n"
+      "exitCode": 0,
+      "durationMs": 5480,
+      "verdict": "pass"
     }
-  ],
-  "retryAttempt": 1,
-  "maxRetries": 2
+  ]
 }
