@@ -12,23 +12,23 @@ completed_at:
 blocker_discovered: false
 ---
 
-# T01: Added pure calculateROCE/calculateROE functions with full unit test coverage in server/src/finance.ts
+# T01: Added pure calculateROCE/calculateROE functions in finance.ts with 8 passing node:test unit cases
 
-**Added pure calculateROCE/calculateROE functions with full unit test coverage in server/src/finance.ts**
+**Added pure calculateROCE/calculateROE functions in finance.ts with 8 passing node:test unit cases**
 
 ## What Happened
 
-server/src/finance.ts, server/src/finance.test.ts, and server/package.json's test script already existed matching the plan exactly (no I/O, pure functions, null-safe on missing/zero/negative denominators). Verified via tsc --noEmit (clean) and node:test run (8/8 passing) covering normal, zero-denominator, negative-denominator, and missing-input cases for both ROCE and ROE.
+server/src/finance.ts, finance.test.ts, and the package.json test script were already implemented per plan from a prior attempt. This attempt's environment lacked server/node_modules; restored via npm install and re-verified. calculateROCE computes ebit/(totalAssets-totalCurrentLiabilities), returning null for missing inputs or non-positive denominator. calculateROE computes netIncome/totalStockholderEquity, returning null for missing inputs or non-positive equity. No I/O or yahoo-finance2 imports — pure functions only.
 
 ## Verification
 
-npx tsc --noEmit clean; npx tsx --test src/finance.test.ts passed 8/8 tests covering normal, zero-denominator, negative-denominator, and missing-input scenarios for calculateROCE and calculateROE.
+npx tsc --noEmit clean; npx tsx --test src/finance.test.ts passes 8/8 (normal case, zero denominator, negative denominator, missing/undefined inputs for both ROCE and ROE)
 
 ## Verification Evidence
 
 | # | Command | Exit Code | Verdict | Duration |
 |---|---------|-----------|---------|----------|
-| 1 | `cd server && npx tsc --noEmit && npx tsx --test src/finance.test.ts` | 0 | pass | 3663ms |
+| 1 | `cd server && npx tsc --noEmit && npx tsx --test src/finance.test.ts` | 0 | pass | 4207ms |
 
 ## Deviations
 
@@ -41,4 +41,4 @@ None.
 ## Files Created/Modified
 
 None.
-<!-- gsd:state-version=36:0 -->
+<!-- gsd:state-version=41:0 -->

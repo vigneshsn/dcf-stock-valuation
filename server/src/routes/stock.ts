@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import yahooFinance from 'yahoo-finance2';
 import { get, set, CACHE_TTL_MS } from '../cache.js';
+import { calculateROCE, calculateROE } from '../finance.js';
 
 interface StockMetrics {
   marketCap: number | null;
@@ -10,6 +11,8 @@ interface StockMetrics {
   peRatio: number | null;
   bookValue: number | null;
   dividendYield: number | null;
+  roce: number | null;
+  roe: number | null;
 }
 
 const router = Router();
@@ -49,7 +52,29 @@ router.get('/:ticker', async (req, res) => {
     peRatio: quote.trailingPE ?? null,
     bookValue: quote.bookValue ?? null,
     dividendYield: (quote as any).dividendYield ?? quote.trailingAnnualDividendYield ?? null,
+    roce: null,
+    roe: null,
   };
+
+  try {
+    const summary = await yahooFinance.quoteSummary(ticker, {
+      modules: ['incomeStatementHistory', 'balanceSheetHistory'],
+    });
+    const incomeStatement = summary?.incomeStatementHistory?.incomeStatementHistory?.[0];
+    const balanceSheet = summary?.balanceSheetHistory?.balanceSheetStatements?.[0];
+
+    const ebit = incomeStatement?.ebit as number | null | undefined;
+    const netIncome = incomeStatement?.netIncome as number | null | undefined;
+    const totalAssets = balanceSheet?.totalAssets as number | null | undefined;
+    const totalCurrentLiabilities = balanceSheet?.totalCurrentLiabilities as number | null | undefined;
+    const totalStockholderEquity = balanceSheet?.totalStockholderEquity as number | null | undefined;
+
+    metrics.roce = calculateROCE(ebit, totalAssets, totalCurrentLiabilities);
+    metrics.roe = calculateROE(netIncome, totalStockholderEquity);
+  } catch (err: any) {
+    const message = err?.message || String(err);
+    console.error(`[upstream error] ${ticker} quoteSummary: ${message}`);
+  }
 
   set(ticker, metrics, CACHE_TTL_MS);
   console.log(`[upstream success] ${ticker}`, metrics);
