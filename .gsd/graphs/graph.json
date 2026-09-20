@@ -1,5 +1,21 @@
 {
-  "nodes": [],
+  "nodes": [
+    {
+      "id": "milestone:M001",
+      "label": "M001: Fundamentals Dashboard",
+      "type": "milestone",
+      "description": "Active milestone: M001",
+      "confidence": "EXTRACTED",
+      "sourceFile": "STATE.md"
+    },
+    {
+      "id": "concept:phase:planning",
+      "label": "Phase: planning",
+      "type": "concept",
+      "confidence": "EXTRACTED",
+      "sourceFile": "STATE.md"
+    }
+  ],
   "edges": [],
-  "builtAt": "2026-09-19T20:15:39.647Z"
+  "builtAt": "2026-09-20T10:55:21.539Z"
 }

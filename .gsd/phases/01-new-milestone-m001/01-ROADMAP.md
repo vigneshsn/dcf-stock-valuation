@@ -15,7 +15,7 @@
 - [x] **S01: Proxy foundation and core valuation metrics** `risk:high` `depends:[]`
   > After this: GET /api/stock/RELIANCE.NS on a live local Node/Express proxy returns Market Cap, Current Price, 52-Week High/Low, Stock P/E, Book Value, and Dividend Yield as JSON, fetched live from Yahoo Finance via the yahoo-finance2 package.
 
-- [ ] **S02: ROCE and ROE derivation** `risk:high` `depends:[S01]`
+- [x] **S02: ROCE and ROE derivation** `risk:high` `depends:[S01]`
   > After this: The same endpoint also returns computed ROCE and ROE, derived server-side from fundamentalsTimeSeries (EBIT, capital employed, net income, equity), with passing unit tests proving the calculation logic against known inputs.
 
 - [ ] **S03: Dashboard UI and error handling** `risk:medium` `depends:[S01,S02]`
@@ -24,4 +24,4 @@
 ## Boundary Map
 
 ### S01 → S02\nProduces: Express route GET /api/stock/:ticker returning JSON {marketCap, currentPrice, week52High, week52Low, peRatio, bookValue, dividendYield}; established pattern for calling yahoo-finance2; in-memory cache keyed by ticker (~5 min TTL)\nConsumes: nothing (first slice)\n\n### S01 → S03\nProduces: Same /api/stock/:ticker JSON contract, proxy running locally; error response shapes (404 invalid ticker, 502/timeout upstream failure)\nConsumes: nothing (first slice)\n\n### S02 → S03\nProduces: Extended /api/stock/:ticker JSON contract adding roce and roe fields (numeric or null)\nConsumes: route and caching structure from S01
-<!-- gsd:state-version=34:0 -->
+<!-- gsd:state-version=87:0 -->

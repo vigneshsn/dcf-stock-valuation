@@ -13,24 +13,6 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M001/S01
 - Validation: unmapped
 
-### R002 — Compute and display ROCE (Return on Capital Employed) derived from live financial data (EBIT, capital employed) since no free API returns it directly for Indian stocks
-- Class: core-capability
-- Status: active
-- Description: Compute and display ROCE (Return on Capital Employed) derived from live financial data (EBIT, capital employed) since no free API returns it directly for Indian stocks
-- Why it matters: ROCE is a key capital-efficiency metric used in fundamental analysis and explicitly requested
-- Source: user
-- Primary owning slice: M001/S02
-- Validation: unmapped
-
-### R003 — Compute and display ROE (Return on Equity) derived from live financial data (net income, shareholder equity)
-- Class: core-capability
-- Status: active
-- Description: Compute and display ROE (Return on Equity) derived from live financial data (net income, shareholder equity)
-- Why it matters: ROE is a key profitability metric used in fundamental analysis and explicitly requested
-- Source: user
-- Primary owning slice: M001/S02
-- Validation: unmapped
-
 ### R004 — Backend proxy (Node/Express) fetches Yahoo Finance data server-side using the yahoo-finance2 package, avoiding browser CORS restrictions
 - Class: integration
 - Status: active
@@ -58,16 +40,34 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M001/S03
 - Validation: unmapped
 
+## Validated
+
+### R002 — Compute and display ROCE (Return on Capital Employed) derived from live financial data (EBIT, capital employed) since no free API returns it directly for Indian stocks
+- Class: core-capability
+- Status: validated
+- Description: Compute and display ROCE (Return on Capital Employed) derived from live financial data (EBIT, capital employed) since no free API returns it directly for Indian stocks
+- Why it matters: ROCE is a key capital-efficiency metric used in fundamental analysis and explicitly requested
+- Source: user
+- Primary owning slice: M001/S02
+- Validation: calculateROCE unit-tested in finance.test.ts (normal, zero/negative-denominator, missing-input cases); wired into GET /api/stock/:ticker via quoteSummary
+
+### R003 — Compute and display ROE (Return on Equity) derived from live financial data (net income, shareholder equity)
+- Class: core-capability
+- Status: validated
+- Description: Compute and display ROE (Return on Equity) derived from live financial data (net income, shareholder equity)
+- Why it matters: ROE is a key profitability metric used in fundamental analysis and explicitly requested
+- Source: user
+- Primary owning slice: M001/S02
+- Validation: calculateROE unit-tested in finance.test.ts (normal, zero/negative-denominator, missing-input cases); wired into GET /api/stock/:ticker via quoteSummary
+
 ### R007 — Unit tests cover the ROCE and ROE calculation logic specifically, since this is custom-derived logic not provided directly by any API
 - Class: quality-attribute
-- Status: active
+- Status: validated
 - Description: Unit tests cover the ROCE and ROE calculation logic specifically, since this is custom-derived logic not provided directly by any API
 - Why it matters: Derived financial math is the most bug-prone part of the feature and has no upstream validation to lean on
 - Source: user
 - Primary owning slice: M001/S02
-- Validation: unmapped
-
-## Validated
+- Validation: 8 passing node:test unit tests in server/src/finance.test.ts covering normal, zero-denominator, negative-denominator, and missing-input cases for both ROCE and ROE
 
 ## Deferred
 
@@ -94,18 +94,18 @@ This file is the explicit capability and coverage contract for the project.
 | ID | Class | Status | Primary owner | Supporting | Proof |
 | --- | --- | --- | --- | --- | --- |
 | R001 | core-capability | active | M001/S01 | none | unmapped |
-| R002 | core-capability | active | M001/S02 | none | unmapped |
-| R003 | core-capability | active | M001/S02 | none | unmapped |
+| R002 | core-capability | validated | M001/S02 | none | calculateROCE unit-tested in finance.test.ts (normal, zero/negative-denominator, missing-input cases); wired into GET /api/stock/:ticker via quoteSummary |
+| R003 | core-capability | validated | M001/S02 | none | calculateROE unit-tested in finance.test.ts (normal, zero/negative-denominator, missing-input cases); wired into GET /api/stock/:ticker via quoteSummary |
 | R004 | integration | active | M001/S01 | none | unmapped |
 | R005 | operability | active | M001/S01 | none | unmapped |
 | R006 | failure-visibility | active | M001/S03 | none | unmapped |
-| R007 | quality-attribute | active | M001/S02 | none | unmapped |
+| R007 | quality-attribute | validated | M001/S02 | none | 8 passing node:test unit tests in server/src/finance.test.ts covering normal, zero-denominator, negative-denominator, and missing-input cases for both ROCE and ROE |
 | R008 | anti-feature | deferred | none | none | unmapped |
 | R009 | anti-feature | out-of-scope | none | none | n/a |
 
 ## Coverage Summary
 
-- Active requirements: 7
-- Mapped to slices: 7
-- Validated: 0
+- Active requirements: 4
+- Mapped to slices: 4
+- Validated: 3 (R002, R003, R007)
 - Unmapped active requirements: 0

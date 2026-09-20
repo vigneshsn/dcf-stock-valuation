@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "taskId": "T01",
   "unitId": "M001/S02/T01",
-  "timestamp": 1789899092854,
+  "timestamp": 1789901312913,
   "passed": true,
   "discoverySource": "task-plan",
   "checks": [
     {
-      "command": "npx tsx --test src/finance.test.ts",
+      "command": "cd server && npx tsc --noEmit && npx tsx --test src/finance.test.ts",
       "exitCode": 0,
-      "durationMs": 5480,
+      "durationMs": 12338,
       "verdict": "pass"
     }
   ]
