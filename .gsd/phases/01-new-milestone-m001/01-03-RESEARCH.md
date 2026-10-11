@@ -43,3 +43,4 @@ Follow existing local conventions exactly: standalone component + `FormsModule` 
 - **Standalone component omitted from `declarations`** — since `DcfCalculatorComponent` already proves the pattern (`standalone: true` component placed in `AppModule.imports`, not `declarations`), follow it exactly for the new component to avoid the classic "component is not part of any NgModule" error.
 - **Forgetting to treat `null` fields distinctly from a failed request** — the proxy intentionally returns `200` with some fields `null` (e.g. roce/roe on quoteSummary failure); the UI must render N/A per-field in that case rather than treating any `null` as a whole-response error (this is the direct implementation of R006's "partial data" requirement).
 - **CORS** — already handled proxy-side (`cors()` applied globally in `server/src/index.ts`), so no Angular-side proxy config work needed.
+<!-- gsd:state-version=108:1 -->

@@ -24,4 +24,4 @@
 ## Boundary Map
 
 ### S01 → S02\nProduces: Express route GET /api/stock/:ticker returning JSON {marketCap, currentPrice, week52High, week52Low, peRatio, bookValue, dividendYield}; established pattern for calling yahoo-finance2; in-memory cache keyed by ticker (~5 min TTL)\nConsumes: nothing (first slice)\n\n### S01 → S03\nProduces: Same /api/stock/:ticker JSON contract, proxy running locally; error response shapes (404 invalid ticker, 502/timeout upstream failure)\nConsumes: nothing (first slice)\n\n### S02 → S03\nProduces: Extended /api/stock/:ticker JSON contract adding roce and roe fields (numeric or null)\nConsumes: route and caching structure from S01
-<!-- gsd:state-version=104:0 -->
+<!-- gsd:state-version=108:1 -->

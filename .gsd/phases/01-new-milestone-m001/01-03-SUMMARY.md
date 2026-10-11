@@ -86,3 +86,4 @@ None.
 - `playwright.config.ts` — Playwright config with webServer auto-start
 - `e2e/smoke.spec.ts` — Smoke test driving /fundamentals to a terminal state
 - `package.json` — Added @playwright/test devDependency and e2e:playwright script
+<!-- gsd:state-version=108:1 -->

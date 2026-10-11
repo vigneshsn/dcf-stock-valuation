@@ -63,3 +63,4 @@ Build a new lightweight Express (TypeScript) server as a separate app (e.g. `ser
 ## Sources
 
 - yahoo-finance2 official docs and skill file, via Context7 `/gadicc/yahoo-finance2` (quote/quoteSummary field reference, v1→v2 migration notes)
+<!-- gsd:state-version=108:1 -->

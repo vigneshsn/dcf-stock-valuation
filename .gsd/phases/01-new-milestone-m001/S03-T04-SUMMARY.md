@@ -48,4 +48,4 @@ Test currently observes the proxy's upstream-failure path live (no live upstream
 - `playwright.config.ts`
 - `e2e/smoke.spec.ts`
 - `package.json`
-<!-- gsd:state-version=103:0 -->
+<!-- gsd:state-version=108:1 -->

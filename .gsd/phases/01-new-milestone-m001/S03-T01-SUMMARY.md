@@ -46,4 +46,4 @@ None. HTTP error handling (404/502/network mapping) is intentionally deferred to
 - `src/app/models/stock-metrics.ts`
 - `src/app/services/stock.service.ts`
 - `src/app/app.module.ts`
-<!-- gsd:state-version=91:0 -->
+<!-- gsd:state-version=108:1 -->
