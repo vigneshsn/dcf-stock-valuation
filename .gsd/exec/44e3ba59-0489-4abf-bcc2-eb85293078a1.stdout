@@ -1,4 +1,0 @@
----grep---
-34:      return res.status(404).json({ error: 'Ticker not found' });
-36:    return res.status(502).json({ error: 'Upstream fetch failed' });
-41:    return res.status(404).json({ error: 'Ticker not found' });
