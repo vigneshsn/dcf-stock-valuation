@@ -18,6 +18,7 @@ import {CsvService} from './services/csv.service';
 import {DcfHelperService} from './services/dcf-helper.service';
 import {XlsxService} from './services/xlsx.service';
 import {AppRoutingModule} from "./app-routing.module";
+import {FundamentalsComponent} from "./fundamentals/fundamentals.component";
 
 
 @NgModule({
@@ -36,6 +37,7 @@ import {AppRoutingModule} from "./app-routing.module";
         MatIconModule,
         MatFormFieldModule,
         DcfCalculatorComponent,
+        FundamentalsComponent,
         AppRoutingModule,
         HttpClientModule
     ],
