@@ -87,3 +87,5 @@ skills-lock.json
 .gsd/quarantine/
 .gsd/milestones/**/*-CONTINUE.md
 .gsd/milestones/**/continue.md
+
+.bg-shell
