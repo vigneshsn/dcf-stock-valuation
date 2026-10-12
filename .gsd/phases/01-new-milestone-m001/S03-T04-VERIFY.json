@@ -1,0 +1,529 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T04",
+  "unitId": "M001/S03/T04",
+  "timestamp": 1789908528381,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "npx playwright test",
+      "exitCode": 0,
+      "durationMs": 21372,
+      "verdict": "pass"
+    }
+  ],
+  "auditWarnings": [
+    {
+      "name": "@angular-devkit/architect",
+      "severity": "moderate",
+      "title": "@angular-devkit/architect",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular-devkit/build-angular",
+      "severity": "high",
+      "title": "@angular-devkit/build-angular",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular-devkit/build-webpack",
+      "severity": "moderate",
+      "title": "@angular-devkit/build-webpack",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular-devkit/core",
+      "severity": "moderate",
+      "title": "@angular-devkit/core",
+      "url": "",
+      "fixAvailable": false
+    },
+    {
+      "name": "@angular-devkit/schematics",
+      "severity": "moderate",
+      "title": "@angular-devkit/schematics",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/animations",
+      "severity": "high",
+      "title": "@angular/animations",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/build",
+      "severity": "high",
+      "title": "@angular/build",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/cli",
+      "severity": "high",
+      "title": "@angular/cli",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/common",
+      "severity": "high",
+      "title": "Angular is Vulnerable to XSRF Token Leakage via Protocol-Relative URLs in Angular HTTP Client",
+      "url": "https://github.com/advisories/GHSA-58c5-g7wp-6w37",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/compiler",
+      "severity": "high",
+      "title": "Angular vulnerable to XSS in i18n attribute bindings",
+      "url": "https://github.com/advisories/GHSA-g93w-mfhg-p222",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/compiler-cli",
+      "severity": "high",
+      "title": "@angular/compiler-cli",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/core",
+      "severity": "high",
+      "title": "Angular i18n vulnerable to Cross-Site Scripting",
+      "url": "https://github.com/advisories/GHSA-prjf-86w9-mfqv",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/forms",
+      "severity": "high",
+      "title": "@angular/forms",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/platform-browser",
+      "severity": "high",
+      "title": "@angular/platform-browser",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/platform-browser-dynamic",
+      "severity": "high",
+      "title": "@angular/platform-browser-dynamic",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@angular/router",
+      "severity": "high",
+      "title": "@angular/router",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@babel/core",
+      "severity": "low",
+      "title": "@babel/core: Arbitrary File Read via sourceMappingURL Comment",
+      "url": "https://github.com/advisories/GHSA-4x5r-pxfx-6jf8",
+      "fixAvailable": true
+    },
+    {
+      "name": "@babel/plugin-transform-modules-systemjs",
+      "severity": "high",
+      "title": "@babel/plugin-transform-modules-systemjs generates arbitrary code when compiling malicious input",
+      "url": "https://github.com/advisories/GHSA-fv7c-fp4j-7gwp",
+      "fixAvailable": true
+    },
+    {
+      "name": "@isaacs/brace-expansion",
+      "severity": "high",
+      "title": "@isaacs/brace-expansion has Uncontrolled Resource Consumption",
+      "url": "https://github.com/advisories/GHSA-7h2j-956f-4vf2",
+      "fixAvailable": true
+    },
+    {
+      "name": "@modelcontextprotocol/sdk",
+      "severity": "high",
+      "title": "@modelcontextprotocol/sdk has cross-client data leak via shared server/transport instance reuse",
+      "url": "https://github.com/advisories/GHSA-345p-7cg4-v4c7",
+      "fixAvailable": true
+    },
+    {
+      "name": "@schematics/angular",
+      "severity": "moderate",
+      "title": "@schematics/angular",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@sigstore/core",
+      "severity": "moderate",
+      "title": "@sigstore/core has DSSE payloadType type-binding failure",
+      "url": "https://github.com/advisories/GHSA-jfc7-64v2-mr8c",
+      "fixAvailable": true
+    },
+    {
+      "name": "@sigstore/sign",
+      "severity": "moderate",
+      "title": "@sigstore/sign",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "@sigstore/verify",
+      "severity": "moderate",
+      "title": "@sigstore/verify",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "ajv",
+      "severity": "moderate",
+      "title": "ajv has ReDoS when using `$data` option",
+      "url": "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6",
+      "fixAvailable": false
+    },
+    {
+      "name": "angular-cli-ghpages",
+      "severity": "critical",
+      "title": "angular-cli-ghpages",
+      "url": "",
+      "fixAvailable": false
+    },
+    {
+      "name": "baseline-browser-mapping",
+      "severity": "moderate",
+      "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
+      "url": "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv",
+      "fixAvailable": true
+    },
+    {
+      "name": "body-parser",
+      "severity": "moderate",
+      "title": "body-parser is vulnerable to denial of service when url encoding is used",
+      "url": "https://github.com/advisories/GHSA-wqch-xfxh-vrr4",
+      "fixAvailable": true
+    },
+    {
+      "name": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+      "url": "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+      "fixAvailable": true
+    },
+    {
+      "name": "browserslist",
+      "severity": "high",
+      "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+      "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+      "fixAvailable": true
+    },
+    {
+      "name": "copy-webpack-plugin",
+      "severity": "moderate",
+      "title": "copy-webpack-plugin",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "engine.io",
+      "severity": "high",
+      "title": "Socket.IO: Engine.IO Polling Transport Connection Exhaustion",
+      "url": "https://github.com/advisories/GHSA-r635-g3xr-vw7x",
+      "fixAvailable": true
+    },
+    {
+      "name": "express",
+      "severity": "high",
+      "title": "express",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via literal backslash authority delimiter",
+      "url": "https://github.com/advisories/GHSA-v2hh-gcrm-f6hx",
+      "fixAvailable": true
+    },
+    {
+      "name": "flatted",
+      "severity": "high",
+      "title": "flatted vulnerable to unbounded recursion DoS in parse() revive phase",
+      "url": "https://github.com/advisories/GHSA-25h7-pfq9-p65f",
+      "fixAvailable": true
+    },
+    {
+      "name": "follow-redirects",
+      "severity": "moderate",
+      "title": "follow-redirects leaks Custom Authentication Headers to Cross-Domain Redirect Targets",
+      "url": "https://github.com/advisories/GHSA-r4q5-vmmm-2653",
+      "fixAvailable": true
+    },
+    {
+      "name": "gh-pages",
+      "severity": "critical",
+      "title": "tschaub gh-pages vulnerable to prototype pollution",
+      "url": "https://github.com/advisories/GHSA-8mmm-9v2q-x3f9",
+      "fixAvailable": false
+    },
+    {
+      "name": "glob",
+      "severity": "high",
+      "title": "glob CLI: Command injection via -c/--cmd executes matches with shell:true",
+      "url": "https://github.com/advisories/GHSA-5j98-mcp5-4vw2",
+      "fixAvailable": true
+    },
+    {
+      "name": "http-proxy-middleware",
+      "severity": "high",
+      "title": "http-proxy-middleware: multipart/form-data field injection via unescaped CRLF in `fixRequestBody`",
+      "url": "https://github.com/advisories/GHSA-gcq2-9pq2-cxqm",
+      "fixAvailable": true
+    },
+    {
+      "name": "image-size",
+      "severity": "high",
+      "title": "image-size: ICNS parser allows denial of service through an infinite loop",
+      "url": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
+      "fixAvailable": true
+    },
+    {
+      "name": "immutable",
+      "severity": "high",
+      "title": "Immutable is vulnerable to Prototype Pollution",
+      "url": "https://github.com/advisories/GHSA-wf6x-7x77-mvgw",
+      "fixAvailable": true
+    },
+    {
+      "name": "ip-address",
+      "severity": "high",
+      "title": "ip-address has XSS in Address6 HTML-emitting methods",
+      "url": "https://github.com/advisories/GHSA-v2v4-37r5-5v8g",
+      "fixAvailable": true
+    },
+    {
+      "name": "js-yaml",
+      "severity": "high",
+      "title": "js-yaml has prototype pollution in merge (<<)",
+      "url": "https://github.com/advisories/GHSA-mh29-5h37-fv8m",
+      "fixAvailable": true
+    },
+    {
+      "name": "launch-editor",
+      "severity": "moderate",
+      "title": "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+      "url": "https://github.com/advisories/GHSA-v6wh-96g9-6wx3",
+      "fixAvailable": true
+    },
+    {
+      "name": "less",
+      "severity": "high",
+      "title": "less",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "lodash",
+      "severity": "high",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names",
+      "url": "https://github.com/advisories/GHSA-r5fr-rjxr-66jc",
+      "fixAvailable": true
+    },
+    {
+      "name": "minimatch",
+      "severity": "high",
+      "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+      "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+      "fixAvailable": true
+    },
+    {
+      "name": "nanoid",
+      "severity": "high",
+      "title": "nanoid: non-secure generators can loop indefinitely with negative size",
+      "url": "https://github.com/advisories/GHSA-28wg-ghj8-5hjv",
+      "fixAvailable": true
+    },
+    {
+      "name": "node-forge",
+      "severity": "high",
+      "title": "node-forge has ASN.1 Unbounded Recursion",
+      "url": "https://github.com/advisories/GHSA-554w-wpv2-vw27",
+      "fixAvailable": true
+    },
+    {
+      "name": "pacote",
+      "severity": "high",
+      "title": "pacote is vulnerable to Denial of Service (DoS) via the addGitSha function",
+      "url": "https://github.com/advisories/GHSA-w4pp-8pjf-rmxw",
+      "fixAvailable": true
+    },
+    {
+      "name": "path-to-regexp",
+      "severity": "high",
+      "title": "path-to-regexp vulnerable to Regular Expression Denial of Service via multiple route parameters",
+      "url": "https://github.com/advisories/GHSA-37ch-88jc-xwx2",
+      "fixAvailable": true
+    },
+    {
+      "name": "picomatch",
+      "severity": "high",
+      "title": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+      "url": "https://github.com/advisories/GHSA-3v7f-55p6-f55p",
+      "fixAvailable": false
+    },
+    {
+      "name": "piscina",
+      "severity": "high",
+      "title": "piscina: Prototype Pollution Gadget → RCE via inherited options.filename",
+      "url": "https://github.com/advisories/GHSA-x9g3-xrwr-cwfg",
+      "fixAvailable": true
+    },
+    {
+      "name": "postcss",
+      "severity": "high",
+      "title": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+      "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+      "fixAvailable": true
+    },
+    {
+      "name": "postcss-selector-parser",
+      "severity": "low",
+      "title": "postcss-selector-parser allows denial of service through uncontrolled AST recursion",
+      "url": "https://github.com/advisories/GHSA-w9m9-85wc-3x92",
+      "fixAvailable": true
+    },
+    {
+      "name": "qs",
+      "severity": "moderate",
+      "title": "qs's arrayLimit bypass in comma parsing allows denial of service",
+      "url": "https://github.com/advisories/GHSA-w7fw-mjwx-w883",
+      "fixAvailable": true
+    },
+    {
+      "name": "rollup",
+      "severity": "high",
+      "title": "Rollup 4 has Arbitrary File Write via Path Traversal",
+      "url": "https://github.com/advisories/GHSA-mw96-cpmx-2vgc",
+      "fixAvailable": true
+    },
+    {
+      "name": "serialize-javascript",
+      "severity": "high",
+      "title": "Serialize JavaScript is Vulnerable to RCE via RegExp.flags and Date.prototype.toISOString()",
+      "url": "https://github.com/advisories/GHSA-5c6j-r48x-rmvq",
+      "fixAvailable": true
+    },
+    {
+      "name": "shell-quote",
+      "severity": "critical",
+      "title": "shell-quote quote() does not escape newlines in object .op values",
+      "url": "https://github.com/advisories/GHSA-w7jw-789q-3m8p",
+      "fixAvailable": true
+    },
+    {
+      "name": "sigstore",
+      "severity": "high",
+      "title": "sigstore's `certificateOIDs` verification constraints are silently dropped and never enforced",
+      "url": "https://github.com/advisories/GHSA-52v5-jr5w-gjxr",
+      "fixAvailable": true
+    },
+    {
+      "name": "socket.io-adapter",
+      "severity": "moderate",
+      "title": "socket.io-adapter",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "socket.io-parser",
+      "severity": "high",
+      "title": "socket.io allows an unbounded number of binary attachments",
+      "url": "https://github.com/advisories/GHSA-677m-j7p3-52f9",
+      "fixAvailable": true
+    },
+    {
+      "name": "sockjs",
+      "severity": "moderate",
+      "title": "sockjs",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "tar",
+      "severity": "critical",
+      "title": "node-tar has a race condition leading to uninitialized memory exposure",
+      "url": "https://github.com/advisories/GHSA-29xp-372q-xqph",
+      "fixAvailable": true
+    },
+    {
+      "name": "terser-webpack-plugin",
+      "severity": "moderate",
+      "title": "terser-webpack-plugin",
+      "url": "",
+      "fixAvailable": true
+    },
+    {
+      "name": "tmp",
+      "severity": "high",
+      "title": "tmp has Path Traversal via unsanitized prefix/postfix that enables directory escape",
+      "url": "https://github.com/advisories/GHSA-ph9p-34f9-6g65",
+      "fixAvailable": true
+    },
+    {
+      "name": "uuid",
+      "severity": "moderate",
+      "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+      "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+      "fixAvailable": true
+    },
+    {
+      "name": "vite",
+      "severity": "high",
+      "title": "vite allows server.fs.deny bypass via backslash on Windows",
+      "url": "https://github.com/advisories/GHSA-93m4-6634-74q7",
+      "fixAvailable": true
+    },
+    {
+      "name": "webpack",
+      "severity": "low",
+      "title": "webpack buildHttp: allowedUris allow-list bypass via URL userinfo (@) leading to build-time SSRF behavior",
+      "url": "https://github.com/advisories/GHSA-8fgc-7cc6-rx7x",
+      "fixAvailable": true
+    },
+    {
+      "name": "webpack-dev-server",
+      "severity": "moderate",
+      "title": "webpack-dev-server vulnerable to cross-origin source code exposure on non-HTTPS origins",
+      "url": "https://github.com/advisories/GHSA-79cf-xcqc-c78w",
+      "fixAvailable": true
+    },
+    {
+      "name": "websocket-driver",
+      "severity": "critical",
+      "title": "websocket-driver: Resource limit bypass via message compression",
+      "url": "https://github.com/advisories/GHSA-mp7j-qc5w-4988",
+      "fixAvailable": true
+    },
+    {
+      "name": "ws",
+      "severity": "high",
+      "title": "ws: Uninitialized memory disclosure",
+      "url": "https://github.com/advisories/GHSA-58qx-3vcg-4xpx",
+      "fixAvailable": true
+    },
+    {
+      "name": "xlsx",
+      "severity": "high",
+      "title": "Prototype Pollution in sheetJS",
+      "url": "https://github.com/advisories/GHSA-4r6h-8v6p-xvw6",
+      "fixAvailable": false
+    }
+  ]
+}

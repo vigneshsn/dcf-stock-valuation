@@ -10,8 +10,7 @@ describe('DcfCalculatorComponent', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            declarations: [DcfCalculatorComponent],
-            imports: [FormsModule],
+            imports: [DcfCalculatorComponent, FormsModule],
             providers: [CsvService, XlsxService]
         }).compileComponents();
 

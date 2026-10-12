@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M001/S02/T02",
+  "timestamp": 1789901674462,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "cd server && npx tsc --noEmit",
+      "exitCode": 0,
+      "durationMs": 2950,
+      "verdict": "pass"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import {NgModule} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
+import {HttpClientModule} from '@angular/common/http';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {FormsModule} from '@angular/forms';
 
@@ -17,6 +18,7 @@ import {CsvService} from './services/csv.service';
 import {DcfHelperService} from './services/dcf-helper.service';
 import {XlsxService} from './services/xlsx.service';
 import {AppRoutingModule} from "./app-routing.module";
+import {FundamentalsComponent} from "./fundamentals/fundamentals.component";
 
 
 @NgModule({
@@ -35,7 +37,9 @@ import {AppRoutingModule} from "./app-routing.module";
         MatIconModule,
         MatFormFieldModule,
         DcfCalculatorComponent,
-        AppRoutingModule
+        FundamentalsComponent,
+        AppRoutingModule,
+        HttpClientModule
     ],
     providers: [CsvService, XlsxService, DcfHelperService],
     bootstrap: [AppComponent]

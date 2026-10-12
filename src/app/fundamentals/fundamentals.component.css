@@ -1,0 +1,47 @@
+.fundamentals-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.search-bar input {
+    flex: 1;
+    padding: 8px;
+}
+
+.loading, .error-message {
+    padding: 16px;
+    text-align: center;
+}
+
+.error-message {
+    color: #b00020;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.metric-cell {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.metric-cell .label {
+    font-size: 0.85em;
+    color: #666;
+}
+
+.metric-cell .value {
+    font-size: 1.2em;
+    font-weight: bold;
+}

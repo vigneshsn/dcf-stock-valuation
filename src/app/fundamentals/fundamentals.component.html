@@ -1,0 +1,54 @@
+<div class="fundamentals-container">
+    <div class="search-bar">
+        <input type="text" [(ngModel)]="ticker" placeholder="Enter NSE/BSE ticker (e.g. RELIANCE.NS)" name="ticker" />
+        <button type="button" (click)="search()">Search</button>
+    </div>
+
+    <div class="loading" *ngIf="state === 'loading'">
+        Loading...
+    </div>
+
+    <div class="error-message" *ngIf="state === 'error'">
+        <p>{{ getErrorMessage() }}</p>
+        <button type="button" (click)="search()">Retry</button>
+    </div>
+
+    <div class="metrics-grid" *ngIf="state === 'data'">
+        <div class="metric-cell">
+            <div class="label">Market Cap</div>
+            <div class="value">{{ metrics?.marketCap ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">Current Price</div>
+            <div class="value">{{ metrics?.currentPrice ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">52-Week High</div>
+            <div class="value">{{ metrics?.week52High ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">52-Week Low</div>
+            <div class="value">{{ metrics?.week52Low ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">P/E</div>
+            <div class="value">{{ metrics?.peRatio ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">Book Value</div>
+            <div class="value">{{ metrics?.bookValue ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">Dividend Yield</div>
+            <div class="value">{{ metrics?.dividendYield ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">ROCE</div>
+            <div class="value">{{ metrics?.roce ?? 'N/A' }}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">ROE</div>
+            <div class="value">{{ metrics?.roe ?? 'N/A' }}</div>
+        </div>
+    </div>
+</div>
