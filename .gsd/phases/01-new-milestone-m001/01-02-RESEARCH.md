@@ -52,4 +52,4 @@ Add a pure, unit-testable `calculateROCE(ebit, totalAssets, totalCurrentLiabilit
 - **Division by zero / negative capital employed** — some distressed companies report negative equity or current-liabilities-exceeding-assets; must guard against division by zero and return `null`, not `Infinity`/`NaN`, which would break JSON serialization expectations (`JSON.stringify(Infinity)` → `null` silently, `NaN` → `null` too, but relying on that is fragile — explicit guard is clearer and testable).
 - **quoteSummary throwing while quote succeeds** — must not let a `quoteSummary` failure produce a 502 for the whole endpoint if `quote()` already succeeded; roce/roe should degrade to `null` per the milestone's "partial data shows N/A per-metric" success criterion.
 - **Annual vs quarterly statement arrays** — use `incomeStatementHistory` (annual) not `incomeStatementHistoryQuarterly` for ROCE/ROE to match typical fundamental-analysis conventions (annual figures), and take index `[0]` as most recent.
-<!-- gsd:state-version=108:1 -->
+<!-- gsd:state-version=115:1 -->

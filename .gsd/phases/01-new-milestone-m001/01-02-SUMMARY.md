@@ -77,4 +77,4 @@ None.
 - `server/src/finance.test.ts` — 8 unit tests covering normal, zero/negative-denominator, and missing-input cases
 - `server/package.json` — Added test script: tsx --test src/finance.test.ts
 - `server/src/routes/stock.ts` — Extended StockMetrics with roce/roe, wired quoteSummary call with graceful null degradation
-<!-- gsd:state-version=108:1 -->
+<!-- gsd:state-version=115:1 -->

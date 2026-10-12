@@ -98,4 +98,4 @@ One or more checks are marked `NEEDS-HUMAN` and require a person to validate:
 - Validate the work here: /Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001
 - This milestone runs in a git worktree, so the code lives under the GSD worktrees directory. Open it with: cd "/Users/vignesh.sattanathan/playground/dcf-stock-valuation/.gsd-worktrees/M001"
 - Follow the UAT checklist at: .gsd/phases/01-new-milestone-m001/01-01-UAT.md
-<!-- gsd:state-version=108:1 -->
+<!-- gsd:state-version=115:1 -->

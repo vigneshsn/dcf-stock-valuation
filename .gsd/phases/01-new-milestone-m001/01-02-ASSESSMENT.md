@@ -115,4 +115,4 @@ One or more checks are marked `NEEDS-HUMAN` and require a person to validate:
 
 - Validate the work here: /Users/vignesh.sattanathan/playground/dcf-stock-valuation
 - Follow the UAT checklist at: .gsd/phases/01-new-milestone-m001/01-02-UAT.md
-<!-- gsd:state-version=108:1 -->
+<!-- gsd:state-version=115:1 -->
