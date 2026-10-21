@@ -218,7 +218,7 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
         keyMetrics: { marketCap: 1234, priceToEarningsValueRatio: 15 },
         financials: {
           incomeStatement: [
-            { fiscalYear: 2025, ebit: 1500 },
+            { fiscalYear: 2025 },
             { fiscalYear: 2024, netIncome: 100, ebit: 150 },
           ],
           balanceSheet: [
@@ -266,6 +266,39 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
   assert.deepEqual(body.analystConsensus.counts, {
     strongBuy: null, buy: 4, hold: 2, sell: 1, strongSell: null,
   });
+});
+
+test('calculates ROCE when the aligned annual data lacks the separate ROE inputs', async () => {
+  const router = createStockRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/static/all_stocks.json') {
+        return new Response(JSON.stringify([{ 'nse-code': 'INDEPENDENT', name: 'Independent Ltd' }]));
+      }
+      return new Response(JSON.stringify({
+        companyName: 'Independent Ltd',
+        currentPrice: { NSE: 50 },
+        financials: {
+          incomeStatement: [{ fiscalYear: 2025, ebit: 200, netIncome: null }],
+          balanceSheet: [{
+            fiscalYear: 2025,
+            totalAssets: 1000,
+            totalCurrentLiabilities: 200,
+            totalStockholdersEquity: 500,
+          }],
+        },
+      }));
+    },
+  });
+
+  const response = await requestStock(router, 'INDEPENDENT');
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.roce, 25);
+  assert.equal(body.roe, null);
 });
 
 test('uses FMP only when explicitly selected and leaves IndianAPI sections empty', async () => {

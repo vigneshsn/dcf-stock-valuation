@@ -71,18 +71,19 @@ export function calculateAnnualReturns(
   for (const year of years) {
     const income = incomeByYear.get(year)!;
     const balance = balanceByYear.get(year)!;
-    const inputs = [
-      income.ebit,
-      income.netIncome,
-      balance.totalAssets,
-      balance.totalCurrentLiabilities,
-      balance.totalStockholdersEquity,
-    ];
-    if (inputs.some((value) => value == null || !Number.isFinite(value))) {
+    const hasRoceInputs = [income.ebit, balance.totalAssets, balance.totalCurrentLiabilities]
+      .every((value) => value != null && Number.isFinite(value));
+    const hasRoeInputs = [income.netIncome, balance.totalStockholdersEquity]
+      .every((value) => value != null && Number.isFinite(value));
+    if (!hasRoceInputs && !hasRoeInputs) {
       continue;
     }
-    const roce = calculateROCE(income.ebit, balance.totalAssets, balance.totalCurrentLiabilities);
-    const roe = calculateROE(income.netIncome, balance.totalStockholdersEquity);
+    const roce = hasRoceInputs
+      ? calculateROCE(income.ebit, balance.totalAssets, balance.totalCurrentLiabilities)
+      : null;
+    const roe = hasRoeInputs
+      ? calculateROE(income.netIncome, balance.totalStockholdersEquity)
+      : null;
     return {
       roce: roce == null ? null : roce * 100,
       roe: roe == null ? null : roe * 100,
