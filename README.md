@@ -60,7 +60,7 @@ npm run build
 
 ## Backend Server (stock data proxy)
 
-The `server/` directory contains a standalone Express + TypeScript proxy that fetches live financial data from [Financial Modeling Prep](https://financialmodelingprep.com/) (FMP). It runs independently of the Angular app on port 3000.
+The `server/` directory contains a standalone Express + TypeScript proxy that fetches stock data from IndianAPI by default. FMP remains available as an explicit alternative. It runs independently of the Angular app on port 3000.
 
 1. Install backend dependencies:
 
@@ -69,19 +69,21 @@ cd server
 npm install
 ```
 
-2. Configure your FMP API key:
+2. Configure the stock-data provider in `server/.env`:
 
 ```bash
-cp .env.example .env  # if present, otherwise create server/.env
+STOCK_DATA_PROVIDER=indianapi
+INDIANAPI_API_KEY=your_indianapi_api_key
 ```
 
-Add to `server/.env`:
+IndianAPI is the default. Its base URL defaults to `https://dev.indianapi.in`; set `INDIANAPI_BASE_URL` only when using a different documented endpoint. To explicitly use FMP instead:
 
 ```
+STOCK_DATA_PROVIDER=fmp
 FMP_API_KEY=your_financial_modeling_prep_api_key
 ```
 
-Get a free API key at https://site.financialmodelingprep.com/.
+The selected provider is used for the entire stock response; the server does not automatically fall back or combine provider data. Get an IndianAPI key at https://indianapi.in/ or an FMP key at https://site.financialmodelingprep.com/.
 
 3. Run the server in dev mode (auto-reload on changes):
 
@@ -103,6 +105,16 @@ npm test
 ```
 
 The server starts on `http://localhost:3000` by default. Run it alongside `npm start` in the project root (Angular dev server) when you need live stock data in the UI.
+
+### Manual stock-data UAT
+
+Open `http://localhost:4200/fundamentals` while the Angular app and backend are running, then verify:
+
+1. Search a populated NSE symbol such as `RELIANCE`; confirm the NSE quote, metrics, company context, recent news, peers, and analyst consensus appear.
+2. Search a company with missing optional provider data; confirm available sections remain visible and missing sections/cells show empty states rather than errors.
+3. Search an unknown NSE symbol; confirm the app shows “Ticker not found”.
+4. Set `STOCK_DATA_PROVIDER=indianapi` and use an invalid IndianAPI key while an FMP key is configured; confirm the app shows an upstream error without FMP data.
+5. Set `STOCK_DATA_PROVIDER=fmp` with a valid FMP key; confirm FMP metrics appear and IndianAPI-only sections remain empty.
 
 ## Notes
 - This app uses mock data for demonstration. Replace with real financial data as needed.

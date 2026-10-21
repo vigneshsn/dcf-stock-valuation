@@ -8,4 +8,37 @@ export interface StockMetrics {
     dividendYield: number | null;
     roce: number | null;
     roe: number | null;
+    companyIntroduction: {
+        name: string;
+        industry: string | null;
+        description: string | null;
+    } | null;
+    news: {
+        headline: string;
+        publishedAt: string;
+        source: string | null;
+        url: string;
+    }[];
+    peers: {
+        name: string;
+        price: number | null;
+        marketCap: number | null;
+        peRatio: number | null;
+        pbRatio: number | null;
+        roe: number | null;
+        debtToEquity: number | null;
+        profitMargin: number | null;
+        dividendYield: number | null;
+    }[];
+    analystConsensus: {
+        source: 'IndianAPI';
+        recommendation: string | null;
+        counts: {
+            strongBuy: number | null;
+            buy: number | null;
+            hold: number | null;
+            sell: number | null;
+            strongSell: number | null;
+        };
+    } | null;
 }

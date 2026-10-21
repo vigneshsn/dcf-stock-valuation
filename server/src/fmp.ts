@@ -9,7 +9,8 @@ export class FmpError extends Error {
 export async function fmpGet<T>(
   path: string,
   ticker: string,
-  extraParams: Record<string, string | number> = {}
+  extraParams: Record<string, string | number> = {},
+  fetcher: typeof fetch = fetch
 ): Promise<T> {
   const apiKey = process.env.FMP_API_KEY;
   if (!apiKey) {
@@ -19,7 +20,7 @@ export async function fmpGet<T>(
   for (const [k, v] of Object.entries(extraParams)) {
     params.set(k, String(v));
   }
-  const response = await fetch(`${FMP_BASE_URL}${path}?${params.toString()}`);
+  const response = await fetcher(`${FMP_BASE_URL}${path}?${params.toString()}`);
   if (!response.ok) {
     const body = await response.text().catch(() => '');
     throw new FmpError(`FMP request failed (${response.status}) for ${path}: ${body}`, response.status);

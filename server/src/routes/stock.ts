@@ -1,18 +1,21 @@
 import { Router } from 'express';
 import { get, set, CACHE_TTL_MS } from '../cache.js';
 import { fmpGet, FmpError } from '../fmp.js';
+import {
+  fetchIndianApiStock,
+  IndianApiError,
+  StockData,
+  StockNotFoundError,
+} from '../indianapi.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 
-interface StockMetrics {
-  marketCap: number | null;
-  currentPrice: number | null;
-  week52High: number | null;
-  week52Low: number | null;
-  peRatio: number | null;
-  bookValue: number | null;
-  dividendYield: number | null;
-  roce: number | null;
-  roe: number | null;
+type Provider = 'indianapi' | 'fmp';
+
+interface StockRouterOptions {
+  provider?: Provider;
+  indianApiKey?: string;
+  indianApiBaseUrl?: string;
+  fetcher?: typeof fetch;
 }
 
 interface FmpQuote {
@@ -31,103 +34,184 @@ interface FmpRatios {
 }
 
 interface FmpIncomeStatement {
+  date?: string;
+  fiscalYear?: string | number;
+  calendarYear?: string | number;
+  period?: string;
   ebit?: number | null;
   operatingIncome?: number | null;
   netIncome?: number | null;
 }
 
 interface FmpBalanceSheet {
+  date?: string;
+  fiscalYear?: string | number;
+  calendarYear?: string | number;
+  period?: string;
   totalAssets?: number | null;
   totalCurrentLiabilities?: number | null;
   totalStockholdersEquity?: number | null;
 }
 
-function isUnknownSymbolError(err: unknown): boolean {
-  if (!(err instanceof FmpError)) {
-    return false;
-  }
-  if (err.status === 402 && /symbol.*not available|invalid.*symbol/i.test(err.message)) {
-    return true;
-  }
-  return false;
+function numberOrNull(value: number | null | undefined): number | null {
+  return value != null && Number.isFinite(value) ? value : null;
 }
 
-const router = Router();
+function fmpYear(row: { fiscalYear?: string | number; calendarYear?: string | number; date?: string }): number | null {
+  const value = row.fiscalYear ?? row.calendarYear ?? row.date?.slice(0, 4);
+  const year = Number(value);
+  return Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : null;
+}
 
-router.get('/:ticker', async (req, res) => {
-  const ticker = req.params.ticker;
-  const cached = get<StockMetrics>(ticker);
-  if (cached) {
-    console.log(`[cache HIT] ${ticker}`);
-    return res.status(200).json(cached);
-  }
-  console.log(`[cache MISS] ${ticker}`);
-
-  let quotes: FmpQuote[];
-  try {
-    quotes = await fmpGet<FmpQuote[]>('/quote', ticker);
-  } catch (err: any) {
-    const message = err?.message || String(err);
-    console.error(`[upstream error] ${ticker}: ${message}`);
-    if (isUnknownSymbolError(err)) {
-      return res.status(404).json({ error: 'Ticker not found' });
+function alignedFmpReturns(
+  incomeStatements: FmpIncomeStatement[],
+  balanceSheets: FmpBalanceSheet[]
+): { roce: number | null; roe: number | null } {
+  const incomeByYear = new Map<number, FmpIncomeStatement>();
+  const balanceByYear = new Map<number, FmpBalanceSheet>();
+  for (const statement of incomeStatements) {
+    const year = fmpYear(statement);
+    if (year != null && !incomeByYear.has(year) && !/^Q[1-4]$/i.test(statement.period ?? '')) {
+      incomeByYear.set(year, statement);
     }
-    return res.status(502).json({ error: 'Upstream fetch failed' });
+  }
+  for (const statement of balanceSheets) {
+    const year = fmpYear(statement);
+    if (year != null && !balanceByYear.has(year) && !/^Q[1-4]$/i.test(statement.period ?? '')) {
+      balanceByYear.set(year, statement);
+    }
   }
 
+  const years = [...incomeByYear.keys()].filter((year) => balanceByYear.has(year)).sort((a, b) => b - a);
+  for (const year of years) {
+    const income = incomeByYear.get(year)!;
+    const balance = balanceByYear.get(year)!;
+    const ebit = numberOrNull(income.ebit ?? income.operatingIncome);
+    const netIncome = numberOrNull(income.netIncome);
+    const assets = numberOrNull(balance.totalAssets);
+    const currentLiabilities = numberOrNull(balance.totalCurrentLiabilities);
+    const equity = numberOrNull(balance.totalStockholdersEquity);
+    if ([ebit, netIncome, assets, currentLiabilities, equity].some((value) => value == null)) {
+      continue;
+    }
+    const roce = calculateROCE(ebit, assets, currentLiabilities);
+    const roe = calculateROE(netIncome, equity);
+    return {
+      roce: roce == null ? null : roce * 100,
+      roe: roe == null ? null : roe * 100,
+    };
+  }
+  return { roce: null, roe: null };
+}
+
+function isUnknownFmpSymbol(err: unknown): boolean {
+  return err instanceof FmpError &&
+    ((err.status === 404) || (err.status === 402 && /symbol.*not available|invalid.*symbol/i.test(err.message)));
+}
+
+function selectedProvider(options: StockRouterOptions): Provider {
+  const configured = options.provider ?? (process.env.STOCK_DATA_PROVIDER?.trim().toLowerCase() || 'indianapi');
+  if (configured !== 'indianapi' && configured !== 'fmp') {
+    throw new Error(`Unsupported STOCK_DATA_PROVIDER: ${configured}`);
+  }
+  return configured;
+}
+
+function fmpTicker(ticker: string): string {
+  return ticker.endsWith('.NS') ? ticker : `${ticker}.NS`;
+}
+
+async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<StockData> {
+  const symbol = fmpTicker(ticker);
+  const quotes = await fmpGet<FmpQuote[]>('/quote', symbol, {}, fetcher);
   const quote = quotes?.[0];
   if (!quote || (quote.marketCap == null && quote.price == null)) {
-    console.log(`[not found] ${ticker}: empty upstream result`);
-    return res.status(404).json({ error: 'Ticker not found' });
+    throw new StockNotFoundError('Ticker not found');
   }
-
-  const metrics: StockMetrics = {
-    marketCap: quote.marketCap ?? null,
-    currentPrice: quote.price ?? null,
-    week52High: quote.yearHigh ?? null,
-    week52Low: quote.yearLow ?? null,
-    peRatio: quote.pe ?? null,
+  const metrics: StockData = {
+    marketCap: numberOrNull(quote.marketCap),
+    currentPrice: numberOrNull(quote.price),
+    week52High: numberOrNull(quote.yearHigh),
+    week52Low: numberOrNull(quote.yearLow),
+    peRatio: numberOrNull(quote.pe),
     bookValue: null,
     dividendYield: null,
     roce: null,
     roe: null,
+    companyIntroduction: null,
+    news: [],
+    peers: [],
+    analystConsensus: null,
   };
 
   try {
-    const ratiosList = await fmpGet<FmpRatios[]>('/ratios-ttm', ticker);
+    const ratiosList = await fmpGet<FmpRatios[]>('/ratios-ttm', symbol, {}, fetcher);
     const ratios = ratiosList?.[0];
-    metrics.peRatio = ratios?.priceToEarningsRatioTTM ?? metrics.peRatio;
-    metrics.bookValue = ratios?.bookValuePerShareTTM ?? null;
-    metrics.dividendYield = ratios?.dividendYieldTTM ?? null;
-  } catch (err: any) {
-    const message = err?.message || String(err);
-    console.error(`[upstream error] ${ticker} ratios-ttm: ${message}`);
+    metrics.peRatio = numberOrNull(ratios?.priceToEarningsRatioTTM) ?? metrics.peRatio;
+    metrics.bookValue = numberOrNull(ratios?.bookValuePerShareTTM);
+    metrics.dividendYield = numberOrNull(ratios?.dividendYieldTTM);
+  } catch (err) {
+    console.error(`[upstream error] ${ticker} ratios-ttm: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   try {
     const [incomeStatements, balanceSheets] = await Promise.all([
-      fmpGet<FmpIncomeStatement[]>('/income-statement', ticker),
-      fmpGet<FmpBalanceSheet[]>('/balance-sheet-statement', ticker),
+      fmpGet<FmpIncomeStatement[]>('/income-statement', symbol, { limit: 5 }, fetcher),
+      fmpGet<FmpBalanceSheet[]>('/balance-sheet-statement', symbol, { limit: 5 }, fetcher),
     ]);
-    const incomeStatement = incomeStatements?.[0];
-    const balanceSheet = balanceSheets?.[0];
-
-    const ebit = incomeStatement?.ebit ?? incomeStatement?.operatingIncome;
-    const netIncome = incomeStatement?.netIncome;
-    const totalAssets = balanceSheet?.totalAssets;
-    const totalCurrentLiabilities = balanceSheet?.totalCurrentLiabilities;
-    const totalStockholderEquity = balanceSheet?.totalStockholdersEquity;
-
-    metrics.roce = calculateROCE(ebit, totalAssets, totalCurrentLiabilities);
-    metrics.roe = calculateROE(netIncome, totalStockholderEquity);
-  } catch (err: any) {
-    const message = err?.message || String(err);
-    console.error(`[upstream error] ${ticker} financial statements: ${message}`);
+    const returns = alignedFmpReturns(incomeStatements ?? [], balanceSheets ?? []);
+    metrics.roce = returns.roce;
+    metrics.roe = returns.roe;
+  } catch (err) {
+    console.error(`[upstream error] ${ticker} financial statements: ${err instanceof Error ? err.message : String(err)}`);
   }
+  return metrics;
+}
 
-  set(ticker, metrics, CACHE_TTL_MS);
-  console.log(`[upstream success] ${ticker}`, metrics);
-  res.status(200).json(metrics);
-});
+export function createStockRouter(options: StockRouterOptions = {}): Router {
+  const router = Router();
+  const provider = selectedProvider(options);
 
-export default router;
+  router.get('/:ticker', async (req, res) => {
+    const ticker = req.params.ticker.trim().toUpperCase();
+    if (!ticker) {
+      return res.status(404).json({ error: 'Ticker not found' });
+    }
+
+    const cacheKey = `stock:${provider}:${ticker}`;
+    const cached = get<StockData>(cacheKey);
+    if (cached) {
+      console.log(`[cache HIT] ${provider}:${ticker}`);
+      return res.status(200).json(cached);
+    }
+    console.log(`[cache MISS] ${provider}:${ticker}`);
+
+    try {
+      const data = provider === 'indianapi'
+        ? await fetchIndianApiStock(
+          ticker,
+          options.indianApiKey ?? process.env.INDIANAPI_API_KEY,
+          options.fetcher,
+          options.indianApiBaseUrl
+        )
+        : await fetchFmpStock(ticker, options.fetcher);
+      set(cacheKey, data, CACHE_TTL_MS);
+      console.log(`[upstream success] ${provider}:${ticker}`);
+      return res.status(200).json(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[upstream error] ${provider}:${ticker}: ${message}`);
+      if (err instanceof StockNotFoundError || (provider === 'fmp' && isUnknownFmpSymbol(err))) {
+        return res.status(404).json({ error: 'Ticker not found' });
+      }
+      if (err instanceof IndianApiError || err instanceof FmpError) {
+        return res.status(502).json({ error: 'Upstream fetch failed' });
+      }
+      return res.status(502).json({ error: 'Upstream fetch failed' });
+    }
+  });
+
+  return router;
+}
+
+export default createStockRouter();

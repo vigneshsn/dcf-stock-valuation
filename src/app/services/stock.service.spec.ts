@@ -30,7 +30,11 @@ describe('StockService', () => {
             bookValue: 8,
             dividendYield: 1.5,
             roce: 12,
-            roe: 14
+            roe: 14,
+            companyIntroduction: null,
+            news: [],
+            peers: [],
+            analystConsensus: null
         };
 
         service.getStock('RELIANCE').subscribe((res) => {
