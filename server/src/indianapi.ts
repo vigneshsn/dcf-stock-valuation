@@ -1,4 +1,4 @@
-import { calculateROCE, calculateROE } from './finance.js';
+import { AnnualBalanceMetrics, AnnualIncomeMetrics, calculateAnnualReturns } from './finance.js';
 
 const DEFAULT_INDIANAPI_URL = 'https://dev.indianapi.in';
 const LIVEMINT_URL = 'https://www.livemint.com';
@@ -141,40 +141,35 @@ function annualReturns(financials: unknown): { roce: number | null; roe: number 
   const balanceRows = readFinancialRows(statements, [
     'balanceSheet', 'balance_sheet', 'balance', 'Balance Sheet', 'Balance',
   ]);
-  const incomeByYear = new Map<number, JsonRecord>();
-  const balanceByYear = new Map<number, JsonRecord>();
-
-  for (const row of incomeRows) {
+  const annualIncome: AnnualIncomeMetrics[] = incomeRows.flatMap((row) => {
     const year = rowYear(row);
-    if (year != null && !incomeByYear.has(year)) {
-      incomeByYear.set(year, row);
-    }
-  }
-  for (const row of balanceRows) {
+    return year == null ? [] : [{
+      year,
+      ebit: numericField(row, 'ebit', 'operatingIncome', 'operatingProfit'),
+      netIncome: numericField(row, 'netIncome', 'netProfit', 'profitAfterTax'),
+    }];
+  });
+  const annualBalance: AnnualBalanceMetrics[] = balanceRows.flatMap((row) => {
     const year = rowYear(row);
-    if (year != null && !balanceByYear.has(year)) {
-      balanceByYear.set(year, row);
-    }
-  }
-
-  const years = [...incomeByYear.keys()].filter((year) => balanceByYear.has(year)).sort((a, b) => b - a);
-  for (const year of years) {
-    const income = incomeByYear.get(year)!;
-    const balance = balanceByYear.get(year)!;
-    const ebit = numericField(income, 'ebit', 'operatingIncome', 'operatingProfit');
-    const netIncome = numericField(income, 'netIncome', 'netProfit', 'profitAfterTax');
-    const assets = numericField(balance, 'totalAssets', 'total_assets');
-    const liabilities = numericField(balance, 'totalCurrentLiabilities', 'currentLiabilities', 'total_current_liabilities');
-    const equity = numericField(balance, 'totalStockholdersEquity', 'totalShareholdersEquity', 'shareholdersEquity', 'total_equity');
-
-    if ([ebit, netIncome, assets, liabilities, equity].every((value) => value != null)) {
-      return {
-        roce: calculateROCE(ebit, assets, liabilities),
-        roe: calculateROE(netIncome, equity),
-      };
-    }
-  }
-  return { roce: null, roe: null };
+    return year == null ? [] : [{
+      year,
+      totalAssets: numericField(row, 'totalAssets', 'total_assets'),
+      totalCurrentLiabilities: numericField(
+        row,
+        'totalCurrentLiabilities',
+        'currentLiabilities',
+        'total_current_liabilities'
+      ),
+      totalStockholdersEquity: numericField(
+        row,
+        'totalStockholdersEquity',
+        'totalShareholdersEquity',
+        'shareholdersEquity',
+        'total_equity'
+      ),
+    }];
+  });
+  return calculateAnnualReturns(annualIncome, annualBalance);
 }
 
 function normalizeNews(value: unknown): StockNewsItem[] {
@@ -379,8 +374,8 @@ export async function fetchIndianApiStock(
     ),
     bookValue: numberValue(keyMetrics.bookValuePerShare, keyMetrics.bookValuePerShareTTM, keyMetrics.bookValue),
     dividendYield: numberValue(keyMetrics.dividendYield),
-    roce: returns.roce == null ? null : returns.roce * 100,
-    roe: returns.roe == null ? null : returns.roe * 100,
+    roce: returns.roce,
+    roe: returns.roe,
     companyIntroduction: {
       name: returnedName,
       industry,

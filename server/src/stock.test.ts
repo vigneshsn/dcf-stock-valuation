@@ -327,3 +327,34 @@ test('uses FMP only when explicitly selected and leaves IndianAPI sections empty
     }
   }
 });
+
+test('returns an upstream error when the explicitly selected FMP quote has no current price', async () => {
+  const previousApiKey = process.env.FMP_API_KEY;
+  process.env.FMP_API_KEY = 'test-key';
+  let requests = 0;
+  try {
+    const router = createStockRouter({
+      provider: 'fmp',
+      fetcher: async () => {
+        requests += 1;
+        return new Response(JSON.stringify([{
+          symbol: 'NOPRICE.NS',
+          price: null,
+          marketCap: 200,
+        }]));
+      },
+    });
+
+    const response = await requestStock(router, 'NOPRICE');
+
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), { error: 'Upstream fetch failed' });
+    assert.equal(requests, 1);
+  } finally {
+    if (previousApiKey === undefined) {
+      delete process.env.FMP_API_KEY;
+    } else {
+      process.env.FMP_API_KEY = previousApiKey;
+    }
+  }
+});

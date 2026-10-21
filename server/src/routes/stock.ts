@@ -7,7 +7,7 @@ import {
   StockData,
   StockNotFoundError,
 } from '../indianapi.js';
-import { calculateROCE, calculateROE } from '../finance.js';
+import { AnnualBalanceMetrics, AnnualIncomeMetrics, calculateAnnualReturns } from '../finance.js';
 
 type Provider = 'indianapi' | 'fmp';
 
@@ -67,41 +67,30 @@ function alignedFmpReturns(
   incomeStatements: FmpIncomeStatement[],
   balanceSheets: FmpBalanceSheet[]
 ): { roce: number | null; roe: number | null } {
-  const incomeByYear = new Map<number, FmpIncomeStatement>();
-  const balanceByYear = new Map<number, FmpBalanceSheet>();
-  for (const statement of incomeStatements) {
+  const annualIncome: AnnualIncomeMetrics[] = incomeStatements.flatMap((statement) => {
     const year = fmpYear(statement);
-    if (year != null && !incomeByYear.has(year) && !/^Q[1-4]$/i.test(statement.period ?? '')) {
-      incomeByYear.set(year, statement);
+    if (year == null || /^Q[1-4]$/i.test(statement.period ?? '')) {
+      return [];
     }
-  }
-  for (const statement of balanceSheets) {
+    return [{
+      year,
+      ebit: numberOrNull(statement.ebit ?? statement.operatingIncome),
+      netIncome: numberOrNull(statement.netIncome),
+    }];
+  });
+  const annualBalance: AnnualBalanceMetrics[] = balanceSheets.flatMap((statement) => {
     const year = fmpYear(statement);
-    if (year != null && !balanceByYear.has(year) && !/^Q[1-4]$/i.test(statement.period ?? '')) {
-      balanceByYear.set(year, statement);
+    if (year == null || /^Q[1-4]$/i.test(statement.period ?? '')) {
+      return [];
     }
-  }
-
-  const years = [...incomeByYear.keys()].filter((year) => balanceByYear.has(year)).sort((a, b) => b - a);
-  for (const year of years) {
-    const income = incomeByYear.get(year)!;
-    const balance = balanceByYear.get(year)!;
-    const ebit = numberOrNull(income.ebit ?? income.operatingIncome);
-    const netIncome = numberOrNull(income.netIncome);
-    const assets = numberOrNull(balance.totalAssets);
-    const currentLiabilities = numberOrNull(balance.totalCurrentLiabilities);
-    const equity = numberOrNull(balance.totalStockholdersEquity);
-    if ([ebit, netIncome, assets, currentLiabilities, equity].some((value) => value == null)) {
-      continue;
-    }
-    const roce = calculateROCE(ebit, assets, currentLiabilities);
-    const roe = calculateROE(netIncome, equity);
-    return {
-      roce: roce == null ? null : roce * 100,
-      roe: roe == null ? null : roe * 100,
-    };
-  }
-  return { roce: null, roe: null };
+    return [{
+      year,
+      totalAssets: numberOrNull(statement.totalAssets),
+      totalCurrentLiabilities: numberOrNull(statement.totalCurrentLiabilities),
+      totalStockholdersEquity: numberOrNull(statement.totalStockholdersEquity),
+    }];
+  });
+  return calculateAnnualReturns(annualIncome, annualBalance);
 }
 
 function isUnknownFmpSymbol(err: unknown): boolean {
@@ -128,9 +117,13 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
   if (!quote || (quote.marketCap == null && quote.price == null)) {
     throw new StockNotFoundError('Ticker not found');
   }
+  const currentPrice = numberOrNull(quote.price);
+  if (currentPrice == null) {
+    throw new FmpError('FMP returned no usable NSE current price', 502);
+  }
   const metrics: StockData = {
     marketCap: numberOrNull(quote.marketCap),
-    currentPrice: numberOrNull(quote.price),
+    currentPrice,
     week52High: numberOrNull(quote.yearHigh),
     week52Low: numberOrNull(quote.yearLow),
     peRatio: numberOrNull(quote.pe),
