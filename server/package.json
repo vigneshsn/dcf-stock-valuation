@@ -6,12 +6,13 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx --test src/finance.test.ts"
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^18.0.4",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pdf-parse": "^2.4.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

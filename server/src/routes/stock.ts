@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { get, set, CACHE_TTL_MS } from '../cache.js';
+import { fmpGet, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 
 interface StockMetrics {
@@ -13,8 +14,6 @@ interface StockMetrics {
   roce: number | null;
   roe: number | null;
 }
-
-const FMP_BASE_URL = 'https://financialmodelingprep.com/stable';
 
 interface FmpQuote {
   symbol: string;
@@ -41,26 +40,6 @@ interface FmpBalanceSheet {
   totalAssets?: number | null;
   totalCurrentLiabilities?: number | null;
   totalStockholdersEquity?: number | null;
-}
-
-class FmpError extends Error {
-  constructor(message: string, public status: number) {
-    super(message);
-  }
-}
-
-async function fmpGet<T>(path: string, ticker: string): Promise<T> {
-  const apiKey = process.env.FMP_API_KEY;
-  if (!apiKey) {
-    throw new FmpError('FMP_API_KEY is not configured', 500);
-  }
-  const url = `${FMP_BASE_URL}${path}?symbol=${encodeURIComponent(ticker)}&apikey=${apiKey}`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new FmpError(`FMP request failed (${response.status}) for ${path}: ${body}`, response.status);
-  }
-  return (await response.json()) as T;
 }
 
 function isUnknownSymbolError(err: unknown): boolean {
