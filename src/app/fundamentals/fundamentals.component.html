@@ -93,14 +93,14 @@
                     <tbody>
                         <tr *ngFor="let peer of metrics?.peers">
                             <th scope="row">{{ peer.name }}</th>
-                            <td>{{ peer.price ?? 'N/A' }}</td>
-                            <td>{{ peer.marketCap ?? 'N/A' }}</td>
-                            <td>{{ peer.peRatio ?? 'N/A' }}</td>
-                            <td>{{ peer.pbRatio ?? 'N/A' }}</td>
-                            <td>{{ peer.roe == null ? 'N/A' : peer.roe + '%' }}</td>
-                            <td>{{ peer.debtToEquity ?? 'N/A' }}</td>
-                            <td>{{ peer.profitMargin == null ? 'N/A' : peer.profitMargin + '%' }}</td>
-                            <td>{{ peer.dividendYield == null ? 'N/A' : peer.dividendYield + '%' }}</td>
+                            <td>{{ peer.price ?? '' }}</td>
+                            <td>{{ peer.marketCap ?? '' }}</td>
+                            <td>{{ peer.peRatio ?? '' }}</td>
+                            <td>{{ peer.pbRatio ?? '' }}</td>
+                            <td>{{ peer.roe == null ? '' : peer.roe + '%' }}</td>
+                            <td>{{ peer.debtToEquity ?? '' }}</td>
+                            <td>{{ peer.profitMargin == null ? '' : peer.profitMargin + '%' }}</td>
+                            <td>{{ peer.dividendYield == null ? '' : peer.dividendYield + '%' }}</td>
                         </tr>
                     </tbody>
                 </table>

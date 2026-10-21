@@ -102,6 +102,16 @@ describe('FundamentalsComponent', () => {
                 debtToEquity: 0.3,
                 profitMargin: 9.5,
                 dividendYield: 1.1
+            }, {
+                name: 'Peer with missing metrics',
+                price: null,
+                marketCap: null,
+                peRatio: null,
+                pbRatio: null,
+                roe: null,
+                debtToEquity: null,
+                profitMargin: null,
+                dividendYield: null
             }],
             analystConsensus: {
                 source: 'IndianAPI',
@@ -130,7 +140,11 @@ describe('FundamentalsComponent', () => {
         expect(content).toContain('Source: IndianAPI');
         expect(content).toContain('20%');
         expect(content).toContain('14%');
-        expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(1);
+        expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(2);
+        const missingRow = fixture.nativeElement.querySelectorAll('tbody tr')[1] as HTMLTableRowElement;
+        expect(Array.from(missingRow.cells).slice(1).map((cell) => cell.textContent?.trim() ?? '')).toEqual([
+            '', '', '', '', '', '', '', ''
+        ]);
     });
 
     it('keeps optional sections empty when the selected provider has no supplemental data', () => {

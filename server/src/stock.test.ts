@@ -358,3 +358,30 @@ test('returns an upstream error when the explicitly selected FMP quote has no cu
     }
   }
 });
+
+test('does not query FMP with a non-NSE exchange suffix', async () => {
+  const previousApiKey = process.env.FMP_API_KEY;
+  process.env.FMP_API_KEY = 'test-key';
+  let requests = 0;
+  try {
+    const router = createStockRouter({
+      provider: 'fmp',
+      fetcher: async () => {
+        requests += 1;
+        return new Response('[]');
+      },
+    });
+
+    const response = await requestStock(router, 'ACME.BO');
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { error: 'Ticker not found' });
+    assert.equal(requests, 0);
+  } finally {
+    if (previousApiKey === undefined) {
+      delete process.env.FMP_API_KEY;
+    } else {
+      process.env.FMP_API_KEY = previousApiKey;
+    }
+  }
+});

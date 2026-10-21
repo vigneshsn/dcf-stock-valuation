@@ -39,6 +39,17 @@ export interface AnnualBalanceMetrics {
   totalStockholdersEquity: number | null;
 }
 
+export function mapAnnualStatements<T, Metrics extends object>(
+  rows: T[],
+  yearOf: (row: T) => number | null,
+  metricsOf: (row: T) => Metrics
+): Array<Metrics & { year: number }> {
+  return rows.flatMap((row) => {
+    const year = yearOf(row);
+    return year == null ? [] : [{ ...metricsOf(row), year }];
+  });
+}
+
 export function calculateAnnualReturns(
   incomeStatements: AnnualIncomeMetrics[],
   balanceSheets: AnnualBalanceMetrics[]
