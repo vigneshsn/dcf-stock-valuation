@@ -1,4 +1,4 @@
-import { AnnualBalanceMetrics, AnnualIncomeMetrics, calculateAnnualReturns } from './finance.js';
+import { calculateAnnualReturns, mapAnnualStatements } from './finance.js';
 
 const DEFAULT_INDIANAPI_URL = 'https://dev.indianapi.in';
 const LIVEMINT_URL = 'https://www.livemint.com';
@@ -141,34 +141,26 @@ function annualReturns(financials: unknown): { roce: number | null; roe: number 
   const balanceRows = readFinancialRows(statements, [
     'balanceSheet', 'balance_sheet', 'balance', 'Balance Sheet', 'Balance',
   ]);
-  const annualIncome: AnnualIncomeMetrics[] = incomeRows.flatMap((row) => {
-    const year = rowYear(row);
-    return year == null ? [] : [{
-      year,
-      ebit: numericField(row, 'ebit', 'operatingIncome', 'operatingProfit'),
-      netIncome: numericField(row, 'netIncome', 'netProfit', 'profitAfterTax'),
-    }];
-  });
-  const annualBalance: AnnualBalanceMetrics[] = balanceRows.flatMap((row) => {
-    const year = rowYear(row);
-    return year == null ? [] : [{
-      year,
-      totalAssets: numericField(row, 'totalAssets', 'total_assets'),
-      totalCurrentLiabilities: numericField(
-        row,
-        'totalCurrentLiabilities',
-        'currentLiabilities',
-        'total_current_liabilities'
-      ),
-      totalStockholdersEquity: numericField(
-        row,
-        'totalStockholdersEquity',
-        'totalShareholdersEquity',
-        'shareholdersEquity',
-        'total_equity'
-      ),
-    }];
-  });
+  const annualIncome = mapAnnualStatements(incomeRows, rowYear, (row) => ({
+    ebit: numericField(row, 'ebit', 'operatingIncome', 'operatingProfit'),
+    netIncome: numericField(row, 'netIncome', 'netProfit', 'profitAfterTax'),
+  }));
+  const annualBalance = mapAnnualStatements(balanceRows, rowYear, (row) => ({
+    totalAssets: numericField(row, 'totalAssets', 'total_assets'),
+    totalCurrentLiabilities: numericField(
+      row,
+      'totalCurrentLiabilities',
+      'currentLiabilities',
+      'total_current_liabilities'
+    ),
+    totalStockholdersEquity: numericField(
+      row,
+      'totalStockholdersEquity',
+      'totalShareholdersEquity',
+      'shareholdersEquity',
+      'total_equity'
+    ),
+  }));
   return calculateAnnualReturns(annualIncome, annualBalance);
 }
 
@@ -352,7 +344,7 @@ export async function fetchIndianApiStock(
   }
 
   const currentPrice = numberValue(record(response.currentPrice).NSE);
-  if (currentPrice == null) {
+  if (currentPrice == null || currentPrice <= 0) {
     throw new IndianApiError('IndianAPI returned no usable NSE current price');
   }
   const keyMetrics = record(response.keyMetrics);

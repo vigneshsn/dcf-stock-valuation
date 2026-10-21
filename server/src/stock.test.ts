@@ -418,3 +418,42 @@ test('does not query FMP with a non-NSE exchange suffix', async () => {
     }
   }
 });
+
+test('rejects zero and negative prices as unusable NSE quotes', async () => {
+  const indianRouter = createStockRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      return url.pathname === '/static/all_stocks.json'
+        ? new Response(JSON.stringify([{ 'nse-code': 'ZERO', name: 'Zero Ltd' }]))
+        : new Response(JSON.stringify({
+          companyName: 'Zero Ltd',
+          currentPrice: { NSE: 0 },
+        }));
+    },
+  });
+  const indianResponse = await requestStock(indianRouter, 'ZERO');
+  assert.equal(indianResponse.status, 502);
+
+  const previousApiKey = process.env.FMP_API_KEY;
+  process.env.FMP_API_KEY = 'test-key';
+  try {
+    const fmpRouter = createStockRouter({
+      provider: 'fmp',
+      fetcher: async () => new Response(JSON.stringify([{
+        symbol: 'NEGATIVE.NS',
+        price: -1,
+        marketCap: 100,
+      }])),
+    });
+    const fmpResponse = await requestStock(fmpRouter, 'NEGATIVE');
+    assert.equal(fmpResponse.status, 502);
+  } finally {
+    if (previousApiKey === undefined) {
+      delete process.env.FMP_API_KEY;
+    } else {
+      process.env.FMP_API_KEY = previousApiKey;
+    }
+  }
+});

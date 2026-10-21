@@ -112,7 +112,7 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
     throw new StockNotFoundError('Ticker identity did not match');
   }
   const currentPrice = numberOrNull(quote.price);
-  if (currentPrice == null) {
+  if (currentPrice == null || currentPrice <= 0) {
     throw new FmpError('FMP returned no usable NSE current price', 502);
   }
   const metrics: StockData = {
