@@ -89,6 +89,8 @@ The selected provider is used for the entire stock response and for the quantita
 
 The qualitative analysis calls a local [Ollama](https://ollama.com/) server (`OLLAMA_URL`, default `http://localhost:11434`). The default model is `qwen3:8b`; pull it once with `ollama pull qwen3:8b`, or set `OLLAMA_MODEL` to use a different local model.
 
+Each year's MD&A summary is stored on disk under `server/.cache/mdna` (override with `MDNA_CACHE_DIR`), so only the first analysis of a ticker downloads reports and summarises them. The proxy sends up to `OLLAMA_CONCURRENCY` (default 4) requests to Ollama at once; set `OLLAMA_NUM_PARALLEL` on the Ollama server to match so they actually run in parallel.
+
 3. Run the server in dev mode (restarts automatically when files in `src/` or `.env` change):
 
 ```bash

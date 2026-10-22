@@ -1,14 +1,15 @@
 import express, { Router } from 'express';
+import { createHash } from 'node:crypto';
 import { get, set } from '../cache.js';
 import { fmpGet, FmpError } from '../fmp.js';
 import { calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, quantitativeScore, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
-import { acquireReports, saveUpload } from '../reports.js';
-import { extractMdna, pdfToText, summariseMdna } from '../mdna.js';
+import { saveUpload } from '../reports.js';
+import { collectYearSummaries, forgetStoredYear } from '../yearSummaries.js';
 import { OllamaError, ollamaConfig } from '../ollama.js';
-import { Peer, YearSummary, judgeManagement, judgeMoat, qualitativeScore, selectPeers } from '../qualitative.js';
+import { ManagementJudgement, Peer, judgeManagement, judgeMoat, qualitativeScore, selectPeers } from '../qualitative.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
@@ -215,7 +216,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
   router.post(
     '/:ticker/reports',
     express.raw({ type: ['application/pdf', 'application/octet-stream'], limit: MAX_PDF_BYTES }),
-    (req, res) => {
+    async (req, res) => {
       const year = Number(req.query.year);
       if (!Number.isInteger(year) || year < 1990 || year > 2100) {
         return res.status(400).json({ error: 'year query parameter is required' });
@@ -225,6 +226,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         return res.status(400).json({ error: 'Body must be a PDF (Content-Type: application/pdf)' });
       }
       saveUpload(req.params.ticker, year, body);
+      await forgetStoredYear(req.params.ticker, year);
       res.status(201).json({ ticker: req.params.ticker, year, bytes: body.length });
     }
   );
@@ -235,42 +237,38 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       ? req.body.peers.filter((p: unknown): p is string => typeof p === 'string' && p.trim().length > 0).map((p: string) => p.trim())
       : undefined;
     try {
-      const reports = await acquireReports(ticker, 3);
-      if (!reports.length) {
+      const started = Date.now();
+      const { model } = ollamaConfig();
+      const { reportCount, summaries, skippedYears: skipped } = await collectYearSummaries(ticker, model, 3);
+      if (!reportCount) {
         return res.status(422).json({
           error: 'no-reports',
           message: 'Annual reports could not be fetched from BSE/NSE. Upload PDFs via POST /api/analysis/:ticker/reports?year=YYYY.',
         });
       }
-      const { model } = ollamaConfig();
-      const key = `analysis:qual:${ticker}:${model}:${(peerOverride ?? ['default']).join(',')}:${reports.map((r) => `${r.year}-${r.data.length}`).join(',')}`;
+      if (!summaries.length) {
+        return res.status(422).json({ error: 'no-mdna', message: 'No Management Discussion and Analysis section found in the reports.', skippedYears: skipped });
+      }
+
+      const fingerprint = createHash('sha1').update(JSON.stringify(summaries)).digest('hex').slice(0, 16);
+      const key = `analysis:qual:${ticker}:${model}:${(peerOverride ?? ['default']).join(',')}:${fingerprint}`;
       const hit = cacheGet<unknown>(key);
       if (hit) {
         console.log(`[analysis cache HIT] ${key}`);
         return res.json({ ...(hit.value as object), cached: true, cachedAt: hit.cachedAt });
       }
 
-      const summaries: YearSummary[] = [];
-      const skipped: number[] = [];
-      for (const r of reports) {
-        const section = extractMdna(await pdfToText(r.data));
-        if (!section) {
-          skipped.push(r.year);
-          continue;
-        }
-        const s = await summariseMdna(section);
-        summaries.push({ year: r.year, summary: s.summary, excerpt: s.excerpt });
-      }
-      if (!summaries.length) {
-        return res.status(422).json({ error: 'no-mdna', message: 'No Management Discussion and Analysis section found in the reports.', skippedYears: skipped });
-      }
-
       const peers: Peer[] = peerOverride
         ? peerOverride.map((symbol) => ({ symbol, name: symbol, marketCap: null }))
         : await defaultPeers(ticker).catch(() => [] as Peer[]);
-      summaries.sort((a, b) => b.year - a.year);
-      const moat = await judgeMoat(summaries[0], peers);
-      const management = await judgeManagement(summaries);
+      // Management depends only on the summaries, so a peer change re-runs just the Moat call.
+      const mgmtKey = `analysis:qual-mgmt:${ticker}:${model}:${fingerprint}`;
+      const [moat, management] = await Promise.all([
+        judgeMoat(summaries[0], peers),
+        cacheGet<ManagementJudgement>(mgmtKey)?.value ??
+          judgeManagement(summaries).then((m) => (cachePut(mgmtKey, m), m)),
+      ]);
+      console.log(`[qualitative] ${ticker}: ${summaries.length} year(s) analysed in ${Date.now() - started}ms`);
       const score = qualitativeScore(moat, management);
       const body = {
         ticker,

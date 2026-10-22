@@ -45,48 +45,56 @@ export function parseAnnualReportLinks(html: string): Array<{ year: number; url:
   return out;
 }
 
-// Best effort: failures return [] so the caller falls back to upload.
-export async function fetchAnnualReports(ticker: string, count = 3): Promise<AnnualReportPdf[]> {
+// Best effort: failures return [] so the caller falls back to upload or cached summaries.
+export async function listScreenerReports(ticker: string, count = 3, fetcher: typeof fetch = fetch): Promise<Array<{ year: number; url: string }>> {
   const slug = screenerSlug(ticker);
   if (!slug) {
     return [];
   }
   try {
-    const pageRes = await fetch(`https://www.screener.in/company/${encodeURIComponent(slug)}/consolidated/`, {
+    const pageRes = await fetcher(`https://www.screener.in/company/${encodeURIComponent(slug)}/consolidated/`, {
       headers: { 'User-Agent': BROWSER_UA },
       signal: AbortSignal.timeout(15_000),
     });
     if (!pageRes.ok) {
       return [];
     }
-    const links = parseAnnualReportLinks(await pageRes.text()).slice(0, count);
-    const reports: AnnualReportPdf[] = [];
-    for (const link of links) {
-      const pdfRes = await fetch(link.url, { headers: { 'User-Agent': BROWSER_UA }, signal: AbortSignal.timeout(120_000) });
-      if (!pdfRes.ok) {
-        continue;
-      }
-      const data = Buffer.from(await pdfRes.arrayBuffer());
-      if (data.subarray(0, 5).toString() === '%PDF-') {
-        reports.push({ year: link.year, source: 'screener', data });
-      }
-    }
-    return reports;
+    return parseAnnualReportLinks(await pageRes.text()).slice(0, count);
   } catch {
     return [];
   }
 }
 
+export async function downloadReportPdf(url: string, fetcher: typeof fetch = fetch): Promise<Buffer | null> {
+  try {
+    const pdfRes = await fetcher(url, { headers: { 'User-Agent': BROWSER_UA }, signal: AbortSignal.timeout(120_000) });
+    if (!pdfRes.ok) {
+      return null;
+    }
+    const data = Buffer.from(await pdfRes.arrayBuffer());
+    return data.subarray(0, 5).toString() === '%PDF-' ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+// A report we know exists; the PDF is only downloaded when load() is called.
+export interface AnnualReportRef {
+  year: number;
+  source: AnnualReportPdf['source'];
+  load: () => Promise<Buffer | null>;
+}
+
 // Uploads take precedence over fetched reports for the same year.
-export async function acquireReports(ticker: string, count = 3): Promise<AnnualReportPdf[]> {
-  const byYear = new Map<number, AnnualReportPdf>();
+export async function listReports(ticker: string, count = 3, fetcher: typeof fetch = fetch): Promise<AnnualReportRef[]> {
+  const byYear = new Map<number, AnnualReportRef>();
   for (const r of getUploads(ticker)) {
-    byYear.set(r.year, r);
+    byYear.set(r.year, { year: r.year, source: 'upload', load: async () => r.data });
   }
   if (byYear.size < count) {
-    for (const r of await fetchAnnualReports(ticker, count)) {
-      if (!byYear.has(r.year)) {
-        byYear.set(r.year, r);
+    for (const link of await listScreenerReports(ticker, count, fetcher)) {
+      if (!byYear.has(link.year)) {
+        byYear.set(link.year, { year: link.year, source: 'screener', load: () => downloadReportPdf(link.url, fetcher) });
       }
     }
   }

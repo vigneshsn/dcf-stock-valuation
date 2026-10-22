@@ -82,26 +82,27 @@ export async function judgeMoat(latest: YearSummary, peers: Peer[]): Promise<Moa
   };
 }
 
-// summaries are ordered newest first; each year's guidance is compared with the next year's actuals
+// summaries are ordered newest first; each year's guidance is compared with the next year's actuals.
+// Year pairs are independent, so they are judged concurrently.
 export async function judgeManagement(summaries: YearSummary[]): Promise<ManagementJudgement> {
   const ordered = [...summaries].sort((a, b) => a.year - b.year);
-  const comparisons: GuidanceComparison[] = [];
-  for (let i = 0; i < ordered.length - 1; i++) {
-    const prior = ordered[i];
-    const next = ordered[i + 1];
-    const raw = await generateJson<{ outcome?: string; reasoning?: string; quote?: string }>(
-      `Management guidance from the ${prior.year} annual report:\n${prior.summary}\n\n` +
-        `Actual results reported in the ${next.year} annual report:\n${next.summary}\n\n` +
-        'Did actual results match the guidance? Reply as JSON: {"outcome":"met|partly|missed","reasoning":"<2 sentences>","quote":"<exact phrase copied from the text above>"}'
-    );
-    comparisons.push({
-      guidanceYear: prior.year,
-      actualsYear: next.year,
-      outcome: asOutcome(raw.outcome),
-      reasoning: String(raw.reasoning ?? ''),
-      quote: verifiedQuote(raw.quote, prior.summary + next.summary + prior.excerpt + next.excerpt),
-    });
-  }
+  const pairs = ordered.slice(0, -1).map((prior, i) => [prior, ordered[i + 1]] as const);
+  const comparisons = await Promise.all(
+    pairs.map(async ([prior, next]): Promise<GuidanceComparison> => {
+      const raw = await generateJson<{ outcome?: string; reasoning?: string; quote?: string }>(
+        `Management guidance from the ${prior.year} annual report:\n${prior.summary}\n\n` +
+          `Actual results reported in the ${next.year} annual report:\n${next.summary}\n\n` +
+          'Did actual results match the guidance? Reply as JSON: {"outcome":"met|partly|missed","reasoning":"<2 sentences>","quote":"<exact phrase copied from the text above>"}'
+      );
+      return {
+        guidanceYear: prior.year,
+        actualsYear: next.year,
+        outcome: asOutcome(raw.outcome),
+        reasoning: String(raw.reasoning ?? ''),
+        quote: verifiedQuote(raw.quote, prior.summary + next.summary + prior.excerpt + next.excerpt),
+      };
+    })
+  );
   return { comparisons, lowerConfidence: summaries.length < 3 };
 }
 
