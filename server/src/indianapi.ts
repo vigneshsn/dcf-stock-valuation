@@ -1,6 +1,6 @@
 import { calculateAnnualReturns, mapAnnualStatements } from './finance.js';
 
-const DEFAULT_INDIANAPI_URL = 'https://dev.indianapi.in';
+const DEFAULT_INDIANAPI_URL = 'https://stock.indianapi.in';
 const LIVEMINT_URL = 'https://www.livemint.com';
 
 type JsonRecord = Record<string, unknown>;
@@ -96,71 +96,47 @@ function comparableName(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 }
 
-function readFinancialRows(financials: JsonRecord, keys: string[]): JsonRecord[] {
-  for (const key of keys) {
-    const value = financials[key];
-    if (Array.isArray(value)) {
-      return value.map(record);
-    }
-    const container = record(value);
-    for (const nestedKey of ['annual', 'yearly', 'annualData', 'data']) {
-      if (Array.isArray(container[nestedKey])) {
-        return (container[nestedKey] as unknown[]).map(record);
-      }
-    }
-    const nestedRows = Object.values(container).find(Array.isArray);
-    if (nestedRows) {
-      return (nestedRows as unknown[]).map(record);
+// IndianAPI encodes metric groups and statements as [{ key, value }] lists.
+function keyedValues(value: unknown): JsonRecord {
+  if (!Array.isArray(value)) {
+    return {};
+  }
+  const values: JsonRecord = {};
+  for (const entry of value) {
+    const item = record(entry);
+    const key = stringValue(item.key);
+    if (key && !(key in values)) {
+      values[key] = item.value;
     }
   }
-  return [];
-}
-
-function rowYear(row: JsonRecord): number | null {
-  const period = stringValue(row.period, row.frequency, row.type);
-  if (period && /\bQ[1-4]\b|quarter/i.test(period)) {
-    return null;
-  }
-  const raw = row.fiscalYear ?? row.calendarYear ?? row.financialYear ?? row.year ?? row.date;
-  if (typeof raw === 'number' && Number.isInteger(raw) && raw >= 1900 && raw <= 2100) {
-    return raw;
-  }
-  const match = typeof raw === 'string' ? raw.match(/\b(19\d{2}|20\d{2})\b/) : null;
-  return match ? Number(match[1]) : null;
-}
-
-function numericField(row: JsonRecord, ...keys: string[]): number | null {
-  return numberValue(...keys.map((key) => row[key]));
+  return values;
 }
 
 function annualReturns(financials: unknown): { roce: number | null; roe: number | null } {
-  const statements = record(financials);
-  const incomeRows = readFinancialRows(statements, [
-    'incomeStatement', 'income_statement', 'income', 'Income Statement', 'Income',
-  ]);
-  const balanceRows = readFinancialRows(statements, [
-    'balanceSheet', 'balance_sheet', 'balance', 'Balance Sheet', 'Balance',
-  ]);
-  const annualIncome = mapAnnualStatements(incomeRows, rowYear, (row) => ({
-    ebit: numericField(row, 'ebit', 'operatingIncome', 'operatingProfit'),
-    netIncome: numericField(row, 'netIncome', 'netProfit', 'profitAfterTax'),
-  }));
-  const annualBalance = mapAnnualStatements(balanceRows, rowYear, (row) => ({
-    totalAssets: numericField(row, 'totalAssets', 'total_assets'),
-    totalCurrentLiabilities: numericField(
-      row,
-      'totalCurrentLiabilities',
-      'currentLiabilities',
-      'total_current_liabilities'
-    ),
-    totalStockholdersEquity: numericField(
-      row,
-      'totalStockholdersEquity',
-      'totalShareholdersEquity',
-      'shareholdersEquity',
-      'total_equity'
-    ),
-  }));
+  const annualRows = (Array.isArray(financials) ? financials : [])
+    .map(record)
+    .filter((row) => stringValue(row.Type)?.toLowerCase() === 'annual');
+  const fiscalYear = (row: JsonRecord): number | null => {
+    const year = numberValue(row.FiscalYear);
+    return year != null && Number.isInteger(year) ? year : null;
+  };
+  const statement = (row: JsonRecord, type: string): JsonRecord => keyedValues(record(row.stockFinancialMap)[type]);
+
+  const annualIncome = mapAnnualStatements(annualRows, fiscalYear, (row) => {
+    const income = statement(row, 'INC');
+    return {
+      ebit: numberValue(income.OperatingIncome),
+      netIncome: numberValue(income.NetIncome),
+    };
+  });
+  const annualBalance = mapAnnualStatements(annualRows, fiscalYear, (row) => {
+    const balance = statement(row, 'BAL');
+    return {
+      totalAssets: numberValue(balance.TotalAssets),
+      totalCurrentLiabilities: numberValue(balance.TotalCurrentLiabilities),
+      totalStockholdersEquity: numberValue(balance.TotalEquity),
+    };
+  });
   return calculateAnnualReturns(annualIncome, annualBalance);
 }
 
@@ -221,10 +197,10 @@ function normalizePeers(value: unknown): StockPeer[] {
         marketCap: numberValue(peer.marketCap, peer.mktCap),
         peRatio: numberValue(peer.priceToEarningsValueRatio, peer.peRatio, peer.pe),
         pbRatio: numberValue(peer.priceToBookValueRatio, peer.pbRatio, peer.pb),
-        roe: numberValue(peer.returnOnEquityTTM, peer.roeTTM, peer.roe),
-        debtToEquity: numberValue(peer.ltDebtPerEquityMostRecentFiscalYear, peer.debtToEquity, peer.debtEquity),
-        profitMargin: numberValue(peer.netProfitMarginTTM, peer.profitMarginTTM, peer.profitMargin),
-        dividendYield: numberValue(peer.dividendYield, peer.dividendYieldTTM),
+        roe: numberValue(peer.returnOnAverageEquityTrailing12Month, peer.returnOnEquityTTM),
+        debtToEquity: numberValue(peer.ltDebtPerEquityMostRecentFiscalYear, peer.debtToEquity),
+        profitMargin: numberValue(peer.netProfitMarginPercentTrailing12Month, peer.netProfitMarginTTM),
+        dividendYield: numberValue(peer.dividendYieldIndicatedAnnualDividend, peer.dividendYield),
       },
     }))
     .filter(({ value }) => value.name.length > 0)
@@ -240,47 +216,55 @@ function normalizePeers(value: unknown): StockPeer[] {
     .map(({ value }) => value);
 }
 
-function consensusCount(source: JsonRecord, ...keys: string[]): number | null {
-  return numberValue(...keys.map((key) => source[key]));
+const RATING_KEYS: Record<string, keyof AnalystConsensus['counts']> = {
+  strongbuy: 'strongBuy',
+  buy: 'buy',
+  hold: 'hold',
+  sell: 'sell',
+  strongsell: 'strongSell',
+};
+
+function ratingKey(item: JsonRecord): keyof AnalystConsensus['counts'] | null {
+  const label = stringValue(item.ratingName)?.toLowerCase().replace(/[\s_-]+/g, '');
+  return label ? RATING_KEYS[label] ?? null : null;
 }
 
-function normalizeConsensus(analystView: unknown, recosBar: unknown): AnalystConsensus | null {
-  const view = record(analystView);
+function normalizeConsensus(
+  analystView: unknown,
+  recosBar: unknown,
+  averageRating: unknown
+): AnalystConsensus | null {
   const bar = record(recosBar);
-  const countValues: AnalystConsensus['counts'] = {
-    strongBuy: consensusCount(bar, 'strongBuy', 'strong_buy', 'strongBuyCount'),
-    buy: consensusCount(bar, 'buy', 'buyCount'),
-    hold: consensusCount(bar, 'hold', 'holdCount'),
-    sell: consensusCount(bar, 'sell', 'sellCount'),
-    strongSell: consensusCount(bar, 'strongSell', 'strong_sell', 'strongSellCount'),
+  if (bar.isDataPresent === false) {
+    return null;
+  }
+  const barRatings = Array.isArray(bar.stockAnalyst) ? bar.stockAnalyst.map(record) : [];
+  const viewRatings = Array.isArray(analystView) ? analystView.map(record) : [];
+  const counts: AnalystConsensus['counts'] = {
+    strongBuy: null,
+    buy: null,
+    hold: null,
+    sell: null,
+    strongSell: null,
   };
-  if (Array.isArray(recosBar)) {
-    for (const entry of recosBar) {
-      const item = record(entry);
-      const label = stringValue(item.recommendation, item.rating, item.label, item.name)?.toLowerCase().replace(/[\s_-]+/g, '');
-      const count = numberValue(item.count, item.analystCount, item.value);
-      const key = label === 'strongbuy' ? 'strongBuy'
-        : label === 'buy' ? 'buy'
-          : label === 'hold' ? 'hold'
-            : label === 'sell' ? 'sell'
-              : label === 'strongsell' ? 'strongSell'
-                : null;
-      if (key && countValues[key] == null) {
-        countValues[key] = count;
+  for (const [ratings, countKey] of [[barRatings, 'numberOfAnalysts'], [viewRatings, 'numberOfAnalystsLatest']] as const) {
+    for (const item of ratings) {
+      const key = ratingKey(item);
+      if (key && counts[key] == null) {
+        counts[key] = numberValue(item[countKey]);
       }
     }
   }
+
+  const tickerRating = numberValue(bar.tickerRatingValue);
   const recommendation = stringValue(
-    view.overallRecommendation,
-    view.recommendation,
-    view.recommendationSummary,
-    view.overallRating,
-    view.summary
+    barRatings.find((item) => tickerRating != null && numberValue(item.ratingValue) === tickerRating)?.ratingName,
+    averageRating
   );
-  if (!recommendation && Object.values(countValues).every((count) => count == null)) {
+  if (!recommendation && Object.values(counts).every((count) => count == null)) {
     return null;
   }
-  return { source: 'IndianAPI', recommendation, counts: countValues };
+  return { source: 'IndianAPI', recommendation, counts };
 }
 
 export async function fetchIndianApiStock(
@@ -312,34 +296,37 @@ export async function fetchIndianApiStock(
     }
   };
 
-  const stocks = await getJson(`${base}/static/all_stocks.json`);
-  const resolved = Array.isArray(stocks)
-    ? stocks.map(record).find((stock) => stringValue(stock['nse-code'])?.toUpperCase() === ticker)
+  const searchResults = await getJson(`${base}/industry_search?query=${encodeURIComponent(ticker)}`);
+  const searchMatch = Array.isArray(searchResults)
+    ? searchResults.map(record).find((stock) => stringValue(stock.exchangeCodeNsi)?.toUpperCase() === ticker)
     : undefined;
-  if (!resolved) {
-    throw new StockNotFoundError('Ticker not found');
-  }
-  const companyName = stringValue(resolved.name);
-  if (!companyName) {
-    throw new IndianApiError('IndianAPI symbol list returned an unusable company identity');
+  // industry_search matches company names, not tickers (e.g. "TCS" finds nothing), so fall back to
+  // looking the ticker up directly; the returned NSE code is verified below either way.
+  const searchName = searchMatch ? stringValue(searchMatch.commonName) : ticker;
+  if (!searchName) {
+    throw new IndianApiError('IndianAPI search returned an unusable company identity');
   }
 
-  const response = record(await getJson(`${base}/stock?name=${encodeURIComponent(companyName)}`));
+  const response = record(await getJson(`${base}/stock?name=${encodeURIComponent(searchName)}`));
+  const providerError = stringValue(response.error);
+  if (providerError && /not found/i.test(providerError)) {
+    throw new StockNotFoundError('Ticker not found');
+  }
   const returnedName = stringValue(response.companyName);
   if (!returnedName) {
     throw new IndianApiError('IndianAPI returned an unusable company identity');
   }
-  if (comparableName(returnedName) !== comparableName(companyName)) {
+  if (searchMatch && comparableName(returnedName) !== comparableName(searchName)) {
     throw new StockNotFoundError('Ticker identity did not match');
   }
   const profile = record(response.companyProfile);
   const returnedCode = stringValue(
-    response.exchangeCodeNsi,
-    response.nseCode,
-    response.symbol,
-    profile.exchangeCodeNsi
+    profile.exchangeCodeNse,
+    profile.exchangeCodeNsi,
+    response.exchangeCodeNse,
+    response.exchangeCodeNsi
   );
-  if (returnedCode && returnedCode.toUpperCase() !== ticker) {
+  if (returnedCode?.toUpperCase() !== ticker) {
     throw new StockNotFoundError('Ticker identity did not match');
   }
 
@@ -347,25 +334,30 @@ export async function fetchIndianApiStock(
   if (currentPrice == null || currentPrice <= 0) {
     throw new IndianApiError('IndianAPI returned no usable NSE current price');
   }
+  const details = record(response.stockDetailsReusableData);
   const keyMetrics = record(response.keyMetrics);
+  const valuation = keyedValues(keyMetrics.valuation);
+  const perShare = keyedValues(keyMetrics.persharedata);
+  const priceAndVolume = keyedValues(keyMetrics.priceandVolume);
   const description = stringValue(profile.companyDescription, profile.description);
   const industry = stringValue(response.industry, profile.mgIndustry, profile.industry);
   const returns = annualReturns(response.financials);
   const peers = normalizePeers(profile.peerCompanyList ?? response.peerCompanyList);
 
   return {
-    marketCap: numberValue(keyMetrics.marketCap, response.marketCap),
+    marketCap: numberValue(details.marketCap, priceAndVolume.marketCap),
     currentPrice,
     week52High: numberValue(response.yearHigh),
     week52Low: numberValue(response.yearLow),
     peRatio: numberValue(
-      keyMetrics.stockPE,
-      keyMetrics.peRatio,
-      keyMetrics.priceToEarningsRatio,
-      keyMetrics.priceToEarningsValueRatio
+      details.pPerEBasicExcludingExtraordinaryItemsTTM,
+      valuation.pPerEBasicExcludingExtraordinaryItemsTTM
     ),
-    bookValue: numberValue(keyMetrics.bookValuePerShare, keyMetrics.bookValuePerShareTTM, keyMetrics.bookValue),
-    dividendYield: numberValue(keyMetrics.dividendYield),
+    bookValue: numberValue(perShare.bookValuePerShareMostRecentFiscalYear),
+    dividendYield: numberValue(
+      details.currentDividendYieldCommonStockPrimaryIssueLTM,
+      valuation.currentDividendYieldCommonStockPrimaryIssueLTM
+    ),
     roce: returns.roce,
     roe: returns.roe,
     companyIntroduction: {
@@ -375,6 +367,6 @@ export async function fetchIndianApiStock(
     },
     news: normalizeNews(response.recentNews),
     peers,
-    analystConsensus: normalizeConsensus(response.analystView, response.recosBar),
+    analystConsensus: normalizeConsensus(response.analystView, response.recosBar, details.averageRating),
   };
 }

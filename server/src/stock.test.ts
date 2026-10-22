@@ -7,6 +7,23 @@ import { createStockRouter } from './routes/stock.js';
 
 const servers: Server[] = [];
 
+function keyed(values: Record<string, unknown>): Array<{ key: string; value: unknown }> {
+  return Object.entries(values).map(([key, value]) => ({ key, value }));
+}
+
+function financialPeriod(
+  fiscalYear: string,
+  type: 'Annual' | 'Interim',
+  income: Record<string, unknown>,
+  balance: Record<string, unknown>
+) {
+  return {
+    FiscalYear: fiscalYear,
+    Type: type,
+    stockFinancialMap: { INC: keyed(income), BAL: keyed(balance), CAS: [] },
+  };
+}
+
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve, reject) => {
     server.close((err) => err ? reject(err) : resolve());
@@ -34,24 +51,26 @@ test('normalizes an NSE ticker and returns IndianAPI stock data with only its NS
     const url = new URL(String(input));
     requests.push(url);
     assert.equal(new Headers(init?.headers).get('X-API-Key'), 'test-key');
-    if (url.pathname === '/static/all_stocks.json') {
+    if (url.pathname === '/industry_search') {
       return new Response(JSON.stringify([
-        { 'nse-code': 'ACME', name: 'Acme Industries' },
+        { exchangeCodeNsi: 'ACME', commonName: 'Acme Industries' },
       ]));
     }
     assert.equal(url.pathname, '/stock');
     return new Response(JSON.stringify({
       companyName: 'Acme Industries',
       industry: 'Manufacturing',
-      companyProfile: { companyDescription: 'Makes useful things.' },
+      companyProfile: { companyDescription: 'Makes useful things.', exchangeCodeNse: 'ACME' },
       currentPrice: { NSE: '321.5', BSE: '999' },
       yearHigh: '350',
       yearLow: 250,
       keyMetrics: {
+        persharedata: keyed({ bookValuePerShareMostRecentFiscalYear: '42' }),
+      },
+      stockDetailsReusableData: {
         marketCap: '125000000',
-        stockPE: '18.5',
-        bookValue: 42,
-        dividendYield: 1.2,
+        pPerEBasicExcludingExtraordinaryItemsTTM: '18.5',
+        currentDividendYieldCommonStockPrimaryIssueLTM: '1.2',
       },
       recentNews: [],
       peerCompanyList: [],
@@ -68,6 +87,7 @@ test('normalizes an NSE ticker and returns IndianAPI stock data with only its NS
 
   assert.equal(response.status, 200);
   assert.equal(requests.length, 2);
+  assert.equal(requests[0].searchParams.get('query'), 'ACME');
   assert.equal(requests[1].searchParams.get('name'), 'Acme Industries');
   assert.deepEqual(body, {
     marketCap: 125000000,
@@ -106,27 +126,78 @@ test('normalizes an NSE ticker and returns IndianAPI stock data with only its NS
   assert.equal(requests.length, 4);
 });
 
-test('returns not found when the exact NSE exchange code is absent', async () => {
-  let stockLookupRequested = false;
+test('looks the ticker up directly when industry search has no exact NSE match', async () => {
+  const stockNames: (string | null)[] = [];
   const router = createStockRouter({
     provider: 'indianapi',
     indianApiKey: 'test-key',
     fetcher: async (input) => {
       const url = new URL(String(input));
-      if (url.pathname === '/static/all_stocks.json') {
+      if (url.pathname === '/industry_search') {
+        return new Response('[]');
+      }
+      stockNames.push(url.searchParams.get('name'));
+      return new Response(JSON.stringify({
+        companyName: 'Tata Consultancy Services',
+        companyProfile: { exchangeCodeNse: 'TCS' },
+        currentPrice: { NSE: '2506.90' },
+      }));
+    },
+  });
+
+  const response = await requestStock(router, 'tcs');
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(stockNames, ['TCS']);
+  assert.equal(body.currentPrice, 2506.9);
+  assert.equal(body.companyIntroduction.name, 'Tata Consultancy Services');
+});
+
+test('returns not found when the ticker cannot be resolved', async () => {
+  const stockNames: (string | null)[] = [];
+  const router = createStockRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/industry_search') {
         return new Response(JSON.stringify([
-          { 'nse-code': 'ACMEOLD', name: 'Acme Industries' },
+          { exchangeCodeNsi: 'ACMEOLD', commonName: 'Acme Industries' },
         ]));
       }
-      stockLookupRequested = true;
-      return new Response('{}');
+      stockNames.push(url.searchParams.get('name'));
+      return new Response(JSON.stringify({ error: 'Stock not found' }));
     },
   });
 
   const response = await requestStock(router, 'NOTFOUND');
 
   assert.equal(response.status, 404);
-  assert.equal(stockLookupRequested, false);
+  assert.deepEqual(await response.json(), { error: 'Ticker not found' });
+  assert.deepEqual(stockNames, ['NOTFOUND']);
+});
+
+test('rejects a direct lookup that returns a different NSE ticker', async () => {
+  const router = createStockRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      return url.pathname === '/industry_search'
+        ? new Response('[]')
+        : new Response(JSON.stringify({
+          companyName: 'ITC Hotels',
+          companyProfile: { exchangeCodeNse: 'ITCHOTELS' },
+          currentPrice: { NSE: 200 },
+        }));
+    },
+  });
+
+  const response = await requestStock(router, 'ITCH');
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { error: 'Ticker not found' });
 });
 
 test('rejects a stock response whose company identity does not match the resolved NSE ticker', async () => {
@@ -135,8 +206,8 @@ test('rejects a stock response whose company identity does not match the resolve
     indianApiKey: 'test-key',
     fetcher: async (input) => {
       const url = new URL(String(input));
-      return url.pathname === '/static/all_stocks.json'
-        ? new Response(JSON.stringify([{ 'nse-code': 'MISMATCH', name: 'Expected Company' }]))
+      return url.pathname === '/industry_search'
+        ? new Response(JSON.stringify([{ exchangeCodeNsi: 'MISMATCH', commonName: 'Expected Company' }]))
         : new Response(JSON.stringify({
           companyName: 'Different Company',
           currentPrice: { NSE: 150 },
@@ -158,11 +229,12 @@ test('reports missing NSE price and provider failure as explicit upstream errors
     fetcher: async (input) => {
       requests += 1;
       const url = new URL(String(input));
-      if (url.pathname === '/static/all_stocks.json') {
-        return new Response(JSON.stringify([{ 'nse-code': 'NOPRICE', name: 'No Price Ltd' }]));
+      if (url.pathname === '/industry_search') {
+        return new Response(JSON.stringify([{ exchangeCodeNsi: 'NOPRICE', commonName: 'No Price Ltd' }]));
       }
       return new Response(JSON.stringify({
         companyName: 'No Price Ltd',
+        companyProfile: { exchangeCodeNse: 'NOPRICE' },
         currentPrice: { BSE: 150 },
       }));
     },
@@ -178,8 +250,8 @@ test('reports missing NSE price and provider failure as explicit upstream errors
     indianApiKey: 'test-key',
     fetcher: async (input) => {
       const url = new URL(String(input));
-      return url.pathname === '/static/all_stocks.json'
-        ? new Response(JSON.stringify([{ 'nse-code': 'FAIL', name: 'Fail Ltd' }]))
+      return url.pathname === '/industry_search'
+        ? new Response(JSON.stringify([{ exchangeCodeNsi: 'FAIL', commonName: 'Fail Ltd' }]))
         : new Response('unavailable', { status: 503 });
     },
   });
@@ -195,17 +267,26 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
     indianApiKey: 'test-key',
     fetcher: async (input) => {
       const url = new URL(String(input));
-      if (url.pathname === '/static/all_stocks.json') {
-        return new Response(JSON.stringify([{ 'nse-code': 'DETAILS', name: 'Details Ltd' }]));
+      if (url.pathname === '/industry_search') {
+        return new Response(JSON.stringify([{ exchangeCodeNsi: 'DETAILS', commonName: 'Details Ltd' }]));
       }
       return new Response(JSON.stringify({
         companyName: 'Details Ltd',
         industry: 'Technology',
         companyProfile: {
           companyDescription: longDescription,
+          exchangeCodeNse: 'DETAILS',
           peerCompanyList: [
             { companyName: 'Small', marketCap: 10 },
-            { companyName: 'Largest', marketCap: 500, price: 20, returnOnEquityTTM: 12.5 },
+            {
+              companyName: 'Largest',
+              marketCap: 500,
+              price: 20,
+              returnOnAverageEquityTrailing12Month: 12.5,
+              returnOnAverageEquity5YearAverage: 30,
+              netProfitMargin5YearAverage: 9,
+              dividendYieldIndicatedAnnualDividend: 1.75,
+            },
             { companyName: 'No Cap First' },
             { companyName: 'Middle', marketCap: 100, priceToEarningsValueRatio: 8 },
             { companyName: 'No Cap Second' },
@@ -215,17 +296,39 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
         currentPrice: { NSE: 75, BSE: 999 },
         yearHigh: 90,
         yearLow: 50,
-        keyMetrics: { marketCap: 1234, priceToEarningsValueRatio: 15 },
-        financials: {
-          incomeStatement: [
-            { fiscalYear: 2025 },
-            { fiscalYear: 2024, netIncome: 100, ebit: 150 },
-          ],
-          balanceSheet: [
-            { fiscalYear: 2025, totalAssets: 100, totalCurrentLiabilities: 10, totalStockholdersEquity: 50 },
-            { fiscalYear: 2024, totalAssets: 1000, totalCurrentLiabilities: 250, totalStockholdersEquity: 500 },
-          ],
+        keyMetrics: {
+          valuation: keyed({
+            pPerEBasicExcludingExtraordinaryItemsTTM: '15',
+            currentDividendYieldCommonStockPrimaryIssueLTM: '2.5',
+          }),
+          persharedata: keyed({ bookValuePerShareMostRecentFiscalYear: '54.46' }),
         },
+        stockDetailsReusableData: {
+          marketCap: '1234',
+          pPerEBasicExcludingExtraordinaryItemsTTM: '',
+          currentDividendYieldCommonStockPrimaryIssueLTM: '-',
+          averageRating: 'Hold',
+        },
+        financials: [
+          financialPeriod(
+            '2026',
+            'Interim',
+            { OperatingIncome: 999, NetIncome: 999 },
+            { TotalAssets: 2000, TotalCurrentLiabilities: 100, TotalEquity: 900 }
+          ),
+          financialPeriod(
+            '2025',
+            'Annual',
+            {},
+            { TotalAssets: 100, TotalCurrentLiabilities: 10, TotalEquity: 50 }
+          ),
+          financialPeriod(
+            '2024',
+            'Annual',
+            { OperatingIncome: '150', NetIncome: '100' },
+            { TotalAssets: '1000', TotalCurrentLiabilities: '250', TotalEquity: '500' }
+          ),
+        ],
         recentNews: [
           { headline: 'Old', pub_date: '2026-10-01T10:00:00Z', url: '/news/old' },
           { headline: 'Newest', pub_date: '2026-10-20T10:00:00Z', url: '/news/newest' },
@@ -236,8 +339,20 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
           { headline: 'Fifth newest', pub_date: '2026-10-15T10:00:00Z', url: '/news/fifth' },
           { headline: 'Sixth newest', pub_date: '2026-10-14T10:00:00Z', url: '/news/sixth' },
         ],
-        analystView: { overallRecommendation: 'Buy' },
-        recosBar: { buy: 4, hold: 2, sell: 1 },
+        analystView: [
+          { ratingName: 'Strong Buy', numberOfAnalystsLatest: '6' },
+          { ratingName: 'Strong Sell', numberOfAnalystsLatest: '0.00' },
+          { ratingName: 'Total', numberOfAnalystsLatest: '34' },
+        ],
+        recosBar: {
+          tickerRatingValue: 2,
+          isDataPresent: true,
+          stockAnalyst: [
+            { ratingName: 'Sell', ratingValue: 4, numberOfAnalysts: 2 },
+            { ratingName: 'Hold', ratingValue: 3, numberOfAnalysts: 13 },
+            { ratingName: 'Buy', ratingValue: 2, numberOfAnalysts: 13 },
+          ],
+        },
       }));
     },
   });
@@ -249,6 +364,8 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
   assert.equal(body.marketCap, 1234);
   assert.equal(body.currentPrice, 75);
   assert.equal(body.peRatio, 15);
+  assert.equal(body.bookValue, 54.46);
+  assert.equal(body.dividendYield, 2.5);
   assert.equal(body.roce, 20);
   assert.equal(body.roe, 20);
   assert.equal(body.companyIntroduction.description.length, 500);
@@ -263,8 +380,11 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
   ]);
   assert.equal(body.peers[0].roe, 12.5);
   assert.equal(body.peers[0].profitMargin, null);
-  assert.deepEqual(body.analystConsensus.counts, {
-    strongBuy: null, buy: 4, hold: 2, sell: 1, strongSell: null,
+  assert.equal(body.peers[0].dividendYield, 1.75);
+  assert.deepEqual(body.analystConsensus, {
+    source: 'IndianAPI',
+    recommendation: 'Buy',
+    counts: { strongBuy: 6, buy: 13, hold: 13, sell: 2, strongSell: 0 },
   });
 });
 
@@ -274,21 +394,21 @@ test('calculates ROCE when the aligned annual data lacks the separate ROE inputs
     indianApiKey: 'test-key',
     fetcher: async (input) => {
       const url = new URL(String(input));
-      if (url.pathname === '/static/all_stocks.json') {
-        return new Response(JSON.stringify([{ 'nse-code': 'INDEPENDENT', name: 'Independent Ltd' }]));
+      if (url.pathname === '/industry_search') {
+        return new Response(JSON.stringify([{ exchangeCodeNsi: 'INDEPENDENT', commonName: 'Independent Ltd' }]));
       }
       return new Response(JSON.stringify({
         companyName: 'Independent Ltd',
+        companyProfile: { exchangeCodeNse: 'INDEPENDENT' },
         currentPrice: { NSE: 50 },
-        financials: {
-          incomeStatement: [{ fiscalYear: 2025, ebit: 200, netIncome: null }],
-          balanceSheet: [{
-            fiscalYear: 2025,
-            totalAssets: 1000,
-            totalCurrentLiabilities: 200,
-            totalStockholdersEquity: 500,
-          }],
-        },
+        financials: [
+          financialPeriod(
+            '2025',
+            'Annual',
+            { OperatingIncome: 200, NetIncome: null },
+            { TotalAssets: 1000, TotalCurrentLiabilities: 200, TotalEquity: 500 }
+          ),
+        ],
       }));
     },
   });
@@ -425,10 +545,11 @@ test('rejects zero and negative prices as unusable NSE quotes', async () => {
     indianApiKey: 'test-key',
     fetcher: async (input) => {
       const url = new URL(String(input));
-      return url.pathname === '/static/all_stocks.json'
-        ? new Response(JSON.stringify([{ 'nse-code': 'ZERO', name: 'Zero Ltd' }]))
+      return url.pathname === '/industry_search'
+        ? new Response(JSON.stringify([{ exchangeCodeNsi: 'ZERO', commonName: 'Zero Ltd' }]))
         : new Response(JSON.stringify({
           companyName: 'Zero Ltd',
+          companyProfile: { exchangeCodeNse: 'ZERO' },
           currentPrice: { NSE: 0 },
         }));
     },
