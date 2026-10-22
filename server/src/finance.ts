@@ -25,3 +25,69 @@ export function calculateROE(
   }
   return netIncome / totalStockholderEquity;
 }
+
+export interface AnnualIncomeMetrics {
+  year: number;
+  ebit: number | null;
+  netIncome: number | null;
+}
+
+export interface AnnualBalanceMetrics {
+  year: number;
+  totalAssets: number | null;
+  totalCurrentLiabilities: number | null;
+  totalStockholdersEquity: number | null;
+}
+
+export function mapAnnualStatements<T, Metrics extends object>(
+  rows: T[],
+  yearOf: (row: T) => number | null,
+  metricsOf: (row: T) => Metrics
+): Array<Metrics & { year: number }> {
+  return rows.flatMap((row) => {
+    const year = yearOf(row);
+    return year == null ? [] : [{ ...metricsOf(row), year }];
+  });
+}
+
+export function calculateAnnualReturns(
+  incomeStatements: AnnualIncomeMetrics[],
+  balanceSheets: AnnualBalanceMetrics[]
+): { roce: number | null; roe: number | null } {
+  const incomeByYear = new Map<number, AnnualIncomeMetrics>();
+  const balanceByYear = new Map<number, AnnualBalanceMetrics>();
+  for (const statement of incomeStatements) {
+    if (!incomeByYear.has(statement.year)) {
+      incomeByYear.set(statement.year, statement);
+    }
+  }
+  for (const statement of balanceSheets) {
+    if (!balanceByYear.has(statement.year)) {
+      balanceByYear.set(statement.year, statement);
+    }
+  }
+
+  const years = [...incomeByYear.keys()].filter((year) => balanceByYear.has(year)).sort((a, b) => b - a);
+  for (const year of years) {
+    const income = incomeByYear.get(year)!;
+    const balance = balanceByYear.get(year)!;
+    const hasRoceInputs = [income.ebit, balance.totalAssets, balance.totalCurrentLiabilities]
+      .every((value) => value != null && Number.isFinite(value));
+    const hasRoeInputs = [income.netIncome, balance.totalStockholdersEquity]
+      .every((value) => value != null && Number.isFinite(value));
+    if (!hasRoceInputs && !hasRoeInputs) {
+      continue;
+    }
+    const roce = hasRoceInputs
+      ? calculateROCE(income.ebit, balance.totalAssets, balance.totalCurrentLiabilities)
+      : null;
+    const roe = hasRoeInputs
+      ? calculateROE(income.netIncome, balance.totalStockholdersEquity)
+      : null;
+    return {
+      roce: roce == null ? null : roce * 100,
+      roe: roe == null ? null : roe * 100,
+    };
+  }
+  return { roce: null, roe: null };
+}

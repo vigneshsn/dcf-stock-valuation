@@ -10,6 +10,6 @@ export class StockService {
     constructor(private http: HttpClient) {}
 
     getStock(ticker: string): Observable<StockMetrics> {
-        return this.http.get<StockMetrics>(this.baseUrl + '/' + ticker);
+        return this.http.get<StockMetrics>(this.baseUrl + '/' + encodeURIComponent(ticker.trim()));
     }
 }

@@ -1,0 +1,65 @@
+<div class="dashboard">
+    <h1>Stock Analysis</h1>
+    <div class="search-bar">
+        <input type="text" [(ngModel)]="ticker" (keyup.enter)="run()" placeholder="Enter ticker (e.g. RELIANCE.NS)" name="ticker" />
+        <button type="button" (click)="run()">Analyse</button>
+    </div>
+
+    <div class="panels" *ngIf="activeTicker">
+        <section class="panel" data-testid="quant-panel">
+            <h2>Quantitative analysis</h2>
+            <p *ngIf="quantLoading">Loading...</p>
+            <p class="error" *ngIf="quantError">{{ quantError }}</p>
+
+            <ng-container *ngIf="quant && !quantLoading">
+                <div class="score" data-testid="quant-score">{{ quant.score }}<span>/5</span></div>
+                <p class="explanation">{{ quant.explanation }}</p>
+                <p class="muted" *ngIf="quant.cached">Served from cache</p>
+
+                <div class="grid">
+                    <div><span class="label">Price</span>{{ quant.price | number:'1.2-2' }}</div>
+                    <div><span class="label">Fair value</span>{{ quant.fairValue | number:'1.2-2' }}</div>
+                    <div><span class="label">P/E</span>{{ quant.ratios.pe !== null ? (quant.ratios.pe | number:'1.1-1') : 'N/A' }}</div>
+                    <div><span class="label">P/B</span>{{ quant.ratios.pb !== null ? (quant.ratios.pb | number:'1.1-1') : 'N/A' }}</div>
+                    <div><span class="label">ROE</span>{{ quant.ratios.roe !== null ? ((quant.ratios.roe * 100) | number:'1.1-1') + '%' : 'N/A' }}</div>
+                </div>
+
+                <h3>DCF assumptions <small *ngIf="quant.overridden">(overridden)</small></h3>
+                <div class="overrides">
+                    <label>Growth % (default {{ quant.defaults.growthRate }})
+                        <input type="number" step="0.1" [(ngModel)]="growth" name="growth" [placeholder]="quant.defaults.growthRate" /></label>
+                    <label>Discount % (default {{ quant.defaults.discountRate }})
+                        <input type="number" step="0.1" [(ngModel)]="discount" name="discount" [placeholder]="quant.defaults.discountRate" /></label>
+                    <label>Terminal % (default {{ quant.defaults.terminalGrowthRate }})
+                        <input type="number" step="0.1" [(ngModel)]="terminal" name="terminal" [placeholder]="quant.defaults.terminalGrowthRate" /></label>
+                </div>
+                <button type="button" (click)="loadQuant()">Recalculate</button>
+                <button type="button" (click)="resetOverrides()">Reset to defaults</button>
+            </ng-container>
+        </section>
+
+        <section class="panel" data-testid="qual-panel">
+            <h2>Qualitative analysis <span class="badge">experimental</span></h2>
+            <label class="peers">Peer override (comma-separated tickers, optional)
+                <input type="text" [(ngModel)]="peersText" name="peers" placeholder="e.g. ONGC.NS, IOC.NS" /></label>
+            <button type="button" (click)="runQualitative()" [disabled]="qualLoading">Run qualitative analysis</button>
+            <p *ngIf="qualLoading">Reading annual reports and asking the local model. This can take a few minutes...</p>
+            <p class="error" *ngIf="qualError">{{ qualError }}</p>
+
+            <div *ngIf="needsUpload" class="upload">
+                <label>Year <input type="number" [(ngModel)]="uploadYear" name="uploadYear" /></label>
+                <input type="file" accept="application/pdf" (change)="onFileSelected($event)" />
+                <p class="muted" *ngIf="uploadMessage">{{ uploadMessage }}</p>
+            </div>
+
+            <ng-container *ngIf="qual && !qualLoading">
+                <div class="score" data-testid="qual-score">{{ qual.score }}<span>/5</span></div>
+                <p class="muted" *ngIf="qual.cached">Served from cache</p>
+                <p class="warn" *ngIf="qual.management.lowerConfidence">Lower confidence: fewer than 3 years of reports.</p>
+                <p class="explanation">{{ qual.explanation }}</p>
+                <p class="muted">Peers{{ qual.peersOverridden ? ' (overridden)' : '' }}: {{ qual.peers.length ? (qual.peers | json) : 'none' }}</p>
+                <blockquote *ngFor="let q of qual.quotes">{{ q }}</blockquote>
+            </ng-container>
+        </section>
+    </div>
+</div>
