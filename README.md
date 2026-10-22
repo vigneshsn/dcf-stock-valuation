@@ -11,6 +11,8 @@ An interactive Angular application to estimate the intrinsic value of a stock us
 - Printable report
 - Unit tests (Jasmine + Karma)
 
+See [docs/architecture.md](docs/architecture.md) for the system architecture diagrams.
+
 
 ## Setup
 

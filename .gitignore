@@ -7,7 +7,6 @@ dist
 *.log
 *.tmp
 .angular
-docs
 
 # ── GSD baseline (auto-generated) ──
 .gsd-worktrees/
