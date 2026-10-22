@@ -154,6 +154,32 @@ test('looks the ticker up directly when industry search has no exact NSE match',
   assert.equal(body.companyIntroduction.name, 'Tata Consultancy Services');
 });
 
+test('accepts the .NS suffix for IndianAPI and looks up the bare NSE symbol', async () => {
+  const stockNames: (string | null)[] = [];
+  const router = createStockRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/industry_search') {
+        return new Response('[]');
+      }
+      stockNames.push(url.searchParams.get('name'));
+      return new Response(JSON.stringify({
+        companyName: 'Infosys',
+        companyProfile: { exchangeCodeNse: 'INFY' },
+        currentPrice: { NSE: '1500' },
+      }));
+    },
+  });
+
+  const response = await requestStock(router, 'infy.ns');
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(stockNames, ['INFY']);
+  assert.equal((await response.json()).currentPrice, 1500);
+});
+
 test('returns not found when the ticker cannot be resolved', async () => {
   const stockNames: (string | null)[] = [];
   const router = createStockRouter({

@@ -12,18 +12,17 @@ flowchart LR
         direction TB
         router{{AppRoutingModule}}
         dcfc["DcfCalculatorComponent<br/>route: /"]
-        fund["FundamentalsComponent<br/>route: /fundamentals"]
-        dash["AnalysisDashboardComponent<br/>route: /analysis"]
+        dash["StockDashboardComponent<br/>route: /stock?q=TICKER<br/>(/fundamentals, /analysis redirect here)"]
         fb["FeedbackComponent<br/>route: /feedback"]
         helper["DcfHelperService"]
         export["CsvService / XlsxService"]
         stockSvc["StockService"]
         analysisSvc["AnalysisService"]
 
-        router --> dcfc & fund & dash & fb
+        router --> dcfc & dash & fb
         dcfc --> helper
         dcfc --> export
-        fund --> stockSvc
+        dash --> stockSvc
         dash --> analysisSvc
     end
 
@@ -67,9 +66,9 @@ flowchart LR
 | Feature | Frontend | Backend | Data source |
 | --- | --- | --- | --- |
 | Manual DCF calculator with CSV/XLSX export | `DcfCalculatorComponent`, `DcfHelperService`, `CsvService`, `XlsxService` | — (runs entirely in the browser) | User input |
-| Fundamentals (price, ratios, news, peers, consensus) | `FundamentalsComponent`, `StockService` | `GET /api/stock/:ticker` | IndianAPI or FMP |
-| Quantitative analysis (DCF Fair value + score) | `AnalysisDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
-| Qualitative analysis (Moat + Management trustworthiness) | `AnalysisDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/qualitative` | Screener.in / uploaded PDFs, FMP peers, Ollama |
+| Fundamentals (price, ratios, news, peers, consensus) | `StockDashboardComponent`, `StockService` | `GET /api/stock/:ticker` | IndianAPI or FMP |
+| Quantitative analysis (DCF Fair value + score) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
+| Qualitative analysis (Moat + Management trustworthiness) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/qualitative` | Screener.in / uploaded PDFs, FMP peers, Ollama |
 | Feedback | `FeedbackComponent` | — | Embedded Google Form |
 
 ## Backend modules
@@ -112,7 +111,7 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as FundamentalsComponent
+    participant UI as StockDashboardComponent
     participant API as routes/stock.ts
     participant C as cache.ts
     participant P as IndianAPI / FMP
@@ -135,7 +134,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as AnalysisDashboardComponent
+    participant UI as StockDashboardComponent
     participant API as routes/analysis.ts
     participant C as cache.ts
     participant P as IndianAPI / FMP
@@ -164,7 +163,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as AnalysisDashboardComponent
+    participant UI as StockDashboardComponent
     participant API as routes/analysis.ts
     participant Y as yearSummaries.ts
     participant D as Disk cache (.cache/mdna)

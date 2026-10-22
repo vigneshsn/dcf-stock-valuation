@@ -24,6 +24,9 @@ export interface Peer {
     marketCap: number | null;
 }
 
+export type MoatRating = 'wide' | 'narrow' | 'none';
+export type GuidanceOutcome = 'met' | 'partly' | 'missed';
+
 export interface QualitativeAnalysis {
     ticker: string;
     model: string;
@@ -31,10 +34,10 @@ export interface QualitativeAnalysis {
     peersOverridden: boolean;
     yearsAnalysed: number[];
     skippedYears: number[];
-    moat: { rating: string; reasoning: string; quote: string | null };
+    moat: { rating: MoatRating; reasoning: string; quote: string | null };
     management: {
         lowerConfidence: boolean;
-        comparisons: { guidanceYear: number; actualsYear: number; outcome: string; reasoning: string; quote: string | null }[];
+        comparisons: { guidanceYear: number; actualsYear: number; outcome: GuidanceOutcome; reasoning: string; quote: string | null }[];
     };
     score: number;
     experimental: boolean;

@@ -3,19 +3,20 @@ import {DcfCalculatorComponent} from "./dcf-calculator/dcf-calculator.component"
 import {Routes, RouterModule} from "@angular/router";
 import {NgModule} from '@angular/core';
 import {PageNotFound} from "./page-not-found/page-not-found";
-import {AnalysisDashboardComponent} from "./analysis/analysis-dashboard.component";
-import {FundamentalsComponent} from "./fundamentals/fundamentals.component";
+import {StockDashboardComponent} from "./stock-dashboard/stock-dashboard.component";
 
 const routes: Routes = [
     {path: '', component: DcfCalculatorComponent},
     {path: 'feedback', component: FeedbackComponent},
-    {path: 'fundamentals', component: FundamentalsComponent},
-    {path: 'analysis', component: AnalysisDashboardComponent},
+    {path: 'stock', component: StockDashboardComponent},
+    // Fundamentals and Analysis used to be separate pages; both now live on /stock.
+    {path: 'fundamentals', redirectTo: 'stock'},
+    {path: 'analysis', redirectTo: 'stock'},
     {path: '**', component: PageNotFound}
 ];
 
 @NgModule({
-    imports: [RouterModule.forRoot(routes)],
+    imports: [RouterModule.forRoot(routes, {scrollPositionRestoration: 'enabled'})],
     exports: [RouterModule]
 })
 export class AppRoutingModule {

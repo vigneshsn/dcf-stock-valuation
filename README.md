@@ -114,9 +114,9 @@ The server starts on `http://localhost:3000` by default. Run it alongside `npm s
 
 ### Manual stock-data UAT
 
-Open `http://localhost:4200/fundamentals` while the Angular app and backend are running, then verify:
+Open `http://localhost:4200/stock` while the Angular app and backend are running. Fundamentals, the Quantitative analysis and the Qualitative analysis share this one page; `?q=TICKER` deep-links a stock. Then verify:
 
-1. Search a populated NSE symbol such as `RELIANCE`; confirm the NSE quote, metrics, company context, recent news, peers, and analyst consensus appear.
+1. Search a populated NSE symbol such as `RELIANCE`; confirm the NSE quote, metrics, company context, the Quantitative score with Fair value, recent news, peers, and analyst consensus appear.
 2. Search a company with missing optional provider data; confirm available sections remain visible and missing sections/cells show empty states rather than errors.
 3. Search an unknown NSE symbol; confirm the app shows “Ticker not found”.
 4. Set `STOCK_DATA_PROVIDER=indianapi` and use an invalid IndianAPI key while an FMP key is configured; confirm the app shows an upstream error without FMP data.

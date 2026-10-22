@@ -1,45 +1,8 @@
 .info-icon {
-    margin-left: 5px;
+    margin-left: 4px;
     cursor: help;
-    font-size: 14px;
-    color: #007bff;
+    font-size: 13px;
     position: relative;
-}
-
-.info-icon:hover {
-    color: #0056b3;
-}
-
-/* Custom tooltip styling */
-.info-icon[title] {
-    position: relative;
-}
-
-.info-icon[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #333;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.info-icon[title]:hover::before {
-    content: '';
-    position: absolute;
-    bottom: 115%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: #333;
-    z-index: 1000;
 }
 
 .tooltip-container {
@@ -50,22 +13,25 @@
 
 .custom-tooltip {
     visibility: hidden;
-    width: 220px;
-    background: #333;
-    color: #fff;
+    width: 240px;
+    background: var(--surface-solid, #12121e);
+    color: var(--text, #fff);
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
     text-align: left;
-    border-radius: 6px;
-    padding: 8px 10px;
+    border-radius: 12px;
+    padding: 10px 12px;
     position: absolute;
     z-index: 10;
-    bottom: 125%; /* Show above the icon */
+    bottom: 135%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateY(4px);
     opacity: 0;
-    transition: opacity 0.2s;
-    font-size: 0.95em;
+    transition: opacity 0.2s, transform 0.2s;
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.45;
     word-break: break-word;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.6);
 }
 
 .tooltip-container:active .custom-tooltip,
@@ -73,14 +39,11 @@
 .tooltip-container:hover .custom-tooltip {
     visibility: visible;
     opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 @media (max-width: 600px) {
     .custom-tooltip {
-        width: 90vw;
-        left: 5vw;
-        transform: none;
-        font-size: 1em;
-        bottom: 140%;
+        width: 70vw;
     }
 }

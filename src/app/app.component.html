@@ -1,9 +1,35 @@
-<mat-toolbar color="primary">
-    <span>DCF Stock Valuation</span>
-</mat-toolbar>
-<div class="container">
-    <router-outlet></router-outlet>
-    <div style="text-align: center; margin: 2rem 0;">
-        <a mat-button color="accent" routerLink="/feedback">Give Feedback</a>
+<div class="bg-glow" aria-hidden="true"></div>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="brand" routerLink="/stock" aria-label="ValueStock360 home">
+            <span class="brand-mark" aria-hidden="true">◆</span>
+            <span>value<span class="grad-text">stock</span>360</span>
+        </a>
+        <nav class="nav" aria-label="Main">
+            <a routerLink="/stock" routerLinkActive="active" aria-label="Analyse">
+                <span class="material-icons" aria-hidden="true">insights</span><span class="nav-label">Analyse</span>
+            </a>
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" aria-label="DCF calculator">
+                <span class="material-icons" aria-hidden="true">calculate</span><span class="nav-label">DCF calculator</span>
+            </a>
+            <a routerLink="/feedback" routerLinkActive="active" aria-label="Feedback">
+                <span class="material-icons" aria-hidden="true">chat_bubble_outline</span><span class="nav-label">Feedback</span>
+            </a>
+        </nav>
+        <button type="button" class="theme-toggle" (click)="toggleTheme()"
+                [attr.aria-label]="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
+            <span class="material-icons" aria-hidden="true">{{ theme === 'dark' ? 'light_mode' : 'dark_mode' }}</span>
+        </button>
     </div>
-</div>
+</header>
+
+<main class="container">
+    <router-outlet></router-outlet>
+</main>
+
+<footer class="footer">
+    <span>Not financial advice. Do your own research.</span>
+    <span class="dot" aria-hidden="true">•</span>
+    <a routerLink="/feedback">Give feedback</a>
+</footer>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title style="text-align: center;">DCF Stock Valuation</title>
+    <title>ValueStock360 · Stock analysis & DCF valuation</title>
     <base href="/">
     <meta name="description"
           content="Value Indian stocks easily using the Discounted Cash Flow (DCF) method. Built for investors who want to find intrinsic value with clear steps and examples.">
@@ -10,7 +10,19 @@
           content="DCF calculator India, stock valuation tool, intrinsic value calculator, Warren Buffett valuation, value investing India">
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#07070d">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script>
+        // Apply the saved theme before Angular boots to avoid a light/dark flash.
+        try {
+            var t = localStorage.getItem('vs360-theme');
+            if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            document.documentElement.dataset.theme = t;
+        } catch (e) {}
+    </script>
 </head>
 <body>
 <app-root></app-root>

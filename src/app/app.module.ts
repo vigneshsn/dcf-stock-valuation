@@ -5,7 +5,6 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {FormsModule} from '@angular/forms';
 
 
-import {MatToolbarModule} from '@angular/material/toolbar';
 import {MatButtonModule} from '@angular/material/button';
 import {MatInputModule} from '@angular/material/input';
 import {MatCardModule} from '@angular/material/card';
@@ -18,7 +17,6 @@ import {CsvService} from './services/csv.service';
 import {DcfHelperService} from './services/dcf-helper.service';
 import {XlsxService} from './services/xlsx.service';
 import {AppRoutingModule} from "./app-routing.module";
-import {FundamentalsComponent} from "./fundamentals/fundamentals.component";
 
 
 @NgModule({
@@ -29,7 +27,6 @@ import {FundamentalsComponent} from "./fundamentals/fundamentals.component";
         BrowserModule,
         BrowserAnimationsModule,
         FormsModule,
-        MatToolbarModule,
         MatButtonModule,
         MatInputModule,
         MatCardModule,
@@ -37,7 +34,6 @@ import {FundamentalsComponent} from "./fundamentals/fundamentals.component";
         MatIconModule,
         MatFormFieldModule,
         DcfCalculatorComponent,
-        FundamentalsComponent,
         AppRoutingModule,
         HttpClientModule
     ],

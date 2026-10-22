@@ -1,14 +1,13 @@
 import {Component} from "@angular/core";
-import {MatButton} from "@angular/material/button";
-import {RouterLink} from "@angular/router";
 
 @Component({
     templateUrl: './feedback.html',
     standalone: true,
-    imports: [
-        MatButton,
-        RouterLink
-    ]
+    styles: [`
+        .feedback { padding-top: 32px; }
+        .form-card { padding: 8px; overflow: hidden; background: #fff; }
+        iframe { display: block; width: 100%; max-width: 760px; margin: 0 auto; border: 0; }
+    `]
 })
 export class FeedbackComponent {
 

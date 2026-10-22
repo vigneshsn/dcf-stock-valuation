@@ -1,9 +1,125 @@
-/* Simple Material theme overrides (uses Angular Material theming by default when installed) */
-mat-toolbar {
-    background: #0b66ff;
-    color: #fff
+:host {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    position: relative;
+    isolation: isolate;
 }
 
-.mat-card {
-    border-radius: 12px
+.bg-glow {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(600px 400px at 10% -5%, var(--glow-1), transparent 70%),
+        radial-gradient(500px 380px at 95% 10%, var(--glow-2), transparent 70%);
+}
+
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    text-decoration: none;
+}
+
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--grad);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.nav {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+.nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.92rem;
+    text-decoration: none;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.nav a:hover { color: var(--text); }
+
+.nav a.active {
+    color: var(--text);
+    background: var(--surface-solid);
+    box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.5), inset 0 0 0 1px var(--border);
+}
+
+.theme-toggle {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.theme-toggle:hover { transform: rotate(-20deg); }
+
+main { flex: 1; width: 100%; }
+
+.footer {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 24px 20px 32px;
+    color: var(--faint);
+    font-size: 0.85rem;
+}
+
+.dot { opacity: 0.5; }
+
+@media (max-width: 640px) {
+    .nav-label { display: none; }
+    .nav a { padding: 8px 12px; }
+    .brand > span:last-child { display: none; }
 }

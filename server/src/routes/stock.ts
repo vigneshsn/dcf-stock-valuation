@@ -151,7 +151,9 @@ export function createStockRouter(options: StockRouterOptions = {}): Router {
   const provider = configuredProvider(options.provider);
 
   router.get('/:ticker', async (req, res) => {
-    const ticker = req.params.ticker.trim().toUpperCase();
+    const requested = req.params.ticker.trim().toUpperCase();
+    // IndianAPI resolves bare NSE symbols; accept the `.NS` form the analysis routes also accept.
+    const ticker = provider === 'indianapi' ? requested.replace(/\.NS$/, '') : requested;
     if (!ticker) {
       return res.status(404).json({ error: 'Ticker not found' });
     }

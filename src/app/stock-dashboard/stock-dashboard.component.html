@@ -1,0 +1,458 @@
+<section class="hero" [class.compact]="ticker">
+    @if (!ticker) {
+        <span class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span> Fundamentals · DCF · annual-report AI</span>
+        <h1>Is it a <span class="grad-text">steal</span> or just hype?</h1>
+        <p class="lead">Drop a ticker and get the whole picture on one page: live fundamentals, a DCF fair value
+            and an AI read of the annual reports.</p>
+    }
+
+    <form class="search" (ngSubmit)="search()" role="search">
+        <span class="material-icons search-icon" aria-hidden="true">search</span>
+        <input type="text" name="ticker" [(ngModel)]="query" autocomplete="off" spellcheck="false"
+               aria-label="NSE ticker" placeholder="Search an NSE ticker: TCS, RELIANCE, ITC…"/>
+        <button type="submit" class="btn">Analyse <span class="material-icons" aria-hidden="true">arrow_forward</span></button>
+    </form>
+
+    <div class="chips">
+        <span class="chips-label">Trending</span>
+        @for (s of suggestions; track s) {
+            <button type="button" class="chip" [class.active]="s === ticker" (click)="pick(s)">{{ s }}</button>
+        }
+    </div>
+</section>
+
+@if (ticker) {
+    <div class="bento">
+
+        <!-- Company -->
+        <article class="tile company span-7" data-testid="company">
+            @switch (stockState) {
+                @case ('loading') {
+                    <span class="skeleton" style="height: 18px; width: 30%"></span>
+                    <span class="skeleton" style="height: 40px; width: 70%; margin-top: 12px"></span>
+                    <span class="skeleton" style="height: 14px; width: 90%; margin-top: 18px"></span>
+                    <span class="skeleton" style="height: 14px; width: 80%; margin-top: 8px"></span>
+                }
+                @case ('error') {
+                    <div class="empty error-message">
+                        <span class="big-emoji" aria-hidden="true">{{ stockError === 'Ticker not found' ? '🫥' : '📡' }}</span>
+                        <h2>{{ stockError }}</h2>
+                        <p class="muted">Double-check the NSE symbol (e.g. <strong>TCS</strong>, <strong>RELIANCE</strong>) and try again.</p>
+                        <button type="button" class="btn btn-ghost" (click)="loadStock()">
+                            <span class="material-icons" aria-hidden="true">refresh</span> Retry
+                        </button>
+                    </div>
+                }
+                @case ('data') {
+                    <div class="company-top">
+                        <div class="company-id">
+                            <div class="pills">
+                                <span class="pill pill-ticker">{{ ticker }}</span>
+                                @if (metrics?.companyIntroduction?.industry; as industry) {
+                                    <span class="pill industry">{{ industry }}</span>
+                                }
+                            </div>
+                            <h2 class="company-name">{{ companyName }}</h2>
+                        </div>
+                        <div class="price-block">
+                            <span class="price">{{ price == null ? 'N/A' : '₹' + (price | number:'1.0-2') }}</span>
+                            <span class="label">Current price</span>
+                        </div>
+                    </div>
+
+                    @if (rangePosition !== null) {
+                        <div class="range" aria-label="52-week range">
+                            <div class="range-track">
+                                <span class="range-marker" [style.left.%]="rangePosition"></span>
+                            </div>
+                            <div class="range-labels">
+                                <span>52W low ₹{{ metrics?.week52Low | number:'1.0-2' }}</span>
+                                <span>52W high ₹{{ metrics?.week52High | number:'1.0-2' }}</span>
+                            </div>
+                        </div>
+                    }
+
+                    @if (metrics?.companyIntroduction?.description; as description) {
+                        <p class="description" [class.clamped]="!showFullDescription">{{ description }}</p>
+                        <button type="button" class="link-btn" (click)="showFullDescription = !showFullDescription">
+                            {{ showFullDescription ? 'Show less' : 'Read more' }}
+                        </button>
+                    }
+                }
+            }
+        </article>
+
+        <!-- Key stats -->
+        <article class="tile stats span-5" data-testid="key-stats">
+            <header class="tile-head">
+                <h3>Key stats</h3>
+                <span class="tile-sub">The numbers that matter</span>
+            </header>
+            @if (stockState === 'loading') {
+                <div class="stat-grid">
+                    @for (i of [1, 2, 3, 4, 5, 6, 7, 8, 9]; track i) {
+                        <span class="skeleton" style="height: 58px"></span>
+                    }
+                </div>
+            } @else {
+                <div class="stat-grid">
+                    <div class="stat">
+                        <span class="label">Market cap</span>
+                        <span class="value">{{ metrics?.marketCap == null ? 'N/A' : '₹' + (marketCapCrores(metrics?.marketCap) | number:'1.0-0') + ' Cr' }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">P/E</span>
+                        <span class="value">{{ metrics?.peRatio ?? 'N/A' }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">P/B</span>
+                        <span class="value">{{ quant?.ratios?.pb == null ? 'N/A' : (quant?.ratios?.pb | number:'1.1-1') }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Book value</span>
+                        <span class="value">{{ metrics?.bookValue ?? 'N/A' }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Dividend yield</span>
+                        <span class="value">{{ metrics?.dividendYield == null ? 'N/A' : (metrics?.dividendYield | number:'1.0-2') + '%' }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">ROCE</span>
+                        <span class="value">{{ metrics?.roce == null ? 'N/A' : (metrics?.roce | number:'1.0-2') + '%' }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">ROE</span>
+                        <span class="value">{{ metrics?.roe == null ? 'N/A' : (metrics?.roe | number:'1.0-2') + '%' }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">52W high</span>
+                        <span class="value">{{ metrics?.week52High ?? 'N/A' }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">52W low</span>
+                        <span class="value">{{ metrics?.week52Low ?? 'N/A' }}</span>
+                    </div>
+                </div>
+            }
+        </article>
+
+        <!-- Quantitative analysis -->
+        <article class="tile score-tile span-6" data-testid="quant-panel">
+            <header class="tile-head">
+                <div>
+                    <h3>Quantitative analysis</h3>
+                    <span class="tile-sub">DCF fair value vs market price</span>
+                </div>
+                @if (quant?.cached) {
+                    <span class="tag" title="Served from cache">cached</span>
+                }
+            </header>
+
+            @if (quantLoading && !quant) {
+                <div class="score-row">
+                    <span class="skeleton ring-skeleton"></span>
+                    <div class="score-meta">
+                        <span class="skeleton" style="height: 28px; width: 60%"></span>
+                        <span class="skeleton" style="height: 14px; width: 90%; margin-top: 12px"></span>
+                        <span class="skeleton" style="height: 14px; width: 75%; margin-top: 8px"></span>
+                    </div>
+                </div>
+            }
+
+            @if (quantError) {
+                <p class="alert alert-bad" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ quantError }}
+                </p>
+            }
+
+            @if (quant; as q) {
+                <div class="score-row" [class.refreshing]="quantLoading">
+                    <app-score-ring [score]="q.score" [tone]="quantVerdict(q.score).tone" testId="quant-score"></app-score-ring>
+                    <div class="score-meta">
+                        <span class="verdict" [attr.data-tone]="quantVerdict(q.score).tone">
+                            {{ quantVerdict(q.score).emoji }} {{ quantVerdict(q.score).label }}
+                        </span>
+                        <div class="fv-grid">
+                            <div>
+                                <span class="label">Fair value</span>
+                                <span class="fv">₹{{ q.fairValue | number:'1.0-2' }}</span>
+                            </div>
+                            <div>
+                                <span class="label">Price</span>
+                                <span class="fv">₹{{ q.price | number:'1.0-2' }}</span>
+                            </div>
+                            @if (upside !== null) {
+                                <div>
+                                    <span class="label">{{ upside >= 0 ? 'Upside' : 'Downside' }}</span>
+                                    <span class="fv" [class.pos]="upside >= 0" [class.neg]="upside < 0">
+                                        {{ upside >= 0 ? '+' : '' }}{{ upside | number:'1.0-1' }}%
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <p class="explanation">{{ q.explanation }}</p>
+
+                <button type="button" class="disclosure" (click)="showAssumptions = !showAssumptions"
+                        [attr.aria-expanded]="showAssumptions">
+                    <span class="material-icons" aria-hidden="true">tune</span>
+                    Tweak the DCF assumptions
+                    @if (q.overridden) {
+                        <span class="tag tag-accent">custom</span>
+                    }
+                    <span class="material-icons chevron" [class.open]="showAssumptions" aria-hidden="true">expand_more</span>
+                </button>
+
+                @if (showAssumptions && assumptions) {
+                    <div class="sliders">
+                        <label class="slider-field">
+                            <span class="slider-head">Growth <strong>{{ assumptions.growthRate | number:'1.0-2' }}%</strong>
+                                <small>default {{ q.defaults.growthRate | number:'1.0-2' }}%</small></span>
+                            <input type="range" name="growth" min="-10" [max]="sliderMax(q.defaults.growthRate, 40)" step="0.1"
+                                   [(ngModel)]="assumptions.growthRate" (change)="recalculate()"/>
+                        </label>
+                        <label class="slider-field">
+                            <span class="slider-head">Discount <strong>{{ assumptions.discountRate | number:'1.0-2' }}%</strong>
+                                <small>default {{ q.defaults.discountRate | number:'1.0-2' }}%</small></span>
+                            <input type="range" name="discount" min="5" [max]="sliderMax(q.defaults.discountRate, 25)" step="0.1"
+                                   [(ngModel)]="assumptions.discountRate" (change)="recalculate()"/>
+                        </label>
+                        <label class="slider-field">
+                            <span class="slider-head">Terminal growth <strong>{{ assumptions.terminalGrowthRate | number:'1.0-2' }}%</strong>
+                                <small>default {{ q.defaults.terminalGrowthRate | number:'1.0-2' }}%</small></span>
+                            <input type="range" name="terminal" min="0" [max]="sliderMax(q.defaults.terminalGrowthRate, 10)" step="0.1"
+                                   [(ngModel)]="assumptions.terminalGrowthRate" (change)="recalculate()"/>
+                        </label>
+                        <div class="slider-actions">
+                            <button type="button" class="btn btn-ghost btn-sm" (click)="resetAssumptions()">
+                                <span class="material-icons" aria-hidden="true">restart_alt</span> Reset to defaults
+                            </button>
+                            @if (quantLoading) {
+                                <span class="spinner" aria-label="Recalculating"></span>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </article>
+
+        <!-- Qualitative analysis -->
+        <article class="tile score-tile span-6" data-testid="qual-panel">
+            <header class="tile-head">
+                <div>
+                    <h3>Qualitative analysis</h3>
+                    <span class="tile-sub">Moat + management, read from annual reports</span>
+                </div>
+                <span class="tag tag-warn">experimental</span>
+            </header>
+
+            @if (!qual && !qualLoading) {
+                <div class="qual-cta">
+                    <p class="muted">A local model reads the last 3 annual reports' MD&amp;A, judges the
+                        <strong>Moat</strong> against peers and checks whether management delivered on its guidance.
+                        Takes a few minutes ☕</p>
+                    <details class="peer-override">
+                        <summary>Custom peer set (optional)</summary>
+                        <input type="text" name="peers" [(ngModel)]="peersText" placeholder="e.g. INFY, WIPRO, HCLTECH"/>
+                    </details>
+                    <button type="button" class="btn" (click)="runQualitative()">
+                        <span class="material-icons" aria-hidden="true">auto_awesome</span> Run qualitative analysis
+                    </button>
+                </div>
+            }
+
+            @if (qualLoading) {
+                <div class="thinking">
+                    <div class="orb" aria-hidden="true"></div>
+                    <p>Reading annual reports and asking the local model. This can take a few minutes...</p>
+                </div>
+            }
+
+            @if (qualError) {
+                <p class="alert alert-bad" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ qualError }}
+                </p>
+            }
+
+            @if (needsUpload) {
+                <div class="upload">
+                    <label>Year <input type="number" name="uploadYear" [(ngModel)]="uploadYear"/></label>
+                    <label class="file-drop">
+                        <span class="material-icons" aria-hidden="true">upload_file</span>
+                        Upload annual report PDF
+                        <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
+                    </label>
+                    @if (uploadMessage) {
+                        <p class="small">{{ uploadMessage }}</p>
+                    }
+                </div>
+            }
+
+            @if (qual && !qualLoading) {
+                <div class="score-row">
+                    <app-score-ring [score]="qual.score" [tone]="qualVerdict(qual.score).tone" testId="qual-score"></app-score-ring>
+                    <div class="score-meta">
+                        <span class="verdict" [attr.data-tone]="qualVerdict(qual.score).tone">
+                            {{ qualVerdict(qual.score).emoji }} {{ qualVerdict(qual.score).label }}
+                        </span>
+                        <div class="pills">
+                            <span class="pill" [attr.data-tone]="moatTone(qual.moat.rating)">Moat: {{ qual.moat.rating }}</span>
+                            @for (y of qual.yearsAnalysed; track y) {
+                                <span class="pill">FY{{ y }}</span>
+                            }
+                            @if (qual.cached) {
+                                <span class="tag">cached</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (qual.management.lowerConfidence) {
+                    <p class="alert alert-warn">
+                        <span class="material-icons" aria-hidden="true">info</span> Lower confidence: fewer than 3 years of reports.
+                    </p>
+                }
+                <p class="explanation">{{ qual.explanation }}</p>
+
+                @if (qual.management.comparisons.length) {
+                    <h4 class="mini-head">Did management deliver?</h4>
+                    <ul class="timeline">
+                        @for (c of qual.management.comparisons; track c.guidanceYear) {
+                            <li>
+                                <span class="pill" [attr.data-tone]="outcomeTone(c.outcome)">{{ c.outcome }}</span>
+                                <span class="small">FY{{ c.guidanceYear }} guidance → FY{{ c.actualsYear }} actuals</span>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @for (quote of qual.quotes; track $index) {
+                    <blockquote>“{{ quote }}”</blockquote>
+                }
+
+                <p class="small">Peers{{ qual.peersOverridden ? ' (overridden)' : '' }}:
+                    @for (p of qual.peers; track p.symbol; let last = $last) {
+                        {{ p.name }}{{ last ? '' : ', ' }}
+                    } @empty {
+                        none
+                    }
+                </p>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="runQualitative()">
+                    <span class="material-icons" aria-hidden="true">refresh</span> Run again
+                </button>
+            }
+        </article>
+
+        @if (stockState === 'data') {
+            <!-- Analyst consensus -->
+            @if (metrics?.analystConsensus; as consensus) {
+                <article class="tile span-5 analyst-consensus" data-testid="consensus">
+                    <header class="tile-head">
+                        <div>
+                            <h3>Analyst consensus</h3>
+                            <span class="tile-sub">What the street is saying 📣</span>
+                        </div>
+                        @if (consensus.recommendation) {
+                            <span class="pill pill-reco">{{ consensus.recommendation }}</span>
+                        }
+                    </header>
+                    @if (analystTotal > 0) {
+                        <div class="consensus-bar" role="img" [attr.aria-label]="analystTotal + ' analyst ratings'">
+                            @for (s of consensusSegments; track s.key) {
+                                @if (s.pct > 0) {
+                                    <span [class]="'seg seg-' + s.key" [style.width.%]="s.pct"></span>
+                                }
+                            }
+                        </div>
+                    }
+                    <dl class="consensus-counts">
+                        @for (s of consensusSegments; track s.key) {
+                            <div>
+                                <dt><span [class]="'dot dot-' + s.key" aria-hidden="true"></span>{{ s.label }}</dt>
+                                <dd>{{ s.count }}</dd>
+                            </div>
+                        }
+                    </dl>
+                    <p class="attribution small">Source: {{ consensus.source }}</p>
+                </article>
+            }
+
+            <!-- News -->
+            <article class="tile news" [class.span-7]="metrics?.analystConsensus" [class.span-12]="!metrics?.analystConsensus"
+                     data-testid="news">
+                <header class="tile-head">
+                    <div>
+                        <h3>Recent news</h3>
+                        <span class="tile-sub">The latest tea ☕</span>
+                    </div>
+                </header>
+                @if (metrics?.news?.length) {
+                    <ul class="news-list">
+                        @for (item of metrics?.news; track item.url) {
+                            <li>
+                                <a [href]="item.url" target="_blank" rel="noopener noreferrer">
+                                    <span class="headline">{{ item.headline }}</span>
+                                    <span class="news-meta small">
+                                        {{ item.publishedAt | date:'mediumDate' }}
+                                        @if (item.source) {
+                                            <span> · {{ item.source }}</span>
+                                        }
+                                    </span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                } @else {
+                    <p class="empty-state">No recent news available.</p>
+                }
+            </article>
+
+            <!-- Peers -->
+            <article class="tile span-12" data-testid="peers">
+                <header class="tile-head">
+                    <div>
+                        <h3>Peer comparison</h3>
+                        <span class="tile-sub">How it stacks up against the squad</span>
+                    </div>
+                </header>
+                @if (metrics?.peers?.length) {
+                    <div class="table-scroll">
+                        <table class="peer-table">
+                            <thead>
+                            <tr>
+                                <th scope="col">Company</th>
+                                <th scope="col">Price</th>
+                                <th scope="col">Market cap (Cr)</th>
+                                <th scope="col">P/E</th>
+                                <th scope="col">P/B</th>
+                                <th scope="col">ROE (TTM)</th>
+                                <th scope="col">Debt/Equity</th>
+                                <th scope="col">Profit margin (TTM)</th>
+                                <th scope="col">Dividend yield</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                                @for (peer of metrics?.peers; track $index) {
+                                    <tr>
+                                        <th scope="row">{{ peer.name }}</th>
+                                        <td>{{ peer.price | number:'1.0-2' }}</td>
+                                        <td>{{ marketCapCrores(peer.marketCap) | number:'1.0-0' }}</td>
+                                        <td>{{ peer.peRatio | number:'1.0-2' }}</td>
+                                        <td>{{ peer.pbRatio | number:'1.0-2' }}</td>
+                                        <td>{{ peer.roe == null ? '' : (peer.roe | number:'1.0-2') + '%' }}</td>
+                                        <td>{{ peer.debtToEquity | number:'1.0-2' }}</td>
+                                        <td>{{ peer.profitMargin == null ? '' : (peer.profitMargin | number:'1.0-2') + '%' }}</td>
+                                        <td>{{ peer.dividendYield == null ? '' : (peer.dividendYield | number:'1.0-2') + '%' }}</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } @else {
+                    <p class="empty-state">No peer comparison data available.</p>
+                }
+            </article>
+        }
+    </div>
+}

@@ -1,5 +1,6 @@
-<div>
-    <h1>Value a Stock with Discounted Cash Flow (DCF)</h1>
+<div class="dcf-hero">
+    <span class="eyebrow">🧮 DCF calculator</span>
+    <h1>Value a stock with <span class="grad-text">Discounted Cash Flow</span></h1>
     <p class="lead">
         Learn how to estimate what a stock is truly worth not just what the market says.
         This simple step-by-step guide helps you value a company using future cash flow projections.
@@ -68,7 +69,7 @@
         <p class="muted">
             Start by entering a few key financial figures — such as revenue, net profit, capital expenditure,
             and depreciation — which you can easily find on
-            <a href="https://www.screener.in/" target="_blank">Screener.in</a>
+            <a href="https://www.screener.in/" target="_blank" rel="noopener noreferrer">Screener.in</a>
             or in the company’s annual report.
             It’s best to take the <strong>3-year average</strong> to smooth out one-time spikes.
         </p>
@@ -94,7 +95,7 @@
                 <input type="checkbox" [(ngModel)]="showGuides"/>
                 <span class="slider"></span>
             </label>
-            <span style="margin-left: 0.5rem;">
+            <span class="guide-label">
                 {{ showGuides ? 'Hide visual guides' : 'Show visual guides' }}
             </span>
         </div>
@@ -103,7 +104,7 @@
 </div>
 
 <!-- Revenue Card -->
-<div class="card">
+<div class="card step">
     <h2>Revenue</h2>
     <p>Revenue is the total money a company earns from selling products or services before paying any costs or
         expenses.</p>
@@ -135,7 +136,7 @@
 </div>
 
 <!-- Net Profit Card -->
-<div class="card">
+<div class="card step">
     <h2>Net Profit</h2>
     <p>Net profit is what remains after paying all expenses like salaries, rent, taxes, interest, and other costs. It’s
         the company’s “real earnings.”</p>
@@ -152,7 +153,7 @@
 </div>
 
 <!-- Non-Cash Expenditure Card -->
-<div class="card">
+<div class="card step">
     <h2>Depreciation and Amortization </h2>
     <p>Depreciation & Amortization (D&A) are non-cash expenses recorded on the income statement, but not paid out in
         actual cash. They represent the gradual reduction in value of assets over time.</p>
@@ -170,7 +171,7 @@
 
 
 <!-- Capital Expenditure Card -->
-<div class="card">
+<div class="card step">
     <h2>Capital Expenditure</h2>
     <p>Capital Expenditure often called "CapEx" is the money a company spends to buy, maintain, or upgrade its long-term
         assets like buildings, machines, vehicles, or technology. These are investments that help the business operate
@@ -189,7 +190,7 @@
 </div>
 
 @if (calculationResults) {
-    <div class="card">
+    <div class="card results">
         <h3>DCF Analysis Results</h3>
 
         <!-- Projections Table -->
@@ -267,7 +268,7 @@
     </div>
 }
 
-<div class="card">
+<div class="card step step-final">
     <h2>Calculate intrinsic value of stock</h2>
     <div class="row">
         <div class="col">
