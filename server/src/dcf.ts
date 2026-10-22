@@ -6,6 +6,16 @@ export interface YearFinancials {
   nonCashExpense: number;
 }
 
+// Statement totals and share count must share a unit scale so totals / shares is a per-share price.
+export interface QuantitativeInputs {
+  price: number;
+  shares: number;
+  pe: number | null;
+  pb: number | null;
+  roe: number | null;
+  history: YearFinancials[];
+}
+
 export interface DcfAssumptions {
   growthRate: number;
   discountRate: number;

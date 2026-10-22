@@ -8,11 +8,10 @@ import {
   StockNotFoundError,
 } from '../indianapi.js';
 import { calculateAnnualReturns, mapAnnualStatements } from '../finance.js';
-
-type Provider = 'indianapi' | 'fmp';
+import { configuredProvider, StockDataProvider } from '../provider.js';
 
 interface StockRouterOptions {
-  provider?: Provider;
+  provider?: StockDataProvider;
   indianApiKey?: string;
   indianApiBaseUrl?: string;
   fetcher?: typeof fetch;
@@ -86,14 +85,6 @@ function isUnknownFmpSymbol(err: unknown): boolean {
     ((err.status === 404) || (err.status === 402 && /symbol.*not available|invalid.*symbol/i.test(err.message)));
 }
 
-function selectedProvider(options: StockRouterOptions): Provider {
-  const configured = options.provider ?? (process.env.STOCK_DATA_PROVIDER?.trim().toLowerCase() || 'indianapi');
-  if (configured !== 'indianapi' && configured !== 'fmp') {
-    throw new Error(`Unsupported STOCK_DATA_PROVIDER: ${configured}`);
-  }
-  return configured;
-}
-
 function fmpTicker(ticker: string): string {
   return ticker.endsWith('.NS') ? ticker : `${ticker}.NS`;
 }
@@ -157,7 +148,7 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
 
 export function createStockRouter(options: StockRouterOptions = {}): Router {
   const router = Router();
-  const provider = selectedProvider(options);
+  const provider = configuredProvider(options.provider);
 
   router.get('/:ticker', async (req, res) => {
     const ticker = req.params.ticker.trim().toUpperCase();

@@ -83,9 +83,11 @@ STOCK_DATA_PROVIDER=fmp
 FMP_API_KEY=your_financial_modeling_prep_api_key
 ```
 
-The selected provider is used for the entire stock response; the server does not automatically fall back or combine provider data. Get an IndianAPI key at https://indianapi.in/ or an FMP key at https://site.financialmodelingprep.com/.
+The selected provider is used for the entire stock response and for the quantitative (DCF) analysis; the server does not automatically fall back or combine provider data. The qualitative analysis still uses FMP for its default peer list, so set `FMP_API_KEY` if you rely on it. Get an IndianAPI key at https://indianapi.in/ or an FMP key at https://site.financialmodelingprep.com/.
 
-3. Run the server in dev mode (auto-reload on changes):
+The qualitative analysis calls a local [Ollama](https://ollama.com/) server (`OLLAMA_URL`, default `http://localhost:11434`). The default model is `qwen3:8b`; pull it once with `ollama pull qwen3:8b`, or set `OLLAMA_MODEL` to use a different local model.
+
+3. Run the server in dev mode (restarts automatically when files in `src/` or `.env` change):
 
 ```bash
 npm run dev

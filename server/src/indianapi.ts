@@ -1,4 +1,5 @@
 import { calculateAnnualReturns, mapAnnualStatements } from './finance.js';
+import { QuantitativeInputs, YearFinancials } from './dcf.js';
 
 const DEFAULT_INDIANAPI_URL = 'https://stock.indianapi.in';
 const LIVEMINT_URL = 'https://www.livemint.com';
@@ -112,24 +113,30 @@ function keyedValues(value: unknown): JsonRecord {
   return values;
 }
 
-function annualReturns(financials: unknown): { roce: number | null; roe: number | null } {
-  const annualRows = (Array.isArray(financials) ? financials : [])
+function annualRows(financials: unknown): JsonRecord[] {
+  return (Array.isArray(financials) ? financials : [])
     .map(record)
     .filter((row) => stringValue(row.Type)?.toLowerCase() === 'annual');
-  const fiscalYear = (row: JsonRecord): number | null => {
-    const year = numberValue(row.FiscalYear);
-    return year != null && Number.isInteger(year) ? year : null;
-  };
-  const statement = (row: JsonRecord, type: string): JsonRecord => keyedValues(record(row.stockFinancialMap)[type]);
+}
 
-  const annualIncome = mapAnnualStatements(annualRows, fiscalYear, (row) => {
+function fiscalYear(row: JsonRecord): number | null {
+  const year = numberValue(row.FiscalYear);
+  return year != null && Number.isInteger(year) ? year : null;
+}
+
+function statement(row: JsonRecord, type: 'INC' | 'BAL' | 'CAS'): JsonRecord {
+  return keyedValues(record(row.stockFinancialMap)[type]);
+}
+
+function annualReturns(rows: JsonRecord[]): { roce: number | null; roe: number | null } {
+  const annualIncome = mapAnnualStatements(rows, fiscalYear, (row) => {
     const income = statement(row, 'INC');
     return {
       ebit: numberValue(income.OperatingIncome),
       netIncome: numberValue(income.NetIncome),
     };
   });
-  const annualBalance = mapAnnualStatements(annualRows, fiscalYear, (row) => {
+  const annualBalance = mapAnnualStatements(rows, fiscalYear, (row) => {
     const balance = statement(row, 'BAL');
     return {
       totalAssets: numberValue(balance.TotalAssets),
@@ -138,6 +145,44 @@ function annualReturns(financials: unknown): { roce: number | null; roe: number 
     };
   });
   return calculateAnnualReturns(annualIncome, annualBalance);
+}
+
+// Banks report interest and non-interest income instead of a total revenue line.
+function bankRevenue(income: JsonRecord): number | null {
+  const interestIncome = numberValue(income.InterestIncomeBank);
+  return interestIncome == null ? null : interestIncome + (numberValue(income['Non-InterestIncomeBank']) ?? 0);
+}
+
+// Newest first, limited to the five most recent fiscal years like the FMP history.
+function annualHistory(rows: JsonRecord[]): YearFinancials[] {
+  const seen = new Set<number>();
+  return rows
+    .flatMap((row) => {
+      const year = fiscalYear(row);
+      const income = statement(row, 'INC');
+      const cash = statement(row, 'CAS');
+      const revenue = numberValue(income.TotalRevenue, income.Revenue) ?? bankRevenue(income);
+      const netIncome = numberValue(income.NetIncome);
+      if (year == null || revenue == null || revenue <= 0 || netIncome == null) {
+        return [];
+      }
+      return [{
+        year,
+        revenue,
+        netIncome,
+        capex: Math.abs(numberValue(cash.CapitalExpenditures) ?? 0),
+        nonCashExpense: numberValue(cash['Depreciation/Depletion'], income['Depreciation/Amortization']) ?? 0,
+      }];
+    })
+    .sort((a, b) => b.year - a.year)
+    .filter(({ year }) => {
+      if (seen.has(year)) {
+        return false;
+      }
+      seen.add(year);
+      return true;
+    })
+    .slice(0, 5);
 }
 
 function normalizeNews(value: unknown): StockNewsItem[] {
@@ -267,12 +312,19 @@ function normalizeConsensus(
   return { source: 'IndianAPI', recommendation, counts };
 }
 
-export async function fetchIndianApiStock(
+interface VerifiedStock {
+  response: JsonRecord;
+  profile: JsonRecord;
+  companyName: string;
+  currentPrice: number;
+}
+
+async function fetchVerifiedStock(
   ticker: string,
   apiKey: string | undefined,
-  fetcher: typeof fetch = fetch,
-  baseUrl: string = process.env.INDIANAPI_BASE_URL || DEFAULT_INDIANAPI_URL
-): Promise<StockData> {
+  fetcher: typeof fetch,
+  baseUrl: string
+): Promise<VerifiedStock> {
   if (!apiKey) {
     throw new IndianApiError('INDIANAPI_API_KEY is not configured');
   }
@@ -312,11 +364,11 @@ export async function fetchIndianApiStock(
   if (providerError && /not found/i.test(providerError)) {
     throw new StockNotFoundError('Ticker not found');
   }
-  const returnedName = stringValue(response.companyName);
-  if (!returnedName) {
+  const companyName = stringValue(response.companyName);
+  if (!companyName) {
     throw new IndianApiError('IndianAPI returned an unusable company identity');
   }
-  if (searchMatch && comparableName(returnedName) !== comparableName(searchName)) {
+  if (searchMatch && comparableName(companyName) !== comparableName(searchName)) {
     throw new StockNotFoundError('Ticker identity did not match');
   }
   const profile = record(response.companyProfile);
@@ -334,14 +386,30 @@ export async function fetchIndianApiStock(
   if (currentPrice == null || currentPrice <= 0) {
     throw new IndianApiError('IndianAPI returned no usable NSE current price');
   }
-  const details = record(response.stockDetailsReusableData);
+  return { response, profile, companyName, currentPrice };
+}
+
+function keyMetricGroups(response: JsonRecord) {
   const keyMetrics = record(response.keyMetrics);
-  const valuation = keyedValues(keyMetrics.valuation);
-  const perShare = keyedValues(keyMetrics.persharedata);
-  const priceAndVolume = keyedValues(keyMetrics.priceandVolume);
+  return {
+    details: record(response.stockDetailsReusableData),
+    valuation: keyedValues(keyMetrics.valuation),
+    perShare: keyedValues(keyMetrics.persharedata),
+    priceAndVolume: keyedValues(keyMetrics.priceandVolume),
+  };
+}
+
+export async function fetchIndianApiStock(
+  ticker: string,
+  apiKey: string | undefined,
+  fetcher: typeof fetch = fetch,
+  baseUrl: string = process.env.INDIANAPI_BASE_URL || DEFAULT_INDIANAPI_URL
+): Promise<StockData> {
+  const { response, profile, companyName, currentPrice } = await fetchVerifiedStock(ticker, apiKey, fetcher, baseUrl);
+  const { details, valuation, perShare, priceAndVolume } = keyMetricGroups(response);
   const description = stringValue(profile.companyDescription, profile.description);
   const industry = stringValue(response.industry, profile.mgIndustry, profile.industry);
-  const returns = annualReturns(response.financials);
+  const returns = annualReturns(annualRows(response.financials));
   const peers = normalizePeers(profile.peerCompanyList ?? response.peerCompanyList);
 
   return {
@@ -361,12 +429,46 @@ export async function fetchIndianApiStock(
     roce: returns.roce,
     roe: returns.roe,
     companyIntroduction: {
-      name: returnedName,
+      name: companyName,
       industry,
       description: description?.slice(0, 500) ?? null,
     },
     news: normalizeNews(response.recentNews),
     peers,
     analystConsensus: normalizeConsensus(response.analystView, response.recosBar, details.averageRating),
+  };
+}
+
+export async function fetchIndianApiQuantitativeInputs(
+  ticker: string,
+  apiKey: string | undefined,
+  fetcher: typeof fetch = fetch,
+  baseUrl: string = process.env.INDIANAPI_BASE_URL || DEFAULT_INDIANAPI_URL
+): Promise<QuantitativeInputs> {
+  const { response, currentPrice } = await fetchVerifiedStock(ticker, apiKey, fetcher, baseUrl);
+  const { details, valuation, perShare } = keyMetricGroups(response);
+  const rows = annualRows(response.financials);
+  const latestBalance = [...rows]
+    .filter((row) => fiscalYear(row) != null)
+    .sort((a, b) => fiscalYear(b)! - fiscalYear(a)!)
+    .map((row) => statement(row, 'BAL'))[0] ?? {};
+  // Use the reported share count rather than market cap / price: IndianAPI does not document the
+  // market-cap unit, whereas the share count shares the statements' unit scale. Zero yields no DCF.
+  const shares = numberValue(latestBalance.TotalCommonSharesOutstanding) ?? 0;
+  const bookValue = numberValue(perShare.bookValuePerShareMostRecentFiscalYear);
+  const roe = annualReturns(rows).roe;
+
+  return {
+    price: currentPrice,
+    shares,
+    pe: numberValue(
+      details.pPerEBasicExcludingExtraordinaryItemsTTM,
+      valuation.pPerEBasicExcludingExtraordinaryItemsTTM
+    ),
+    pb: numberValue(valuation.priceToBookMostRecentFiscalYear) ??
+      (bookValue != null && bookValue > 0 ? currentPrice / bookValue : null),
+    // The quantitative analysis contract expresses ROE as a fraction, not percentage points.
+    roe: roe == null ? null : roe / 100,
+    history: annualHistory(rows),
   };
 }

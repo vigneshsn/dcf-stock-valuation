@@ -1,4 +1,4 @@
-export const DEFAULT_OLLAMA_MODEL = 'gemma3:1b';
+export const DEFAULT_OLLAMA_MODEL = 'qwen3:8b';
 
 export function ollamaConfig() {
   return {
@@ -13,10 +13,11 @@ export async function generate(prompt: string, opts: { json?: boolean } = {}): P
   const { baseUrl, model } = ollamaConfig();
   let response: Response;
   try {
+    // Disable reasoning traces on thinking models (e.g. qwen3); they slow every call and pollute summaries/JSON.
     response = await fetch(`${baseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, prompt, stream: false, ...(opts.json ? { format: 'json' } : {}) }),
+      body: JSON.stringify({ model, prompt, stream: false, think: false, ...(opts.json ? { format: 'json' } : {}) }),
     });
   } catch (err: any) {
     throw new OllamaError(`Ollama is not reachable: ${err?.message || err}`);
