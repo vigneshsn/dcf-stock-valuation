@@ -1,0 +1,67 @@
+:host {
+    display: block;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    margin: 0 -6px;
+}
+
+.peer-table {
+    min-width: 900px;
+    margin: 0;
+}
+
+.peer-table th,
+.peer-table td {
+    padding: 12px;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.peer-table thead th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--faint);
+    text-align: right;
+}
+
+.peer-table thead th:first-child,
+.peer-table tbody th {
+    text-align: left;
+}
+
+.peer-table tbody th {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.peer-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.peer-table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+.peer-table tbody tr.current {
+    background: linear-gradient(90deg, rgba(167, 139, 250, 0.2), rgba(244, 114, 182, 0.06));
+}
+
+.peer-table tr.current > * {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.peer-table tr.current th {
+    box-shadow: inset 3px 0 0 var(--violet);
+}
+
+.you {
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 0.68rem;
+}
+

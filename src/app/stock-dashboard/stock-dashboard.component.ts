@@ -7,7 +7,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { StockService } from '../services/stock.service';
 import { AnalysisService } from '../services/analysis.service';
-import { StockMetrics } from '../models/stock-metrics';
+import { PeerRow, StockMetrics, marketCapCrores } from '../models/stock-metrics';
+import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.component';
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
 import { DcfAssumptions, GuidanceOutcome, MoatRating, QualitativeAnalysis, QuantitativeAnalysis } from '../models/analysis';
 
@@ -43,7 +44,7 @@ const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'war
     selector: 'app-stock-dashboard',
     templateUrl: './stock-dashboard.component.html',
     styleUrls: ['./stock-dashboard.component.css'],
-    imports: [CommonModule, FormsModule, ScoreRingComponent],
+    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent],
     standalone: true
 })
 export class StockDashboardComponent implements OnInit, OnDestroy {
@@ -163,13 +164,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         return Math.min(100, Math.max(0, ((price - low) / (high - low)) * 100));
     }
 
-    /** IndianAPI reports market cap in crores while FMP reports raw rupees; normalise to crores. */
-    marketCapCrores(value: number | null | undefined): number | null {
-        if (value == null) {
-            return null;
-        }
-        return value >= 1e8 ? value / 1e7 : value;
-    }
+    readonly marketCapCrores = marketCapCrores;
 
     get consensusSegments(): { key: string; label: string; count: number; pct: number }[] {
         const counts = this.metrics?.analystConsensus?.counts;
@@ -189,6 +184,33 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     get analystTotal(): number {
         return this.consensusSegments.reduce((sum, s) => sum + s.count, 0);
+    }
+
+    /**
+     * Peer table rows with the current stock pinned first and flagged. If the provider already lists the
+     * company among its peers, that entry is reused (gap-filled from the stock's own metrics) instead of duplicated.
+     */
+    get peerRows(): PeerRow[] {
+        const m = this.metrics;
+        if (!m?.peers.length) {
+            return [];
+        }
+        const name = this.companyName;
+        const key = name.trim().toLowerCase();
+        const listed = m.peers.find((p) => p.name.trim().toLowerCase() === key);
+        const current: PeerRow = {
+            name: listed?.name ?? name,
+            price: m.currentPrice ?? listed?.price ?? null,
+            marketCap: m.marketCap ?? listed?.marketCap ?? null,
+            peRatio: m.peRatio ?? listed?.peRatio ?? null,
+            pbRatio: this.quant?.ratios.pb ?? listed?.pbRatio ?? null,
+            roe: m.roe ?? listed?.roe ?? null,
+            debtToEquity: listed?.debtToEquity ?? null,
+            profitMargin: listed?.profitMargin ?? null,
+            dividendYield: m.dividendYield ?? listed?.dividendYield ?? null,
+            current: true
+        };
+        return [current, ...m.peers.filter((p) => p !== listed).map((p) => ({ ...p, current: false }))];
     }
 
     // ---- Quantitative analysis ---------------------------------------------

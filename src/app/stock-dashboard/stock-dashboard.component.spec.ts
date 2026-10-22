@@ -152,11 +152,67 @@ describe('StockDashboardComponent', () => {
         expect(component.analystTotal).toBe(7);
 
         const rows = fixture.nativeElement.querySelectorAll('tbody tr');
-        expect(rows.length).toBe(2);
-        const missingRow = rows[1] as HTMLTableRowElement;
+        expect(rows.length).toBe(3);
+        const missingRow = rows[2] as HTMLTableRowElement;
         expect(Array.from(missingRow.cells).slice(1).map((cell) => cell.textContent?.trim() ?? '')).toEqual([
             '', '', '', '', '', '', '', ''
         ]);
+    });
+
+    it('pins and highlights the current stock at the top of the peer comparison', () => {
+        search('ACME');
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({
+            currentPrice: 321.5,
+            marketCap: 125000,
+            peRatio: 18.5,
+            roe: 14,
+            dividendYield: 1.2,
+            companyIntroduction: { name: 'Acme Industries', industry: null, description: null },
+            peers: [{ name: 'Peer Corp', price: 200, marketCap: 50000, peRatio: 12, pbRatio: 2, roe: 15, debtToEquity: 0.3, profitMargin: 9.5, dividendYield: 1.1 }]
+        }));
+        expectQuant('ACME').flush(quant({ ratios: { pe: 18.5, pb: 3.4, roe: 0.14 } }));
+        fixture.detectChanges();
+
+        const rows = fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>;
+        expect(rows.length).toBe(2);
+        expect(rows[0].classList).toContain('current');
+        expect(rows[0].cells[0].textContent).toContain('Acme Industries');
+        expect(rows[0].cells[0].textContent).toContain('This stock');
+        expect(Array.from(rows[0].cells).slice(1).map((c) => c.textContent?.trim())).toEqual([
+            '321.5', '125,000', '18.5', '3.4', '14%', '', '', '1.2%'
+        ]);
+        expect(rows[1].classList).not.toContain('current');
+    });
+
+    it('does not duplicate the current stock when the provider already lists it as a peer', () => {
+        search('ACME');
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({
+            currentPrice: 321.5,
+            companyIntroduction: { name: 'Acme Industries', industry: null, description: null },
+            peers: [
+                { name: 'Peer Corp', price: 200, marketCap: null, peRatio: null, pbRatio: null, roe: null, debtToEquity: null, profitMargin: null, dividendYield: null },
+                { name: 'ACME INDUSTRIES', price: 320, marketCap: null, peRatio: null, pbRatio: null, roe: null, debtToEquity: 0.1, profitMargin: 12, dividendYield: null }
+            ]
+        }));
+        expectQuant('ACME').flush(quant());
+
+        const rows = component.peerRows;
+        expect(rows.length).toBe(2);
+        expect(rows[0]).toEqual(jasmine.objectContaining({ current: true, price: 321.5, debtToEquity: 0.1, profitMargin: 12 }));
+        expect(rows[1].name).toBe('Peer Corp');
+    });
+
+    it('shows peer comparison before analyst consensus and recent news', () => {
+        search('ACME');
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({
+            analystConsensus: { source: 'IndianAPI', recommendation: 'Buy', counts: { strongBuy: 1, buy: 0, hold: 0, sell: 0, strongSell: 0 } }
+        }));
+        expectQuant('ACME').flush(quant());
+        fixture.detectChanges();
+
+        const order = Array.from(fixture.nativeElement.querySelectorAll('article[data-testid]') as NodeListOf<HTMLElement>)
+            .map((el) => el.dataset['testid']);
+        expect(order.slice(-3)).toEqual(['peers', 'consensus', 'news']);
     });
 
     it('keeps optional sections empty when the provider has no supplemental data', () => {

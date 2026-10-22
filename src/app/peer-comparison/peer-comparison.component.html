@@ -1,0 +1,37 @@
+<div class="table-scroll">
+    <table class="peer-table">
+        <thead>
+        <tr>
+            <th scope="col">Company</th>
+            <th scope="col">Price</th>
+            <th scope="col">Market cap (Cr)</th>
+            <th scope="col">P/E</th>
+            <th scope="col">P/B</th>
+            <th scope="col">ROE (TTM)</th>
+            <th scope="col">Debt/Equity</th>
+            <th scope="col">Profit margin (TTM)</th>
+            <th scope="col">Dividend yield</th>
+        </tr>
+        </thead>
+        <tbody>
+            @for (peer of rows; track $index) {
+                <tr [class.current]="peer.current">
+                    <th scope="row">
+                        {{ peer.name }}
+                        @if (peer.current) {
+                            <span class="pill pill-ticker you">This stock</span>
+                        }
+                    </th>
+                    <td>{{ peer.price | number:'1.0-2' }}</td>
+                    <td>{{ marketCapCrores(peer.marketCap) | number:'1.0-0' }}</td>
+                    <td>{{ peer.peRatio | number:'1.0-2' }}</td>
+                    <td>{{ peer.pbRatio | number:'1.0-2' }}</td>
+                    <td>{{ peer.roe == null ? '' : (peer.roe | number:'1.0-2') + '%' }}</td>
+                    <td>{{ peer.debtToEquity | number:'1.0-2' }}</td>
+                    <td>{{ peer.profitMargin == null ? '' : (peer.profitMargin | number:'1.0-2') + '%' }}</td>
+                    <td>{{ peer.dividendYield == null ? '' : (peer.dividendYield | number:'1.0-2') + '%' }}</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
