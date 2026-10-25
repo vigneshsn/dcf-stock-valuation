@@ -8,10 +8,12 @@ import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indiana
 import { configuredProvider, StockDataProvider } from '../provider.js';
 import { saveUpload, listReports } from '../reports.js';
 import { collectYearSummaries, forgetStoredYear } from '../yearSummaries.js';
-import { OllamaError, ollamaConfig } from '../ollama.js';
+import { LlmError, llmConfig } from '../llm.js';
 import { ManagementJudgement, Peer, judgeManagement, judgeMoat, qualitativeScore, selectPeers } from '../qualitative.js';
 import { forgetStoredQualitative, readStoredQualitative, writeStoredQualitative } from '../qualitativeStore.js';
 import { ReportSwotDeps, financialSwot, forgetStoredSwot, latestReportSwot, mergeSwot } from '../swot.js';
+import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights } from '../insights.js';
+import { Features, features } from '../features.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
@@ -27,6 +29,9 @@ interface AnalysisRouterOptions {
   indianApiBaseUrl?: string;
   fetcher?: typeof fetch;
   swot?: Partial<ReportSwotDeps>;
+  insights?: Partial<ReportInsightsDeps>;
+  // Overrides the ENABLE_* environment flags (tests).
+  features?: Partial<Features>;
 }
 
 interface Stamped<T> {
@@ -40,6 +45,7 @@ function cacheGet<T>(key: string): Stamped<T> | undefined {
 
 const swotKey = (ticker: string, model: string) => `analysis:swot:${ticker.trim().toUpperCase()}:${model}`;
 const qualPrefix = (ticker: string) => `analysis:qual:${ticker.trim().toUpperCase()}:`;
+const insightsKey = (ticker: string, model: string) => `analysis:insights:${ticker.trim().toUpperCase()}:${model}`;
 
 function cachePut<T>(key: string, value: T): void {
   set<Stamped<T>>(key, { value, cachedAt: Date.now() }, ANALYSIS_TTL_MS);
@@ -149,6 +155,15 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
   const loadQuantitativeInputs = (ticker: string): Promise<QuantitativeInputs> =>
     provider === 'indianapi' ? loadIndianApiFinancials(ticker, options) : loadFmpFinancials(ticker, options.fetcher);
   const router = Router();
+  const enabled = (): Features => ({ ...features(), ...options.features });
+
+  function sendDisabled(res: express.Response, feature: string, flag: string) {
+    return res.status(404).json({ error: 'disabled', message: `${feature} is disabled on this server. Set ${flag}=true to enable it.` });
+  }
+
+  router.get('/features', (_req, res) => {
+    res.json(enabled());
+  });
 
   router.get('/:ticker/quantitative', async (req, res) => {
     const ticker = req.params.ticker;
@@ -237,24 +252,72 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         return res.status(400).json({ error: 'Body must be a PDF (Content-Type: application/pdf)' });
       }
       saveUpload(req.params.ticker, year, body);
-      const { model } = ollamaConfig();
+      const { model } = llmConfig();
       del(swotKey(req.params.ticker, model));
+      del(insightsKey(req.params.ticker, model));
       delPrefix(qualPrefix(req.params.ticker));
       await Promise.all([
         forgetStoredYear(req.params.ticker, year),
         forgetStoredSwot(req.params.ticker, year),
+        forgetStoredInsights(req.params.ticker, year),
         forgetStoredQualitative(req.params.ticker),
       ]);
       res.status(201).json({ ticker: req.params.ticker, year, bytes: body.length });
     }
   );
 
+  // One LLM call on the Latest annual report; repeat requests are served from memory, then disk.
+  router.get('/:ticker/insights', async (req, res) => {
+    const ticker = req.params.ticker;
+    const { model } = llmConfig();
+    const key = insightsKey(ticker, model);
+    const hit = cacheGet<unknown>(key);
+    if (hit) {
+      console.log(`[analysis cache HIT] ${key}`);
+      return res.json({ ...(hit.value as object), cached: true, cachedAt: hit.cachedAt });
+    }
+    try {
+      const { entry, cached } = await latestReportInsights(ticker, model, {
+        listReports: options.insights?.listReports ?? ((t, n) => listReports(t, n, options.fetcher)),
+        textOf: options.insights?.textOf,
+        judge: options.insights?.judge,
+      });
+      if (!entry) {
+        return res.status(422).json({
+          error: 'no-reports',
+          message: 'The latest annual report could not be fetched. Upload it as a PDF.',
+        });
+      }
+      const body = {
+        ticker,
+        model,
+        experimental: true,
+        year: entry.year,
+        source: entry.source,
+        status: entry.found ? 'ok' : 'no-mdna',
+        message: entry.found ? null : 'No Management Discussion and Analysis or risk sections found in the report.',
+        insights: entry.insights,
+      };
+      cachePut(key, body);
+      res.json({ ...body, cached, cachedAt: Date.now() });
+    } catch (err: any) {
+      console.error(`[insights error] ${ticker}: ${err?.message || err}`);
+      if (err instanceof LlmError) {
+        return res.status(503).json({ error: 'llm-unavailable', message: `The language model is unavailable: ${err.message}` });
+      }
+      res.status(502).json({ error: 'failed', message: 'The annual report could not be analysed.' });
+    }
+  });
+
   router.post('/:ticker/qualitative', express.json(), async (req, res) => {
+    if (!enabled().qualitative) {
+      return sendDisabled(res, 'The Qualitative analysis', 'ENABLE_QUALITATIVE');
+    }
     const ticker = req.params.ticker;
     const peerOverride: string[] | undefined = Array.isArray(req.body?.peers)
       ? req.body.peers.filter((p: unknown): p is string => typeof p === 'string' && p.trim().length > 0).map((p: string) => p.trim())
       : undefined;
-    const { model } = ollamaConfig();
+    const { model } = llmConfig();
     const peerTag = (peerOverride ?? ['default']).join(',');
     // Checked before listing reports, so a repeat request makes no report, FMP or LLM calls.
     const key = `${qualPrefix(ticker)}${model}:${peerTag}`;
@@ -317,7 +380,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       res.json({ ...body, cached: false, cachedAt: Date.now() });
     } catch (err: any) {
       console.error(`[qualitative error] ${ticker}: ${err?.message || err}`);
-      if (err instanceof OllamaError) {
+      if (err instanceof LlmError) {
         return res.status(503).json({ error: 'llm-unavailable', message: err.message });
       }
       sendUpstreamError(res, ticker, err);
@@ -326,8 +389,11 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
 
   // SWOT returns a partial result: financials S/W survive a missing report or an unreachable LLM, and vice versa.
   router.post('/:ticker/swot', async (req, res) => {
+    if (!enabled().swot) {
+      return sendDisabled(res, 'The SWOT analysis', 'ENABLE_SWOT');
+    }
     const ticker = req.params.ticker;
-    const { model } = ollamaConfig();
+    const { model } = llmConfig();
     const key = swotKey(ticker, model);
     const hit = cacheGet<any>(key);
     if (hit) {
@@ -353,8 +419,8 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     if (reportResult.status === 'rejected') {
       const err = reportResult.reason;
       console.error(`[swot report error] ${ticker}: ${err?.message || err}`);
-      report = err instanceof OllamaError
-        ? { status: 'llm-unavailable', message: `The local model is unavailable: ${err.message}`, year: null, source: null, cached: false }
+      report = err instanceof LlmError
+        ? { status: 'llm-unavailable', message: `The language model is unavailable: ${err.message}`, year: null, source: null, cached: false }
         : { status: 'failed', message: 'The annual report could not be analysed.', year: null, source: null, cached: false };
     } else if (!entry) {
       report = {

@@ -10,7 +10,18 @@ import { AnalysisService } from '../services/analysis.service';
 import { PeerRow, StockMetrics, marketCapCrores } from '../models/stock-metrics';
 import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.component';
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
-import { DcfAssumptions, GuidanceOutcome, MoatRating, QualitativeAnalysis, QuantitativeAnalysis, SwotAnalysis, SwotQuadrantKey } from '../models/analysis';
+import {
+    DcfAssumptions,
+    Features,
+    GuidanceOutcome,
+    InsightListKey,
+    MdnaInsights,
+    MoatRating,
+    QualitativeAnalysis,
+    QuantitativeAnalysis,
+    SwotAnalysis,
+    SwotQuadrantKey
+} from '../models/analysis';
 
 type LoadState = 'idle' | 'loading' | 'data' | 'error';
 type Tone = 'good' | 'neutral' | 'warn' | 'bad';
@@ -43,6 +54,17 @@ const SWOT_QUADRANTS: { key: SwotQuadrantKey; label: string; icon: string; tone:
     { key: 'opportunities', label: 'Opportunities', icon: 'lightbulb', tone: 'neutral' },
     { key: 'threats', label: 'Threats', icon: 'warning_amber', tone: 'warn' }
 ];
+
+const INSIGHT_SECTIONS: { key: InsightListKey; label: string; icon: string; tone: Tone }[] = [
+    { key: 'keyPoints', label: 'Key points', icon: 'summarize', tone: 'neutral' },
+    { key: 'growthStrategy', label: 'Revenue growth strategy', icon: 'rocket_launch', tone: 'good' },
+    { key: 'tailwinds', label: 'Tailwinds', icon: 'trending_up', tone: 'good' },
+    { key: 'headwinds', label: 'Headwinds', icon: 'trending_down', tone: 'warn' },
+    { key: 'risks', label: 'Investment risks', icon: 'warning_amber', tone: 'bad' }
+];
+
+// Used until the server answers (or when it is too old to expose /features): only the always-on features.
+const DEFAULT_FEATURES: Features = { insights: true, qualitative: false, swot: false };
 
 const MOAT_TONES: Record<MoatRating, Tone> = { wide: 'good', narrow: 'neutral', none: 'bad' };
 const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'warn', missed: 'bad' };
@@ -77,6 +99,16 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     assumptions: DcfAssumptions | null = null;
     showAssumptions = true;
 
+    features: Features = DEFAULT_FEATURES;
+
+    insights: MdnaInsights | null = null;
+    insightsLoading = false;
+    insightsError = '';
+    insightsNeedsUpload = false;
+    /** Wall-clock time of the last insights request as seen by the browser, including network and cache lookups. */
+    insightsElapsedMs: number | null = null;
+    readonly insightSections = INSIGHT_SECTIONS;
+
     qual: QualitativeAnalysis | null = null;
     qualLoading = false;
     qualError = '';
@@ -92,10 +124,15 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     private stockSub?: Subscription;
     private quantSub?: Subscription;
+    private insightsSub?: Subscription;
     private qualSub?: Subscription;
     private swotSub?: Subscription;
 
     ngOnInit(): void {
+        this.analysis.getFeatures().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: (f) => (this.features = { ...DEFAULT_FEATURES, ...f }),
+            error: () => (this.features = DEFAULT_FEATURES)
+        });
         this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
             const q = this.normalise(params.get('q') ?? '');
             if (q && q !== this.ticker) {
@@ -107,6 +144,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     ngOnDestroy(): void {
         this.stockSub?.unsubscribe();
         this.quantSub?.unsubscribe();
+        this.insightsSub?.unsubscribe();
         this.qualSub?.unsubscribe();
         this.swotSub?.unsubscribe();
     }
@@ -135,6 +173,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.quant = null;
         this.assumptions = null;
         this.loadQuant();
+        this.loadInsights();
     }
 
     // ---- Fundamentals -------------------------------------------------------
@@ -284,6 +323,48 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         return QUANT_VERDICTS[score] ?? QUANT_VERDICTS[3];
     }
 
+    // ---- MD&A insights (Latest annual report) -------------------------------
+
+    loadInsights(): void {
+        this.insightsSub?.unsubscribe();
+        this.insights = null;
+        this.insightsLoading = true;
+        this.insightsError = '';
+        this.insightsNeedsUpload = false;
+        this.insightsElapsedMs = null;
+        const started = this.now();
+        this.insightsSub = this.analysis.getInsights(this.ticker).subscribe({
+            next: (i) => {
+                this.insights = i;
+                this.insightsLoading = false;
+                this.insightsElapsedMs = this.now() - started;
+            },
+            error: (err: HttpErrorResponse) => {
+                this.insightsLoading = false;
+                this.insightsElapsedMs = this.now() - started;
+                this.insightsNeedsUpload = err.error?.error === 'no-reports';
+                this.insightsError = err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+            }
+        });
+    }
+
+    get insightsTimeLabel(): string | null {
+        const ms = this.insightsElapsedMs;
+        if (ms == null) {
+            return null;
+        }
+        return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
+    }
+
+    protected now(): number {
+        return performance.now();
+    }
+
+    get insightsReportLabel(): string | null {
+        const i = this.insights;
+        return i ? `FY${i.year} · ${i.source === 'upload' ? 'uploaded' : 'fetched'}` : null;
+    }
+
     // ---- Qualitative analysis ----------------------------------------------
 
     runQualitative(): void {
@@ -312,7 +393,10 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
             return;
         }
         this.analysis.uploadReport(this.ticker, this.uploadYear, file).subscribe({
-            next: (r) => (this.uploadMessage = `Uploaded ${r.year} annual report, run the analysis again`),
+            next: (r) => {
+                this.uploadMessage = `Uploaded ${r.year} annual report, run the analysis again`;
+                this.loadInsights();
+            },
             error: (err: HttpErrorResponse) => (this.uploadMessage = err.error?.error ?? 'Upload failed')
         });
     }

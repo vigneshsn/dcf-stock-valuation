@@ -8,6 +8,8 @@ import express from 'express';
 import { afterEach, test } from 'node:test';
 import { createAnalysisRouter } from './routes/analysis.js';
 import { computeFairValue, deriveDefaults, YearFinancials } from './dcf.js';
+import { Insights } from './insights.js';
+import { LlmError } from './llm.js';
 
 const servers: Server[] = [];
 
@@ -255,6 +257,7 @@ test('SWOT returns financials strengths when no annual report is available', asy
       return url.pathname === '/industry_search' ? new Response('[]') : new Response(JSON.stringify(indianApiStock('SWOTIND')));
     },
     swot: { listReports: async () => [] },
+    features: { swot: true },
   });
   const app = express();
   app.use('/api/analysis', router);
@@ -294,6 +297,7 @@ test('SWOT caches a complete result so a repeat request makes no upstream calls'
       listReports: async () => (listings++, [{ year: 2026, source: 'screener', load: async () => Buffer.from('pdf') }]),
       textOf: async () => 'A report without any MD&A section.',
     },
+    features: { swot: true },
   });
   const app = express();
   app.use('/api/analysis', router);
@@ -315,4 +319,113 @@ test('SWOT caches a complete result so a repeat request makes no upstream calls'
   assert.equal(second.report.cached, true);
   assert.deepEqual(second.strengths, first.strengths);
   assert.deepEqual({ fetches, listings }, callsAfterFirst);
+});
+
+async function serve(router: express.Router): Promise<string> {
+  const app = express();
+  app.use('/api/analysis', router);
+  const server = createServer(app);
+  servers.push(server);
+  server.listen(0);
+  await once(server, 'listening');
+  const address = server.address();
+  assert(address && typeof address !== 'string');
+  return `http://127.0.0.1:${address.port}/api/analysis`;
+}
+
+test('features: SWOT and the Qualitative analysis are off by default, MD&A insights on', async () => {
+  const saved = { q: process.env.ENABLE_QUALITATIVE, s: process.env.ENABLE_SWOT };
+  delete process.env.ENABLE_QUALITATIVE;
+  delete process.env.ENABLE_SWOT;
+  try {
+    const base = await serve(createAnalysisRouter({ provider: 'indianapi' }));
+    assert.deepEqual(await (await fetch(`${base}/features`)).json(), { insights: true, qualitative: false, swot: false });
+
+    for (const [path, flag] of [['SOME/swot', 'ENABLE_SWOT'], ['SOME/qualitative', 'ENABLE_QUALITATIVE']]) {
+      const response = await fetch(`${base}/${path}`, { method: 'POST' });
+      assert.equal(response.status, 404);
+      const body = await response.json();
+      assert.equal(body.error, 'disabled');
+      assert.match(body.message, new RegExp(flag));
+    }
+
+    process.env.ENABLE_SWOT = 'true';
+    assert.equal((await (await fetch(`${base}/features`)).json()).swot, true);
+  } finally {
+    if (saved.q === undefined) delete process.env.ENABLE_QUALITATIVE;
+    else process.env.ENABLE_QUALITATIVE = saved.q;
+    if (saved.s === undefined) delete process.env.ENABLE_SWOT;
+    else process.env.ENABLE_SWOT = saved.s;
+  }
+});
+
+const insightsReport = [
+  'Management Discussion and Analysis',
+  ...Array.from({ length: 30 }, (_, i) => `Our revenue grew and we expect new product launch ${i} to expand market share next year.`),
+  'Risks and Concerns',
+  ...Array.from({ length: 10 }, (_, i) => `Volatile input cost ${i} could pressure our margins.`),
+  'Directors Report',
+].join('\n');
+
+const sampleInsights: Insights = {
+  keyPoints: [{ point: 'Revenue grew', quote: null }],
+  growthStrategy: [{ point: 'New launches', quote: null }],
+  tailwinds: [],
+  headwinds: [],
+  risks: [{ point: 'Input costs', quote: null }],
+  moat: { rating: 'narrow', reasoning: 'Brand.', quote: null },
+};
+
+test('insights: analyses the latest report once and serves repeats from cache', async () => {
+  process.env.INSIGHTS_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'insights-route-'));
+  let listings = 0;
+  let judged = 0;
+  const base = await serve(createAnalysisRouter({
+    provider: 'indianapi',
+    insights: {
+      listReports: async () => (listings++, [{ year: 2026, source: 'screener', load: async () => Buffer.from('pdf') }]),
+      textOf: async () => insightsReport,
+      judge: async () => (judged++, sampleInsights),
+    },
+  }));
+
+  const first = await (await fetch(`${base}/INSIGHTCO/insights`)).json();
+  const second = await (await fetch(`${base}/INSIGHTCO/insights`)).json();
+
+  assert.equal(first.status, 'ok');
+  assert.equal(first.year, 2026);
+  assert.equal(first.source, 'screener');
+  assert.equal(first.cached, false);
+  assert.equal(first.experimental, true);
+  assert.deepEqual(first.insights, sampleInsights);
+  assert.equal(second.cached, true);
+  assert.deepEqual({ listings, judged }, { listings: 1, judged: 1 });
+});
+
+test('insights: missing report is 422 no-reports, LLM failure is 503 and not cached', async () => {
+  process.env.INSIGHTS_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'insights-route-'));
+  const none = await serve(createAnalysisRouter({ provider: 'indianapi', insights: { listReports: async () => [] } }));
+  const missing = await fetch(`${none}/NOREPORT/insights`);
+  assert.equal(missing.status, 422);
+  assert.equal((await missing.json()).error, 'no-reports');
+
+  let fail = true;
+  const flaky = await serve(createAnalysisRouter({
+    provider: 'indianapi',
+    insights: {
+      listReports: async () => [{ year: 2026, source: 'screener', load: async () => Buffer.from('pdf') }],
+      textOf: async () => insightsReport,
+      judge: async () => {
+        if (fail) throw new LlmError('All LLM providers failed');
+        return sampleInsights;
+      },
+    },
+  }));
+  const down = await fetch(`${flaky}/FLAKY/insights`);
+  assert.equal(down.status, 503);
+  assert.equal((await down.json()).error, 'llm-unavailable');
+  fail = false;
+  const recovered = await fetch(`${flaky}/FLAKY/insights`);
+  assert.equal(recovered.status, 200);
+  assert.equal((await recovered.json()).cached, false);
 });

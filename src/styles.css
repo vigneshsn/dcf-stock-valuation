@@ -293,6 +293,11 @@ input.editable {
     text-transform: capitalize;
 }
 
+.pill .material-icons {
+    font-size: 0.95rem;
+    margin-right: 4px;
+}
+
 .pill-ticker {
     background: var(--grad-cool);
     color: #fff;

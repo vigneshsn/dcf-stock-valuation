@@ -5,12 +5,20 @@ Fundamental analysis of listed stocks (Indian market first) from live financial 
 ## Language
 
 **Analysis**:
-The complete fundamental assessment of one stock, made of a Quantitative analysis, a Qualitative analysis and an unscored SWOT analysis. The two scores are always presented side by side; there is no blended overall score.
+The complete fundamental assessment of one stock, made of a Quantitative analysis and MD&A insights, plus the optional Qualitative analysis and unscored SWOT analysis (both disabled by default to stay within free LLM quotas). Scores are always presented side by side; there is no blended overall score.
 _Avoid_: Report, evaluation
 
 **Quantitative analysis**:
 The numbers-based half of an Analysis: key financial ratios (P/E, P/B, ROE) and a DCF-derived Fair value, summarised by a Quantitative score.
 _Avoid_: Financial analysis
+
+**MD&A insights**:
+An unscored summary of the Latest annual report's Management Discussion and Analysis, produced in a single LLM call: key points, revenue growth strategy, tailwinds, headwinds, investment risks and a Moat rating. Each point carries a verbatim quote from the report when one can be verified. Labelled experimental.
+_Avoid_: Report summary, AI summary
+
+**Tailwind / Headwind**:
+An external or internal factor named in the report that is currently helping (tailwind) or holding back (headwind) the business. Distinct from an investment risk, which may or may not materialise.
+_Avoid_: Driver, drag
 
 **Qualitative analysis**:
 The annual-report-based half of an Analysis: Moat assessment and Management trustworthiness, summarised by a Qualitative score.
@@ -29,7 +37,7 @@ An integer 1-5 combining Moat and Management trustworthiness, with a written exp
 _Avoid_: Quality score
 
 **Moat**:
-A company's durable competitive advantage, judged from the annual report's management analysis section compared against industry peers.
+A company's durable competitive advantage, judged from the annual report's management analysis section: against industry peers in the Qualitative analysis, from the Latest annual report alone in MD&A insights.
 _Avoid_: Edge, USP
 
 **Management trustworthiness**:

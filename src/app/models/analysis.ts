@@ -70,3 +70,31 @@ export interface SwotAnalysis extends Record<SwotQuadrantKey, SwotQuadrant> {
     report: { status: SwotReportStatus; message: string | null; year: number | null; source: 'screener' | 'upload' | null; cached: boolean };
     financials: { status: 'ok' | 'unavailable'; year: number | null; message: string | null };
 }
+
+/** Server feature flags; the Qualitative and SWOT analyses are off unless the server enables them. */
+export interface Features {
+    insights: boolean;
+    qualitative: boolean;
+    swot: boolean;
+}
+
+export type InsightListKey = 'keyPoints' | 'growthStrategy' | 'tailwinds' | 'headwinds' | 'risks';
+
+export interface InsightItem {
+    point: string;
+    /** Verbatim report phrase backing the point, or null when it could not be verified. */
+    quote: string | null;
+}
+
+export interface MdnaInsights {
+    ticker: string;
+    model: string;
+    experimental: boolean;
+    year: number;
+    source: 'screener' | 'upload';
+    status: 'ok' | 'no-mdna';
+    message: string | null;
+    insights: (Record<InsightListKey, InsightItem[]> & { moat: { rating: MoatRating; reasoning: string; quote: string | null } }) | null;
+    cached: boolean;
+    cachedAt: number;
+}

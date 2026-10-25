@@ -237,165 +237,140 @@
             }
         </article>
 
-        <!-- Qualitative analysis -->
-        <article class="tile score-tile span-6" data-testid="qual-panel">
+        <!-- MD&A insights (Latest annual report) -->
+        <article class="tile span-6" data-testid="insights-panel">
             <header class="tile-head">
                 <div>
-                    <h3>Qualitative analysis</h3>
-                    <span class="tile-sub">Moat + management, read from annual reports</span>
-                </div>
-                <span class="tag tag-warn">experimental</span>
-            </header>
-
-            @if (!qual && !qualLoading) {
-                <div class="qual-cta">
-                    <p class="muted">A local model reads the last 3 annual reports' MD&amp;A, judges the
-                        <strong>Moat</strong> against peers and checks whether management delivered on its guidance.
-                        Takes a few minutes ☕</p>
-                    <details class="peer-override">
-                        <summary>Custom peer set (optional)</summary>
-                        <input type="text" name="peers" [(ngModel)]="peersText" placeholder="e.g. INFY, WIPRO, HCLTECH"/>
-                    </details>
-                    <button type="button" class="btn" (click)="runQualitative()">
-                        <span class="material-icons" aria-hidden="true">auto_awesome</span> Run qualitative analysis
-                    </button>
-                </div>
-            }
-
-            @if (qualLoading) {
-                <div class="thinking">
-                    <div class="orb" aria-hidden="true"></div>
-                    <p>Reading annual reports and asking the local model. This can take a few minutes...</p>
-                </div>
-            }
-
-            @if (qualError) {
-                <p class="alert alert-bad" role="alert">
-                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ qualError }}
-                </p>
-            }
-
-            @if (needsUpload) {
-                <div class="upload">
-                    <label>Year <input type="number" name="uploadYear" [(ngModel)]="uploadYear"/></label>
-                    <label class="file-drop">
-                        <span class="material-icons" aria-hidden="true">upload_file</span>
-                        Upload annual report PDF
-                        <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
-                    </label>
-                    @if (uploadMessage) {
-                        <p class="small">{{ uploadMessage }}</p>
-                    }
-                </div>
-            }
-
-            @if (qual && !qualLoading) {
-                <div class="score-row">
-                    <app-score-ring [score]="qual.score" [tone]="qualVerdict(qual.score).tone" testId="qual-score"></app-score-ring>
-                    <div class="score-meta">
-                        <span class="verdict" [attr.data-tone]="qualVerdict(qual.score).tone">
-                            {{ qualVerdict(qual.score).emoji }} {{ qualVerdict(qual.score).label }}
-                        </span>
-                        <div class="pills">
-                            <span class="pill" [attr.data-tone]="moatTone(qual.moat.rating)">Moat: {{ qual.moat.rating }}</span>
-                            @for (y of qual.yearsAnalysed; track y) {
-                                <span class="pill">FY{{ y }}</span>
-                            }
-                            @if (qual.cached) {
-                                <span class="tag">cached</span>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                @if (qual.management.lowerConfidence) {
-                    <p class="alert alert-warn">
-                        <span class="material-icons" aria-hidden="true">info</span> Lower confidence: fewer than 3 years of reports.
-                    </p>
-                }
-                <p class="explanation">{{ qual.explanation }}</p>
-
-                @if (qual.management.comparisons.length) {
-                    <h4 class="mini-head">Did management deliver?</h4>
-                    <ul class="timeline">
-                        @for (c of qual.management.comparisons; track c.guidanceYear) {
-                            <li>
-                                <span class="pill" [attr.data-tone]="outcomeTone(c.outcome)">{{ c.outcome }}</span>
-                                <span class="small">FY{{ c.guidanceYear }} guidance → FY{{ c.actualsYear }} actuals</span>
-                            </li>
-                        }
-                    </ul>
-                }
-
-                @for (quote of qual.quotes; track $index) {
-                    <blockquote>“{{ quote }}”</blockquote>
-                }
-
-                <p class="small">Peers{{ qual.peersOverridden ? ' (overridden)' : '' }}:
-                    @for (p of qual.peers; track p.symbol; let last = $last) {
-                        {{ p.name }}{{ last ? '' : ', ' }}
-                    } @empty {
-                        none
-                    }
-                </p>
-                <button type="button" class="btn btn-ghost btn-sm" (click)="runQualitative()">
-                    <span class="material-icons" aria-hidden="true">refresh</span> Run again
-                </button>
-            }
-        </article>
-
-        <!-- SWOT analysis -->
-        <article class="tile span-12" data-testid="swot-panel">
-            <header class="tile-head">
-                <div>
-                    <h3>SWOT analysis</h3>
-                    <span class="tile-sub">Latest annual report + last fiscal year's financials · unscored</span>
+                    <h3>MD&amp;A insights</h3>
+                    <span class="tile-sub">Latest annual report's management discussion, read by a language model</span>
                 </div>
                 <div class="pills">
-                    @if (swotReportLabel) {
-                        <span class="pill" data-testid="swot-report">{{ swotReportLabel }}</span>
+                    @if (insightsReportLabel) {
+                        <span class="pill" data-testid="insights-report">{{ insightsReportLabel }}</span>
                     }
-                    @if (swot?.report?.cached) {
+                    @if (insights?.cached) {
                         <span class="tag">cached</span>
+                    }
+                    @if (insightsTimeLabel && !insightsLoading) {
+                        <span class="pill" data-testid="insights-time" title="Time taken to load these insights">
+                            <span class="material-icons" aria-hidden="true">timer</span> {{ insightsTimeLabel }}
+                        </span>
                     }
                     <span class="tag tag-warn">experimental</span>
                 </div>
             </header>
 
-            @if (!swot && !swotLoading) {
-                <div class="qual-cta">
-                    <p class="muted">Reads the latest annual report's <strong>Opportunities and Threats</strong> and
-                        <strong>Risks and Concerns</strong> sections plus its MD&amp;A, and checks last year's financials for
-                        strengths and weaknesses. Takes a minute or two ☕</p>
-                    <button type="button" class="btn" (click)="runSwot()">
-                        <span class="material-icons" aria-hidden="true">grid_view</span> Run SWOT analysis
-                    </button>
-                </div>
-            }
-
-            @if (swotLoading) {
+            @if (insightsLoading) {
                 <div class="thinking">
                     <div class="orb" aria-hidden="true"></div>
-                    <p>Reading the latest annual report and last year's numbers...</p>
+                    <p>Reading the latest annual report's MD&amp;A...</p>
                 </div>
             }
 
-            @if (swotError) {
+            @if (insightsError) {
                 <p class="alert alert-bad" role="alert">
-                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ swotError }}
+                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ insightsError }}
                 </p>
+                @if (!insightsNeedsUpload) {
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="loadInsights()">
+                        <span class="material-icons" aria-hidden="true">refresh</span> Try again
+                    </button>
+                }
             }
 
-            @if (swot && !swotLoading) {
-                @if (swot.report.status !== 'ok' && swot.report.message) {
-                    <p class="alert alert-warn" data-testid="swot-report-status">
-                        <span class="material-icons" aria-hidden="true">info</span> {{ swot.report.message }}
-                        Showing financials-based items only.
+            @if (insightsNeedsUpload) {
+                <div class="upload" data-testid="insights-upload">
+                    <label>Year <input type="number" name="insightsUploadYear" [(ngModel)]="uploadYear"/></label>
+                    <label class="file-drop">
+                        <span class="material-icons" aria-hidden="true">upload_file</span>
+                        Upload annual report PDF
+                        <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
+                    </label>
+                </div>
+            }
+
+            @if (insights && !insightsLoading) {
+                @if (insights.status !== 'ok' && insights.message) {
+                    <p class="alert alert-warn" data-testid="insights-status">
+                        <span class="material-icons" aria-hidden="true">info</span> {{ insights.message }}
                     </p>
                 }
-                @if (swot.report.status === 'no-reports') {
+                @if (insights.insights; as found) {
+                    <div class="pills">
+                        <span class="pill" [attr.data-tone]="moatTone(found.moat.rating)" data-testid="insights-moat">Moat: {{ found.moat.rating }}</span>
+                    </div>
+                    @if (found.moat.reasoning) {
+                        <p class="explanation">{{ found.moat.reasoning }}</p>
+                    }
+                    @for (section of insightSections; track section.key) {
+                        <section class="insight-section" [attr.data-tone]="section.tone" [attr.data-testid]="'insights-' + section.key">
+                            <h4 class="swot-head">
+                                <span class="material-icons" aria-hidden="true">{{ section.icon }}</span> {{ section.label }}
+                            </h4>
+                            <ul class="swot-items">
+                                @for (item of found[section.key]; track $index) {
+                                    <li>
+                                        @if (item.quote) {
+                                            <details>
+                                                <summary>{{ item.point }}</summary>
+                                                <blockquote>“{{ item.quote }}”</blockquote>
+                                            </details>
+                                        } @else {
+                                            {{ item.point }}
+                                        }
+                                    </li>
+                                } @empty {
+                                    <li class="muted small">Nothing identified.</li>
+                                }
+                            </ul>
+                        </section>
+                    }
+                }
+            }
+        </article>
+
+        <!-- Qualitative analysis (needs 3 annual reports; off unless the server enables it) -->
+        @if (features.qualitative) {
+            <article class="tile score-tile span-6" data-testid="qual-panel">
+                <header class="tile-head">
+                    <div>
+                        <h3>Qualitative analysis</h3>
+                        <span class="tile-sub">Moat + management, read from annual reports</span>
+                    </div>
+                    <span class="tag tag-warn">experimental</span>
+                </header>
+
+                @if (!qual && !qualLoading) {
+                    <div class="qual-cta">
+                        <p class="muted">A language model reads the last 3 annual reports' MD&amp;A, judges the
+                            <strong>Moat</strong> against peers and checks whether management delivered on its guidance.
+                            Takes a few minutes ☕</p>
+                        <details class="peer-override">
+                            <summary>Custom peer set (optional)</summary>
+                            <input type="text" name="peers" [(ngModel)]="peersText" placeholder="e.g. INFY, WIPRO, HCLTECH"/>
+                        </details>
+                        <button type="button" class="btn" (click)="runQualitative()">
+                            <span class="material-icons" aria-hidden="true">auto_awesome</span> Run qualitative analysis
+                        </button>
+                    </div>
+                }
+
+                @if (qualLoading) {
+                    <div class="thinking">
+                        <div class="orb" aria-hidden="true"></div>
+                        <p>Reading annual reports and asking the language model. This can take a few minutes...</p>
+                    </div>
+                }
+
+                @if (qualError) {
+                    <p class="alert alert-bad" role="alert">
+                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ qualError }}
+                    </p>
+                }
+
+                @if (needsUpload) {
                     <div class="upload">
-                        <label>Year <input type="number" name="swotUploadYear" [(ngModel)]="uploadYear"/></label>
+                        <label>Year <input type="number" name="uploadYear" [(ngModel)]="uploadYear"/></label>
                         <label class="file-drop">
                             <span class="material-icons" aria-hidden="true">upload_file</span>
                             Upload annual report PDF
@@ -406,49 +381,170 @@
                         }
                     </div>
                 }
-                @if (swot.financials.status !== 'ok' && swot.financials.message) {
-                    <p class="alert alert-warn">
-                        <span class="material-icons" aria-hidden="true">info</span> {{ swot.financials.message }}
+
+                @if (qual && !qualLoading) {
+                    <div class="score-row">
+                        <app-score-ring [score]="qual.score" [tone]="qualVerdict(qual.score).tone" testId="qual-score"></app-score-ring>
+                        <div class="score-meta">
+                            <span class="verdict" [attr.data-tone]="qualVerdict(qual.score).tone">
+                                {{ qualVerdict(qual.score).emoji }} {{ qualVerdict(qual.score).label }}
+                            </span>
+                            <div class="pills">
+                                <span class="pill" [attr.data-tone]="moatTone(qual.moat.rating)">Moat: {{ qual.moat.rating }}</span>
+                                @for (y of qual.yearsAnalysed; track y) {
+                                    <span class="pill">FY{{ y }}</span>
+                                }
+                                @if (qual.cached) {
+                                    <span class="tag">cached</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (qual.management.lowerConfidence) {
+                        <p class="alert alert-warn">
+                            <span class="material-icons" aria-hidden="true">info</span> Lower confidence: fewer than 3 years of reports.
+                        </p>
+                    }
+                    <p class="explanation">{{ qual.explanation }}</p>
+
+                    @if (qual.management.comparisons.length) {
+                        <h4 class="mini-head">Did management deliver?</h4>
+                        <ul class="timeline">
+                            @for (c of qual.management.comparisons; track c.guidanceYear) {
+                                <li>
+                                    <span class="pill" [attr.data-tone]="outcomeTone(c.outcome)">{{ c.outcome }}</span>
+                                    <span class="small">FY{{ c.guidanceYear }} guidance → FY{{ c.actualsYear }} actuals</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @for (quote of qual.quotes; track $index) {
+                        <blockquote>“{{ quote }}”</blockquote>
+                    }
+
+                    <p class="small">Peers{{ qual.peersOverridden ? ' (overridden)' : '' }}:
+                        @for (p of qual.peers; track p.symbol; let last = $last) {
+                            {{ p.name }}{{ last ? '' : ', ' }}
+                        } @empty {
+                            none
+                        }
+                    </p>
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="runQualitative()">
+                        <span class="material-icons" aria-hidden="true">refresh</span> Run again
+                    </button>
+                }
+            </article>
+        }
+
+        <!-- SWOT analysis (off unless the server enables it) -->
+        @if (features.swot) {
+            <article class="tile span-12" data-testid="swot-panel">
+                <header class="tile-head">
+                    <div>
+                        <h3>SWOT analysis</h3>
+                        <span class="tile-sub">Latest annual report + last fiscal year's financials · unscored</span>
+                    </div>
+                    <div class="pills">
+                        @if (swotReportLabel) {
+                            <span class="pill" data-testid="swot-report">{{ swotReportLabel }}</span>
+                        }
+                        @if (swot?.report?.cached) {
+                            <span class="tag">cached</span>
+                        }
+                        <span class="tag tag-warn">experimental</span>
+                    </div>
+                </header>
+
+                @if (!swot && !swotLoading) {
+                    <div class="qual-cta">
+                        <p class="muted">Reads the latest annual report's <strong>Opportunities and Threats</strong> and
+                            <strong>Risks and Concerns</strong> sections plus its MD&amp;A, and checks last year's financials for
+                            strengths and weaknesses. Takes a minute or two ☕</p>
+                        <button type="button" class="btn" (click)="runSwot()">
+                            <span class="material-icons" aria-hidden="true">grid_view</span> Run SWOT analysis
+                        </button>
+                    </div>
+                }
+
+                @if (swotLoading) {
+                    <div class="thinking">
+                        <div class="orb" aria-hidden="true"></div>
+                        <p>Reading the latest annual report and last year's numbers...</p>
+                    </div>
+                }
+
+                @if (swotError) {
+                    <p class="alert alert-bad" role="alert">
+                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ swotError }}
                     </p>
                 }
 
-                <div class="swot-grid">
-                    @for (q of swotQuadrants; track q.key) {
-                        <section class="swot-quadrant" [attr.data-tone]="q.tone" [attr.data-testid]="'swot-' + q.key">
-                            <h4 class="swot-head">
-                                <span class="material-icons" aria-hidden="true">{{ q.icon }}</span> {{ q.label }}
-                                @if (swot[q.key].lowerConfidence) {
-                                    <span class="tag tag-warn" title="No dedicated section found in the report; extracted from the whole MD&A">lower confidence</span>
-                                }
-                            </h4>
-                            <ul class="swot-items">
-                                @for (item of swot[q.key].items; track $index) {
-                                    <li>
-                                        <details>
-                                            <summary>
-                                                <span class="swot-badge" [attr.data-source]="item.source">{{ item.source }}</span>
-                                                {{ item.text }}
-                                            </summary>
-                                            @if (item.source === 'report') {
-                                                <blockquote>“{{ item.evidence }}”</blockquote>
-                                            } @else {
-                                                <p class="small">{{ item.evidence }}</p>
-                                            }
-                                        </details>
-                                    </li>
-                                } @empty {
-                                    <li class="muted small">Nothing identified.</li>
-                                }
-                            </ul>
-                        </section>
+                @if (swot && !swotLoading) {
+                    @if (swot.report.status !== 'ok' && swot.report.message) {
+                        <p class="alert alert-warn" data-testid="swot-report-status">
+                            <span class="material-icons" aria-hidden="true">info</span> {{ swot.report.message }}
+                            Showing financials-based items only.
+                        </p>
                     }
-                </div>
+                    @if (swot.report.status === 'no-reports') {
+                        <div class="upload">
+                            <label>Year <input type="number" name="swotUploadYear" [(ngModel)]="uploadYear"/></label>
+                            <label class="file-drop">
+                                <span class="material-icons" aria-hidden="true">upload_file</span>
+                                Upload annual report PDF
+                                <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
+                            </label>
+                            @if (uploadMessage) {
+                                <p class="small">{{ uploadMessage }}</p>
+                            }
+                        </div>
+                    }
+                    @if (swot.financials.status !== 'ok' && swot.financials.message) {
+                        <p class="alert alert-warn">
+                            <span class="material-icons" aria-hidden="true">info</span> {{ swot.financials.message }}
+                        </p>
+                    }
 
-                <button type="button" class="btn btn-ghost btn-sm" (click)="runSwot()">
-                    <span class="material-icons" aria-hidden="true">refresh</span> Run again
-                </button>
-            }
-        </article>
+                    <div class="swot-grid">
+                        @for (q of swotQuadrants; track q.key) {
+                            <section class="swot-quadrant" [attr.data-tone]="q.tone" [attr.data-testid]="'swot-' + q.key">
+                                <h4 class="swot-head">
+                                    <span class="material-icons" aria-hidden="true">{{ q.icon }}</span> {{ q.label }}
+                                    @if (swot[q.key].lowerConfidence) {
+                                        <span class="tag tag-warn" title="No dedicated section found in the report; extracted from the whole MD&A">lower confidence</span>
+                                    }
+                                </h4>
+                                <ul class="swot-items">
+                                    @for (item of swot[q.key].items; track $index) {
+                                        <li>
+                                            <details>
+                                                <summary>
+                                                    <span class="swot-badge" [attr.data-source]="item.source">{{ item.source }}</span>
+                                                    {{ item.text }}
+                                                </summary>
+                                                @if (item.source === 'report') {
+                                                    <blockquote>“{{ item.evidence }}”</blockquote>
+                                                } @else {
+                                                    <p class="small">{{ item.evidence }}</p>
+                                                }
+                                            </details>
+                                        </li>
+                                    } @empty {
+                                        <li class="muted small">Nothing identified.</li>
+                                    }
+                                </ul>
+                            </section>
+                        }
+                    </div>
+
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="runSwot()">
+                        <span class="material-icons" aria-hidden="true">refresh</span> Run again
+                    </button>
+                }
+            </article>
+        }
 
         @if (stockState === 'data') {
             <!-- Peers -->

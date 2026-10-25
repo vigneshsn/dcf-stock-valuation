@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { of } from 'rxjs';
 import { StockDashboardComponent } from './stock-dashboard.component';
 import { StockMetrics } from '../models/stock-metrics';
-import { QuantitativeAnalysis } from '../models/analysis';
+import { Features, MdnaInsights, QuantitativeAnalysis } from '../models/analysis';
 
 const STOCK_URL = 'http://localhost:3000/api/stock/';
 const ANALYSIS_URL = 'http://localhost:3000/api/analysis/';
@@ -46,6 +46,31 @@ function quant(overrides: Partial<QuantitativeAnalysis> = {}): QuantitativeAnaly
     };
 }
 
+const DEFAULT_FEATURES: Features = { insights: true, qualitative: false, swot: false };
+
+function mdnaInsights(overrides: Partial<MdnaInsights> = {}): MdnaInsights {
+    return {
+        ticker: 'TCS',
+        model: 'm',
+        experimental: true,
+        year: 2025,
+        source: 'screener',
+        status: 'ok',
+        message: null,
+        insights: {
+            keyPoints: [{ point: 'Revenue grew 18%', quote: 'revenue grew 18% this year on strong demand' }],
+            growthStrategy: [{ point: 'Expand into rural markets', quote: null }],
+            tailwinds: [{ point: 'Rising rural demand', quote: null }],
+            headwinds: [],
+            risks: [{ point: 'Raw material price volatility', quote: 'volatile raw material prices could compress margins' }],
+            moat: { rating: 'narrow', reasoning: 'Strong brand in the premium segment.', quote: null }
+        },
+        cached: false,
+        cachedAt: 0,
+        ...overrides
+    };
+}
+
 describe('StockDashboardComponent', () => {
     let component: StockDashboardComponent;
     let fixture: ComponentFixture<StockDashboardComponent>;
@@ -61,9 +86,12 @@ describe('StockDashboardComponent', () => {
         component = fixture.componentInstance;
         httpMock = TestBed.inject(HttpTestingController);
         fixture.detectChanges();
+        httpMock.expectOne(`${ANALYSIS_URL}features`).flush(DEFAULT_FEATURES);
     });
 
     afterEach(() => {
+        // MD&A insights load automatically with every ticker; tests that don't assert on them leave them pending.
+        httpMock.match((r) => r.url.endsWith('/insights'));
         httpMock.verify();
     });
 
@@ -233,7 +261,7 @@ describe('StockDashboardComponent', () => {
         expect(component.marketCapCrores(null)).toBeNull();
     });
 
-    it('shows the Quantitative score, verdict and upside side by side with the Qualitative panel', () => {
+    it('shows the Quantitative score, verdict and upside side by side with the MD&A insights panel', () => {
         search('TCS');
         httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
         expectQuant('TCS').flush(quant());
@@ -243,7 +271,102 @@ describe('StockDashboardComponent', () => {
         expect(content).toContain('Steal zone');
         expect(component.upside).toBeCloseTo(50, 5);
         expect(content).toContain('+50%');
+        expect(fixture.nativeElement.querySelector('[data-testid="insights-panel"]')).not.toBeNull();
+    });
+
+    it('loads MD&A insights automatically and shows each section with its verified quote', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`);
+        expect(req.request.method).toBe('GET');
+        expect(component.insightsLoading).toBeTrue();
+        req.flush(mdnaInsights());
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="insights-panel"]');
+        expect(panel.querySelector('[data-testid="insights-report"]')?.textContent).toContain('FY2025 · fetched');
+        expect(panel.querySelector('[data-testid="insights-moat"]')?.textContent).toContain('Moat: narrow');
+        const keyPoints = panel.querySelector('[data-testid="insights-keyPoints"]')!;
+        expect(keyPoints.textContent).toContain('Revenue grew 18%');
+        expect(keyPoints.querySelector('blockquote')?.textContent).toContain('revenue grew 18% this year on strong demand');
+        expect(panel.querySelector('[data-testid="insights-growthStrategy"]')?.textContent).toContain('Expand into rural markets');
+        expect(panel.querySelector('[data-testid="insights-growthStrategy"] blockquote')).toBeNull();
+        expect(panel.querySelector('[data-testid="insights-headwinds"]')?.textContent).toContain('Nothing identified.');
+        expect(panel.querySelector('[data-testid="insights-risks"]')?.textContent).toContain('Raw material price volatility');
+    });
+
+    it('shows how long the MD&A insights took, also when they fail', () => {
+        const now = spyOn(component as unknown as { now(): number }, 'now').and.returnValues(1000, 9240, 2000, 2350);
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(mdnaInsights());
+        fixture.detectChanges();
+
+        expect(component.insightsElapsedMs).toBe(8240);
+        expect(fixture.nativeElement.querySelector('[data-testid="insights-time"]')?.textContent).toContain('8.2s');
+
+        component.loadInsights();
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('[data-testid="insights-time"]')).toBeNull();
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(
+            { error: 'llm-unavailable', message: 'quota' },
+            { status: 503, statusText: 'Service Unavailable' }
+        );
+        expect(component.insightsTimeLabel).toBe('350ms');
+        expect(now).toHaveBeenCalledTimes(4);
+    });
+
+    it('offers a PDF upload when the latest report cannot be fetched and reloads insights after uploading', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(
+            { error: 'no-reports', message: 'The latest annual report could not be fetched. Upload it as a PDF.' },
+            { status: 422, statusText: 'Unprocessable' }
+        );
+        expect(component.insightsNeedsUpload).toBeTrue();
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('[data-testid="insights-upload"]')).not.toBeNull();
+
+        component.uploadYear = 2025;
+        const file = new File(['%PDF-'], 'ar.pdf', { type: 'application/pdf' });
+        component.onFileSelected({ target: { files: [file] } } as unknown as Event);
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/reports?year=2025`).flush({ year: 2025, bytes: 5 });
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(mdnaInsights({ source: 'upload' }));
+
+        expect(component.insightsNeedsUpload).toBeFalse();
+        expect(component.insightsReportLabel).toBe('FY2025 · uploaded');
+    });
+
+    it('explains a quota or model outage and offers a retry', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(
+            { error: 'llm-unavailable', message: 'The language model is unavailable: quota exceeded' },
+            { status: 503, statusText: 'Service Unavailable' }
+        );
+
+        expect(text()).toContain('The language model is unavailable: quota exceeded');
+        component.loadInsights();
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(mdnaInsights());
+        expect(component.insightsError).toBe('');
+    });
+
+    it('hides the Qualitative and SWOT panels unless the server enables them', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('[data-testid="qual-panel"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="swot-panel"]')).toBeNull();
+
+        component.features = { insights: true, qualitative: true, swot: true };
+        fixture.detectChanges();
         expect(fixture.nativeElement.querySelector('[data-testid="qual-panel"]')).not.toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="swot-panel"]')).not.toBeNull();
     });
 
     it('sends only the DCF assumptions that differ from the defaults when recalculating', () => {
@@ -281,6 +404,7 @@ describe('StockDashboardComponent', () => {
         httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
         expectQuant('TCS').flush(quant());
 
+        component.features = { insights: true, qualitative: true, swot: false };
         component.peersText = 'INFY, WIPRO';
         component.runQualitative();
         const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/qualitative`);
@@ -288,7 +412,8 @@ describe('StockDashboardComponent', () => {
         req.flush({ error: 'no-reports', message: 'Annual reports could not be fetched' }, { status: 422, statusText: 'Unprocessable' });
 
         expect(component.needsUpload).toBeTrue();
-        expect(text()).toContain('Upload annual report PDF');
+        const qualPanel: HTMLElement = (fixture.detectChanges(), fixture.nativeElement.querySelector('[data-testid="qual-panel"]'));
+        expect(qualPanel.textContent).toContain('Upload annual report PDF');
     });
 
     it('runs the SWOT analysis and shows a partial result when the report is unavailable', () => {
@@ -296,6 +421,7 @@ describe('StockDashboardComponent', () => {
         httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
         expectQuant('TCS').flush(quant());
 
+        component.features = { insights: true, qualitative: false, swot: true };
         component.runSwot();
         const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/swot`);
         expect(req.request.method).toBe('POST');
@@ -350,8 +476,10 @@ describe('StockDashboardComponent deep link', () => {
         fixture.detectChanges();
 
         expect(fixture.componentInstance.ticker).toBe('ITC');
+        httpMock.expectOne(`${ANALYSIS_URL}features`).flush(DEFAULT_FEATURES);
         httpMock.expectOne(`${STOCK_URL}ITC`).flush(emptyMetrics());
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/quantitative`).flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}ITC/insights`).flush(mdnaInsights({ ticker: 'ITC' }));
         httpMock.verify();
     });
 });

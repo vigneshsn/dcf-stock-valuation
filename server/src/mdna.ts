@@ -1,5 +1,5 @@
 import { PDFParse } from 'pdf-parse';
-import { generate } from './ollama.js';
+import { generate } from './llm.js';
 
 const START = /management(?:['’]s)?\s+discussion\s+(?:and|&)\s+analysis/gi;
 const END = /(?:directors['’]?\s+report|report\s+on\s+corporate\s+governance|corporate\s+governance\s+report|business\s+responsibility|independent\s+auditor['’]?s?\s+report|notice\s+of\s+(?:the\s+)?annual\s+general)/gi;
@@ -149,7 +149,7 @@ export interface MdnaSummary {
 }
 
 // Summarise each chunk, then judge from the joined summaries (reports exceed the model's context window).
-// Chunks run concurrently; generate() caps how many hit Ollama at once.
+// Chunks run concurrently; generate() caps how many hit the LLM at once.
 export async function summariseMdna(section: string): Promise<MdnaSummary> {
   const chunks = chunkText(filterRelevant(section));
   const parts = await Promise.all(

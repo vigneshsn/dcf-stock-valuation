@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/pro
 import path from 'node:path';
 import { YearFinancials } from './dcf.js';
 import { SUMMARY_CHUNK_CHARS, extractMdna, filterRelevant, passages, pdfToText } from './mdna.js';
-import { generateJson } from './ollama.js';
+import { generateJson } from './llm.js';
 import { verifiedQuote } from './qualitative.js';
 import { AnnualReportRef } from './reports.js';
 

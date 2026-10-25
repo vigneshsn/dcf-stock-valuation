@@ -1,13 +1,21 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Peer, QualitativeAnalysis, QuantitativeAnalysis, SwotAnalysis } from '../models/analysis';
+import { Features, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, SwotAnalysis } from '../models/analysis';
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
     private readonly baseUrl = 'http://localhost:3000/api/analysis';
 
     constructor(private http: HttpClient) {}
+
+    getFeatures(): Observable<Features> {
+        return this.http.get<Features>(`${this.baseUrl}/features`);
+    }
+
+    getInsights(ticker: string): Observable<MdnaInsights> {
+        return this.http.get<MdnaInsights>(`${this.baseUrl}/${encodeURIComponent(ticker)}/insights`);
+    }
 
     getQuantitative(ticker: string, overrides: { growth?: number | null; discount?: number | null; terminal?: number | null } = {}): Observable<QuantitativeAnalysis> {
         let params = new HttpParams();

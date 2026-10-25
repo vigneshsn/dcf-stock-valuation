@@ -454,12 +454,15 @@ blockquote {
     .swot-grid { grid-template-columns: 1fr; }
 }
 
-.swot-quadrant {
+.swot-quadrant,
+.insight-section {
     padding: 14px 16px;
     border-radius: var(--radius);
     background: var(--surface-2);
     border-top: 3px solid var(--tone);
 }
+
+.insight-section { margin-top: 12px; }
 
 .swot-head {
     display: flex;

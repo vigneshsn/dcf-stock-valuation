@@ -28,4 +28,14 @@ describe('AnalysisService', () => {
         expect(req.request.body).toEqual({ peers: ['X', 'Y'] });
         req.flush({});
     });
+
+    it('reads the server feature flags and the MD&A insights with GET', () => {
+        service.getFeatures().subscribe();
+        expect(httpMock.expectOne('http://localhost:3000/api/analysis/features').request.method).toBe('GET');
+
+        service.getInsights('M&M').subscribe();
+        const req = httpMock.expectOne('http://localhost:3000/api/analysis/M%26M/insights');
+        expect(req.request.method).toBe('GET');
+        req.flush({});
+    });
 });
