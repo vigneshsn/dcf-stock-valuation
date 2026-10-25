@@ -344,6 +344,112 @@
             }
         </article>
 
+        <!-- SWOT analysis -->
+        <article class="tile span-12" data-testid="swot-panel">
+            <header class="tile-head">
+                <div>
+                    <h3>SWOT analysis</h3>
+                    <span class="tile-sub">Latest annual report + last fiscal year's financials · unscored</span>
+                </div>
+                <div class="pills">
+                    @if (swotReportLabel) {
+                        <span class="pill" data-testid="swot-report">{{ swotReportLabel }}</span>
+                    }
+                    @if (swot?.report?.cached) {
+                        <span class="tag">cached</span>
+                    }
+                    <span class="tag tag-warn">experimental</span>
+                </div>
+            </header>
+
+            @if (!swot && !swotLoading) {
+                <div class="qual-cta">
+                    <p class="muted">Reads the latest annual report's <strong>Opportunities and Threats</strong> and
+                        <strong>Risks and Concerns</strong> sections plus its MD&amp;A, and checks last year's financials for
+                        strengths and weaknesses. Takes a minute or two ☕</p>
+                    <button type="button" class="btn" (click)="runSwot()">
+                        <span class="material-icons" aria-hidden="true">grid_view</span> Run SWOT analysis
+                    </button>
+                </div>
+            }
+
+            @if (swotLoading) {
+                <div class="thinking">
+                    <div class="orb" aria-hidden="true"></div>
+                    <p>Reading the latest annual report and last year's numbers...</p>
+                </div>
+            }
+
+            @if (swotError) {
+                <p class="alert alert-bad" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ swotError }}
+                </p>
+            }
+
+            @if (swot && !swotLoading) {
+                @if (swot.report.status !== 'ok' && swot.report.message) {
+                    <p class="alert alert-warn" data-testid="swot-report-status">
+                        <span class="material-icons" aria-hidden="true">info</span> {{ swot.report.message }}
+                        Showing financials-based items only.
+                    </p>
+                }
+                @if (swot.report.status === 'no-reports') {
+                    <div class="upload">
+                        <label>Year <input type="number" name="swotUploadYear" [(ngModel)]="uploadYear"/></label>
+                        <label class="file-drop">
+                            <span class="material-icons" aria-hidden="true">upload_file</span>
+                            Upload annual report PDF
+                            <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
+                        </label>
+                        @if (uploadMessage) {
+                            <p class="small">{{ uploadMessage }}</p>
+                        }
+                    </div>
+                }
+                @if (swot.financials.status !== 'ok' && swot.financials.message) {
+                    <p class="alert alert-warn">
+                        <span class="material-icons" aria-hidden="true">info</span> {{ swot.financials.message }}
+                    </p>
+                }
+
+                <div class="swot-grid">
+                    @for (q of swotQuadrants; track q.key) {
+                        <section class="swot-quadrant" [attr.data-tone]="q.tone" [attr.data-testid]="'swot-' + q.key">
+                            <h4 class="swot-head">
+                                <span class="material-icons" aria-hidden="true">{{ q.icon }}</span> {{ q.label }}
+                                @if (swot[q.key].lowerConfidence) {
+                                    <span class="tag tag-warn" title="No dedicated section found in the report; extracted from the whole MD&A">lower confidence</span>
+                                }
+                            </h4>
+                            <ul class="swot-items">
+                                @for (item of swot[q.key].items; track $index) {
+                                    <li>
+                                        <details>
+                                            <summary>
+                                                <span class="swot-badge" [attr.data-source]="item.source">{{ item.source }}</span>
+                                                {{ item.text }}
+                                            </summary>
+                                            @if (item.source === 'report') {
+                                                <blockquote>“{{ item.evidence }}”</blockquote>
+                                            } @else {
+                                                <p class="small">{{ item.evidence }}</p>
+                                            }
+                                        </details>
+                                    </li>
+                                } @empty {
+                                    <li class="muted small">Nothing identified.</li>
+                                }
+                            </ul>
+                        </section>
+                    }
+                </div>
+
+                <button type="button" class="btn btn-ghost btn-sm" (click)="runSwot()">
+                    <span class="material-icons" aria-hidden="true">refresh</span> Run again
+                </button>
+            }
+        </article>
+
         @if (stockState === 'data') {
             <!-- Peers -->
             <article class="tile span-12" data-testid="peers">

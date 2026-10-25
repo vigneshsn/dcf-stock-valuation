@@ -13,6 +13,9 @@ export interface QuantitativeInputs {
   pe: number | null;
   pb: number | null;
   roe: number | null;
+  // Latest fiscal year, as fractions; only used by the SWOT analysis.
+  roce?: number | null;
+  debtToEquity?: number | null;
   history: YearFinancials[];
 }
 

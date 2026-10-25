@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { createServer, Server } from 'node:http';
 import { once } from 'node:events';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import express from 'express';
 import { afterEach, test } from 'node:test';
 import { createAnalysisRouter } from './routes/analysis.js';
@@ -238,4 +241,37 @@ test('runs the quantitative DCF on FMP data when FMP is the configured provider'
       process.env.FMP_API_KEY = previousApiKey;
     }
   }
+});
+
+test('SWOT returns financials strengths when no annual report is available', async () => {
+  process.env.SWOT_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'swot-route-'));
+  const router = createAnalysisRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    indianApiBaseUrl: 'https://indianapi.test',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      failOnFmp(url);
+      return url.pathname === '/industry_search' ? new Response('[]') : new Response(JSON.stringify(indianApiStock('SWOTIND')));
+    },
+    swot: { listReports: async () => [] },
+  });
+  const app = express();
+  app.use('/api/analysis', router);
+  const server = createServer(app);
+  servers.push(server);
+  server.listen(0);
+  await once(server, 'listening');
+  const address = server.address();
+  assert(address && typeof address !== 'string');
+
+  const response = await fetch(`http://127.0.0.1:${address.port}/api/analysis/SWOTIND/swot`, { method: 'POST' });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.report.status, 'no-reports');
+  assert.deepEqual(body.financials, { status: 'ok', year: 2026, message: null });
+  assert.deepEqual(body.strengths.items.map((i: { evidence: string }) => i.evidence), ['ROE: 25.0%', 'ROCE: 20.0%']);
+  assert.deepEqual(body.opportunities.items, []);
+  assert.equal(body.experimental, true);
 });

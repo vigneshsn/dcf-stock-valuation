@@ -69,6 +69,7 @@ flowchart LR
 | Fundamentals (price, ratios, news, peers, consensus) | `StockDashboardComponent`, `StockService` | `GET /api/stock/:ticker` | IndianAPI or FMP |
 | Quantitative analysis (DCF Fair value + score) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
 | Qualitative analysis (Moat + Management trustworthiness) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/qualitative` | Screener.in / uploaded PDFs, FMP peers, Ollama |
+| SWOT analysis (unscored, see [spec](spec-swot-analysis.md)) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/swot` | Latest annual report (Screener.in / upload), Ollama, IndianAPI or FMP financials |
 | Feedback | `FeedbackComponent` | — | Embedded Google Form |
 
 ## Backend modules
@@ -93,13 +94,15 @@ flowchart TB
         mdna["mdna.ts<br/>pdfToText · extractMdna<br/>filterRelevant · summariseMdna"]
         years["yearSummaries.ts<br/>collectYearSummaries<br/>(disk cache per ticker/year/model)"]
         qual["qualitative.ts<br/>selectPeers · judgeMoat<br/>judgeManagement · qualitativeScore"]
+        swot["swot.ts<br/>financialSwot · extractSwotSections<br/>latestReportSwot (disk cache per ticker/year/model)"]
     end
 
     infra["provider.ts · cache.ts"]
 
     stockR --> indianapi & fmpA & finance & infra
-    analysisR --> indianapi & fmpA & dcf & years & qual & finance & infra
+    analysisR --> indianapi & fmpA & dcf & years & qual & swot & finance & infra
     years --> reports & mdna
+    swot --> mdna & ollamaA
     mdna --> ollamaA
     qual --> ollamaA
 ```
@@ -211,6 +214,39 @@ sequenceDiagram
     API-->>UI: score 1-5 (experimental) + quotes | 503 llm-unavailable
 ```
 
+### SWOT analysis — `POST /api/analysis/:ticker/swot`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as StockDashboardComponent
+    participant API as routes/analysis.ts
+    participant P as IndianAPI / FMP
+    participant S as swot.ts
+    participant D as Disk cache (.cache/swot)
+    participant R as reports.ts
+    participant L as Ollama
+
+    UI->>API: POST .../swot
+    par financials (1 h cache)
+        API->>P: latest fiscal year statements, ROE, ROCE, debt/equity
+        API->>S: financialSwot → Strengths / Weaknesses (rules, no LLM)
+    and latest annual report
+        API->>S: latestReportSwot(ticker, model)
+        S->>R: listReports → newest year (uploads win)
+        S->>D: stored SWOT for ticker/year/model?
+        opt miss
+            S->>R: load() downloads the PDF
+            S->>S: extractMdna · extractSwotSections (O&T, Risks and Concerns)
+            S->>L: S/W from MD&A ∥ O/T from sections (or MD&A fallback, lower-confidence)
+            S->>D: store result
+        end
+    end
+    API-->>UI: 2×2 SWOT (report items with verified quotes + financials items) and per-part status
+```
+
+The SWOT is a partial-result endpoint: if Ollama is unreachable or no report is available, `report.status` explains why and the financials-based Strengths/Weaknesses are still returned. Bump `SWOT_VERSION` in `swot.ts` when section detection or the SWOT prompts change.
+
 MD&A summaries of past annual reports never change, so they are stored on disk per ticker, year and model and reused across restarts. Bump `SUMMARY_VERSION` in `yearSummaries.ts` when extraction, filtering or the summary prompt changes. `filterRelevant` keeps at most ~30k characters of guidance, competitive-position and results passages per year (dropping macro-economic commentary, ESG metrics and tables), so each year needs about 3 summary calls.
 
 ## Configuration
@@ -231,6 +267,7 @@ Server environment variables are loaded from `server/.env` via `dotenv`.
 | `OLLAMA_NUM_CTX` | `8192` | Context window requested per Ollama call |
 | `OLLAMA_CONCURRENCY` | `4` | Max in-flight Ollama requests from the proxy (pair with Ollama's `OLLAMA_NUM_PARALLEL`) |
 | `MDNA_CACHE_DIR` | `server/.cache/mdna` | Directory for stored per-year MD&A summaries |
+| `SWOT_CACHE_DIR` | `server/.cache/swot` | Directory for stored per-year report SWOT results |
 
 The frontend services hard-code the proxy at `http://localhost:3000`.
 
@@ -240,7 +277,7 @@ The frontend services hard-code the proxy at `http://localhost:3000`.
 - **NSE only.** Tickers are bare NSE symbols (an optional `.NS` suffix is accepted). Other exchange suffixes are rejected as not found.
 - **Peer selection always uses FMP**, regardless of `STOCK_DATA_PROVIDER`.
 - **All state is in process memory.** The response cache and uploaded PDFs are lost on restart and are not shared between instances.
-- **Separate scores.** Quantitative and Qualitative scores are shown side by side and never blended. The Qualitative score is labelled experimental.
+- **Separate scores.** Quantitative and Qualitative scores are shown side by side and never blended. The Qualitative score is labelled experimental. The SWOT analysis is unscored and also labelled experimental.
 - **Local LLM.** The qualitative analysis depends on a reachable Ollama instance. If it is unreachable, the endpoint returns `503 llm-unavailable` and the rest of the app keeps working.
 
 ## Testing

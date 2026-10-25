@@ -69,7 +69,7 @@ function passageScore(p: string): number {
 }
 
 // PDF text arrives as short column-wrapped lines with few blank lines, so reflow into sentences and score ~600-char passages.
-function passages(section: string): string[] {
+export function passages(section: string): string[] {
   const flat = section
     .replace(/--\s*\d+\s+of\s+\d+\s*--/g, ' ')
     .replace(/-\n(?=[a-z])/g, '')

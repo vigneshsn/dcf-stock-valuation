@@ -291,6 +291,38 @@ describe('StockDashboardComponent', () => {
         expect(text()).toContain('Upload annual report PDF');
     });
 
+    it('runs the SWOT analysis and shows a partial result when the report is unavailable', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+
+        component.runSwot();
+        const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/swot`);
+        expect(req.request.method).toBe('POST');
+        const empty = { items: [], lowerConfidence: false };
+        req.flush({
+            ticker: 'TCS',
+            model: 'm',
+            experimental: true,
+            report: { status: 'llm-unavailable', message: 'The local model is unavailable.', year: null, source: null, cached: false },
+            financials: { status: 'ok', year: 2025, message: null },
+            strengths: { items: [{ text: 'High ROE of 25.0%', source: 'financials', evidence: 'ROE: 25.0%' }], lowerConfidence: false },
+            weaknesses: empty,
+            opportunities: empty,
+            threats: { items: [], lowerConfidence: true }
+        });
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="swot-panel"]');
+        expect(panel.querySelector('[data-testid="swot-report-status"]')?.textContent).toContain('The local model is unavailable.');
+        const strengths = panel.querySelector('[data-testid="swot-strengths"]')!;
+        expect(strengths.textContent).toContain('High ROE of 25.0%');
+        expect(strengths.querySelector('[data-source="financials"]')).not.toBeNull();
+        expect(strengths.textContent).toContain('ROE: 25.0%');
+        expect(panel.querySelector('[data-testid="swot-threats"]')?.textContent).toContain('lower confidence');
+        expect(panel.querySelector('[data-testid="swot-opportunities"]')?.textContent).toContain('Nothing identified.');
+    });
+
     it('records the ticker in the URL so the page can be shared', () => {
         const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
         search('infy');

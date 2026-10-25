@@ -2,14 +2,15 @@ import express, { Router } from 'express';
 import { createHash } from 'node:crypto';
 import { get, set } from '../cache.js';
 import { fmpGet, FmpError } from '../fmp.js';
-import { calculateROE } from '../finance.js';
+import { calculateROCE, calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, quantitativeScore, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
-import { saveUpload } from '../reports.js';
+import { saveUpload, listReports } from '../reports.js';
 import { collectYearSummaries, forgetStoredYear } from '../yearSummaries.js';
 import { OllamaError, ollamaConfig } from '../ollama.js';
 import { ManagementJudgement, Peer, judgeManagement, judgeMoat, qualitativeScore, selectPeers } from '../qualitative.js';
+import { ReportSwotDeps, financialSwot, forgetStoredSwot, latestReportSwot, mergeSwot } from '../swot.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
@@ -24,6 +25,7 @@ interface AnalysisRouterOptions {
   indianApiKey?: string;
   indianApiBaseUrl?: string;
   fetcher?: typeof fetch;
+  swot?: Partial<ReportSwotDeps>;
 }
 
 interface Stamped<T> {
@@ -82,6 +84,11 @@ async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promis
     pe: r.priceToEarningsRatioTTM ?? quote.pe ?? null,
     pb: r.priceToBookRatioTTM ?? (bookPerShare ? quote.price / bookPerShare : null),
     roe: calculateROE(income?.[0]?.netIncome, balance?.[0]?.totalStockholdersEquity),
+    roce: calculateROCE(income?.[0]?.operatingIncome, balance?.[0]?.totalAssets, balance?.[0]?.totalCurrentLiabilities),
+    debtToEquity:
+      balance?.[0]?.totalDebt != null && balance?.[0]?.totalStockholdersEquity > 0
+        ? balance[0].totalDebt / balance[0].totalStockholdersEquity
+        : null,
     history,
   };
   set(key, financials, FINANCIALS_TTL_MS);
@@ -226,7 +233,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         return res.status(400).json({ error: 'Body must be a PDF (Content-Type: application/pdf)' });
       }
       saveUpload(req.params.ticker, year, body);
-      await forgetStoredYear(req.params.ticker, year);
+      await Promise.all([forgetStoredYear(req.params.ticker, year), forgetStoredSwot(req.params.ticker, year)]);
       res.status(201).json({ ticker: req.params.ticker, year, bytes: body.length });
     }
   );
@@ -293,6 +300,68 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       }
       sendUpstreamError(res, ticker, err);
     }
+  });
+
+  // SWOT returns a partial result: financials S/W survive a missing report or an unreachable LLM, and vice versa.
+  router.post('/:ticker/swot', async (req, res) => {
+    const ticker = req.params.ticker;
+    const { model } = ollamaConfig();
+    const [financialsResult, reportResult] = await Promise.allSettled([
+      loadQuantitativeInputs(ticker),
+      latestReportSwot(ticker, model, {
+        listReports: options.swot?.listReports ?? ((t, n) => listReports(t, n, options.fetcher)),
+        textOf: options.swot?.textOf,
+        judge: options.swot?.judge,
+      }),
+    ]);
+
+    const fin = financialsResult.status === 'fulfilled' ? financialSwot(financialsResult.value) : null;
+    if (financialsResult.status === 'rejected') {
+      console.error(`[swot financials error] ${ticker}: ${financialsResult.reason?.message || financialsResult.reason}`);
+    }
+
+    let report: { status: 'ok' | 'no-reports' | 'no-mdna' | 'llm-unavailable' | 'failed'; message: string | null; year: number | null; source: string | null; cached: boolean };
+    const entry = reportResult.status === 'fulfilled' ? reportResult.value.entry : null;
+    if (reportResult.status === 'rejected') {
+      const err = reportResult.reason;
+      console.error(`[swot report error] ${ticker}: ${err?.message || err}`);
+      report = err instanceof OllamaError
+        ? { status: 'llm-unavailable', message: `The local model is unavailable: ${err.message}`, year: null, source: null, cached: false }
+        : { status: 'failed', message: 'The annual report could not be analysed.', year: null, source: null, cached: false };
+    } else if (!entry) {
+      report = {
+        status: 'no-reports',
+        message: 'No annual report could be fetched. Upload the latest annual report PDF.',
+        year: null,
+        source: null,
+        cached: false,
+      };
+    } else {
+      report = {
+        status: entry.found ? 'ok' : 'no-mdna',
+        message: entry.found ? null : 'No Management Discussion and Analysis or SWOT sections found in the report.',
+        year: entry.year,
+        source: entry.source,
+        cached: reportResult.status === 'fulfilled' && reportResult.value.cached,
+      };
+    }
+
+    const reason = financialsResult.status === 'rejected' ? financialsResult.reason : null;
+    const notFound = reason instanceof StockNotFoundError || (reason instanceof FmpError && reason.status === 404);
+    if (notFound && !entry) {
+      return res.status(404).json({ error: 'Ticker not found' });
+    }
+
+    res.json({
+      ticker,
+      model,
+      experimental: true,
+      report,
+      financials: fin
+        ? { status: 'ok', year: fin.year, message: null }
+        : { status: 'unavailable', year: null, message: 'Financial data could not be loaded.' },
+      ...mergeSwot(entry?.swot ?? null, fin ?? { strengths: [], weaknesses: [] }),
+    });
   });
 
   return router;

@@ -46,3 +46,27 @@ export interface QualitativeAnalysis {
     cached: boolean;
     cachedAt: number;
 }
+
+export type SwotQuadrantKey = 'strengths' | 'weaknesses' | 'opportunities' | 'threats';
+
+export interface SwotItem {
+    text: string;
+    source: 'report' | 'financials';
+    /** Verified quote for report items, "<metric>: <value>" for financials items. */
+    evidence: string;
+}
+
+export interface SwotQuadrant {
+    items: SwotItem[];
+    lowerConfidence: boolean;
+}
+
+export type SwotReportStatus = 'ok' | 'no-reports' | 'no-mdna' | 'llm-unavailable' | 'failed';
+
+export interface SwotAnalysis extends Record<SwotQuadrantKey, SwotQuadrant> {
+    ticker: string;
+    model: string;
+    experimental: boolean;
+    report: { status: SwotReportStatus; message: string | null; year: number | null; source: 'screener' | 'upload' | null; cached: boolean };
+    financials: { status: 'ok' | 'unavailable'; year: number | null; message: string | null };
+}

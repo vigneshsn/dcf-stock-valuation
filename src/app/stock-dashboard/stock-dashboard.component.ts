@@ -10,7 +10,7 @@ import { AnalysisService } from '../services/analysis.service';
 import { PeerRow, StockMetrics, marketCapCrores } from '../models/stock-metrics';
 import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.component';
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
-import { DcfAssumptions, GuidanceOutcome, MoatRating, QualitativeAnalysis, QuantitativeAnalysis } from '../models/analysis';
+import { DcfAssumptions, GuidanceOutcome, MoatRating, QualitativeAnalysis, QuantitativeAnalysis, SwotAnalysis, SwotQuadrantKey } from '../models/analysis';
 
 type LoadState = 'idle' | 'loading' | 'data' | 'error';
 type Tone = 'good' | 'neutral' | 'warn' | 'bad';
@@ -36,6 +36,13 @@ const QUAL_VERDICTS: Record<number, Verdict> = {
     2: { label: 'Shaky', emoji: '⚠️', tone: 'warn' },
     1: { label: 'Red flags', emoji: '🚩', tone: 'bad' }
 };
+
+const SWOT_QUADRANTS: { key: SwotQuadrantKey; label: string; icon: string; tone: Tone }[] = [
+    { key: 'strengths', label: 'Strengths', icon: 'trending_up', tone: 'good' },
+    { key: 'weaknesses', label: 'Weaknesses', icon: 'trending_down', tone: 'bad' },
+    { key: 'opportunities', label: 'Opportunities', icon: 'lightbulb', tone: 'neutral' },
+    { key: 'threats', label: 'Threats', icon: 'warning_amber', tone: 'warn' }
+];
 
 const MOAT_TONES: Record<MoatRating, Tone> = { wide: 'good', narrow: 'neutral', none: 'bad' };
 const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'warn', missed: 'bad' };
@@ -78,9 +85,15 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     uploadYear = new Date().getFullYear() - 1;
     uploadMessage = '';
 
+    swot: SwotAnalysis | null = null;
+    swotLoading = false;
+    swotError = '';
+    readonly swotQuadrants = SWOT_QUADRANTS;
+
     private stockSub?: Subscription;
     private quantSub?: Subscription;
     private qualSub?: Subscription;
+    private swotSub?: Subscription;
 
     ngOnInit(): void {
         this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -95,6 +108,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.stockSub?.unsubscribe();
         this.quantSub?.unsubscribe();
         this.qualSub?.unsubscribe();
+        this.swotSub?.unsubscribe();
     }
 
     search(): void {
@@ -116,6 +130,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.query = ticker;
         this.showFullDescription = false;
         this.resetQualitative();
+        this.resetSwot();
         this.loadStock();
         this.quant = null;
         this.assumptions = null;
@@ -312,6 +327,42 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     outcomeTone(outcome: GuidanceOutcome): Tone {
         return OUTCOME_TONES[outcome] ?? 'neutral';
+    }
+
+    // ---- SWOT analysis -------------------------------------------------------
+
+    runSwot(): void {
+        this.swotSub?.unsubscribe();
+        this.swotLoading = true;
+        this.swotError = '';
+        this.swotSub = this.analysis.getSwot(this.ticker).subscribe({
+            next: (s) => {
+                this.swot = s;
+                this.swotLoading = false;
+            },
+            error: (err: HttpErrorResponse) => {
+                this.swot = null;
+                this.swotLoading = false;
+                this.swotError = err.status === 404
+                    ? 'Ticker not found'
+                    : err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+            }
+        });
+    }
+
+    get swotReportLabel(): string | null {
+        const r = this.swot?.report;
+        if (!r?.year) {
+            return null;
+        }
+        return `FY${r.year} · ${r.source === 'upload' ? 'uploaded' : 'fetched'}`;
+    }
+
+    private resetSwot(): void {
+        this.swotSub?.unsubscribe();
+        this.swot = null;
+        this.swotLoading = false;
+        this.swotError = '';
     }
 
     private resetQualitative(): void {

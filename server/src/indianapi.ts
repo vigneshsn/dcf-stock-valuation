@@ -456,7 +456,9 @@ export async function fetchIndianApiQuantitativeInputs(
   // market-cap unit, whereas the share count shares the statements' unit scale. Zero yields no DCF.
   const shares = numberValue(latestBalance.TotalCommonSharesOutstanding) ?? 0;
   const bookValue = numberValue(perShare.bookValuePerShareMostRecentFiscalYear);
-  const roe = annualReturns(rows).roe;
+  const { roe, roce } = annualReturns(rows);
+  const totalDebt = numberValue(latestBalance.TotalDebt);
+  const totalEquity = numberValue(latestBalance.TotalEquity);
 
   return {
     price: currentPrice,
@@ -469,6 +471,8 @@ export async function fetchIndianApiQuantitativeInputs(
       (bookValue != null && bookValue > 0 ? currentPrice / bookValue : null),
     // The quantitative analysis contract expresses ROE as a fraction, not percentage points.
     roe: roe == null ? null : roe / 100,
+    roce: roce == null ? null : roce / 100,
+    debtToEquity: totalDebt != null && totalEquity != null && totalEquity > 0 ? totalDebt / totalEquity : null,
     history: annualHistory(rows),
   };
 }

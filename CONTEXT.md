@@ -5,7 +5,7 @@ Fundamental analysis of listed stocks (Indian market first) from live financial 
 ## Language
 
 **Analysis**:
-The complete fundamental assessment of one stock, made of a Quantitative analysis and a Qualitative analysis. The two scores are always presented side by side; there is no blended overall score.
+The complete fundamental assessment of one stock, made of a Quantitative analysis, a Qualitative analysis and an unscored SWOT analysis. The two scores are always presented side by side; there is no blended overall score.
 _Avoid_: Report, evaluation
 
 **Quantitative analysis**:
@@ -39,3 +39,15 @@ _Avoid_: Governance score
 **Peer set**:
 The companies from the same industry used to judge Moat. Defined as the stock's industry classification from the data source, limited to the 3-5 nearest companies by market cap; the user can override the list.
 _Avoid_: Competitors, comparables
+
+**SWOT analysis**:
+An unscored, informational part of an Analysis listing the stock's Strengths, Weaknesses, Opportunities and Threats for the latest fiscal year, judged from the Latest annual report and that year's financials. It never affects any score.
+_Avoid_: SWOT score, risk analysis
+
+**Latest annual report**:
+The most recent annual report available for the stock (uploaded or fetched), covering the latest completed fiscal year. Not trailing-twelve-month data.
+_Avoid_: Last year's report, current report
+
+**SWOT item**:
+One entry in a SWOT quadrant, tagged with its source: *report* (backed by a verified quote from the Latest annual report) or *financials* (backed by a named metric and its value). Opportunities and Threats come only from the report; Threats include the report's "Risks and concerns". An Opportunities or Threats quadrant found without its dedicated report section is flagged lower-confidence.
+_Avoid_: Point, factor
