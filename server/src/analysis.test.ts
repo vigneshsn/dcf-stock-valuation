@@ -275,3 +275,44 @@ test('SWOT returns financials strengths when no annual report is available', asy
   assert.deepEqual(body.opportunities.items, []);
   assert.equal(body.experimental, true);
 });
+
+test('SWOT caches a complete result so a repeat request makes no upstream calls', async () => {
+  process.env.SWOT_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'swot-route-'));
+  let fetches = 0;
+  let listings = 0;
+  const router = createAnalysisRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    indianApiBaseUrl: 'https://indianapi.test',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      failOnFmp(url);
+      fetches++;
+      return url.pathname === '/industry_search' ? new Response('[]') : new Response(JSON.stringify(indianApiStock('SWOTCACHE')));
+    },
+    swot: {
+      listReports: async () => (listings++, [{ year: 2026, source: 'screener', load: async () => Buffer.from('pdf') }]),
+      textOf: async () => 'A report without any MD&A section.',
+    },
+  });
+  const app = express();
+  app.use('/api/analysis', router);
+  const server = createServer(app);
+  servers.push(server);
+  server.listen(0);
+  await once(server, 'listening');
+  const address = server.address();
+  assert(address && typeof address !== 'string');
+  const run = async () => (await fetch(`http://127.0.0.1:${address.port}/api/analysis/SWOTCACHE/swot`, { method: 'POST' })).json();
+
+  const first = await run();
+  const callsAfterFirst = { fetches, listings };
+  const second = await run();
+
+  assert.equal(first.report.status, 'no-mdna');
+  assert.equal(first.cached, false);
+  assert.equal(second.cached, true);
+  assert.equal(second.report.cached, true);
+  assert.deepEqual(second.strengths, first.strengths);
+  assert.deepEqual({ fetches, listings }, callsAfterFirst);
+});

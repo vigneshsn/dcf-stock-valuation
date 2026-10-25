@@ -19,6 +19,18 @@ export function get<T>(key: string): T | undefined {
   return entry.value as T;
 }
 
+export function del(key: string): void {
+  store.delete(key);
+}
+
+export function delPrefix(prefix: string): void {
+  for (const key of store.keys()) {
+    if (key.startsWith(prefix)) {
+      store.delete(key);
+    }
+  }
+}
+
 export function set<T>(key: string, value: T, ttlMs: number = CACHE_TTL_MS): void {
   store.set(key, { value, expiresAt: Date.now() + ttlMs });
 }

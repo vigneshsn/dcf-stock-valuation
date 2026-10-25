@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { createHash } from 'node:crypto';
-import { get, set } from '../cache.js';
+import { del, delPrefix, get, set } from '../cache.js';
 import { fmpGet, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, quantitativeScore, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
@@ -10,6 +10,7 @@ import { saveUpload, listReports } from '../reports.js';
 import { collectYearSummaries, forgetStoredYear } from '../yearSummaries.js';
 import { OllamaError, ollamaConfig } from '../ollama.js';
 import { ManagementJudgement, Peer, judgeManagement, judgeMoat, qualitativeScore, selectPeers } from '../qualitative.js';
+import { forgetStoredQualitative, readStoredQualitative, writeStoredQualitative } from '../qualitativeStore.js';
 import { ReportSwotDeps, financialSwot, forgetStoredSwot, latestReportSwot, mergeSwot } from '../swot.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
@@ -36,6 +37,9 @@ interface Stamped<T> {
 function cacheGet<T>(key: string): Stamped<T> | undefined {
   return get<Stamped<T>>(key);
 }
+
+const swotKey = (ticker: string, model: string) => `analysis:swot:${ticker.trim().toUpperCase()}:${model}`;
+const qualPrefix = (ticker: string) => `analysis:qual:${ticker.trim().toUpperCase()}:`;
 
 function cachePut<T>(key: string, value: T): void {
   set<Stamped<T>>(key, { value, cachedAt: Date.now() }, ANALYSIS_TTL_MS);
@@ -233,7 +237,14 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         return res.status(400).json({ error: 'Body must be a PDF (Content-Type: application/pdf)' });
       }
       saveUpload(req.params.ticker, year, body);
-      await Promise.all([forgetStoredYear(req.params.ticker, year), forgetStoredSwot(req.params.ticker, year)]);
+      const { model } = ollamaConfig();
+      del(swotKey(req.params.ticker, model));
+      delPrefix(qualPrefix(req.params.ticker));
+      await Promise.all([
+        forgetStoredYear(req.params.ticker, year),
+        forgetStoredSwot(req.params.ticker, year),
+        forgetStoredQualitative(req.params.ticker),
+      ]);
       res.status(201).json({ ticker: req.params.ticker, year, bytes: body.length });
     }
   );
@@ -243,9 +254,17 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     const peerOverride: string[] | undefined = Array.isArray(req.body?.peers)
       ? req.body.peers.filter((p: unknown): p is string => typeof p === 'string' && p.trim().length > 0).map((p: string) => p.trim())
       : undefined;
+    const { model } = ollamaConfig();
+    const peerTag = (peerOverride ?? ['default']).join(',');
+    // Checked before listing reports, so a repeat request makes no report, FMP or LLM calls.
+    const key = `${qualPrefix(ticker)}${model}:${peerTag}`;
+    const hit = cacheGet<unknown>(key);
+    if (hit) {
+      console.log(`[analysis cache HIT] ${key}`);
+      return res.json({ ...(hit.value as object), cached: true, cachedAt: hit.cachedAt });
+    }
     try {
       const started = Date.now();
-      const { model } = ollamaConfig();
       const { reportCount, summaries, skippedYears: skipped } = await collectYearSummaries(ticker, model, 3);
       if (!reportCount) {
         return res.status(422).json({
@@ -258,22 +277,24 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       }
 
       const fingerprint = createHash('sha1').update(JSON.stringify(summaries)).digest('hex').slice(0, 16);
-      const key = `analysis:qual:${ticker}:${model}:${(peerOverride ?? ['default']).join(',')}:${fingerprint}`;
-      const hit = cacheGet<unknown>(key);
-      if (hit) {
-        console.log(`[analysis cache HIT] ${key}`);
-        return res.json({ ...(hit.value as object), cached: true, cachedAt: hit.cachedAt });
+      const resultKey = `result:${model}:${peerTag}:${fingerprint}`;
+      const stored = await readStoredQualitative<object>(ticker, resultKey);
+      if (stored) {
+        console.log(`[qualitative cache HIT] ${ticker} ${resultKey}`);
+        cachePut(key, stored);
+        return res.json({ ...stored, cached: true, cachedAt: Date.now() });
       }
 
       const peers: Peer[] = peerOverride
         ? peerOverride.map((symbol) => ({ symbol, name: symbol, marketCap: null }))
         : await defaultPeers(ticker).catch(() => [] as Peer[]);
       // Management depends only on the summaries, so a peer change re-runs just the Moat call.
-      const mgmtKey = `analysis:qual-mgmt:${ticker}:${model}:${fingerprint}`;
+      const mgmtKey = `management:${model}:${fingerprint}`;
       const [moat, management] = await Promise.all([
         judgeMoat(summaries[0], peers),
-        cacheGet<ManagementJudgement>(mgmtKey)?.value ??
-          judgeManagement(summaries).then((m) => (cachePut(mgmtKey, m), m)),
+        readStoredQualitative<ManagementJudgement>(ticker, mgmtKey).then(
+          (m) => m ?? judgeManagement(summaries).then(async (j) => (await writeStoredQualitative(ticker, mgmtKey, j), j))
+        ),
       ]);
       console.log(`[qualitative] ${ticker}: ${summaries.length} year(s) analysed in ${Date.now() - started}ms`);
       const score = qualitativeScore(moat, management);
@@ -292,6 +313,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         quotes: score.quotes,
       };
       cachePut(key, body);
+      await writeStoredQualitative(ticker, resultKey, body);
       res.json({ ...body, cached: false, cachedAt: Date.now() });
     } catch (err: any) {
       console.error(`[qualitative error] ${ticker}: ${err?.message || err}`);
@@ -306,6 +328,12 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
   router.post('/:ticker/swot', async (req, res) => {
     const ticker = req.params.ticker;
     const { model } = ollamaConfig();
+    const key = swotKey(ticker, model);
+    const hit = cacheGet<any>(key);
+    if (hit) {
+      console.log(`[analysis cache HIT] ${key}`);
+      return res.json({ ...hit.value, report: { ...hit.value.report, cached: true }, cached: true, cachedAt: hit.cachedAt });
+    }
     const [financialsResult, reportResult] = await Promise.allSettled([
       loadQuantitativeInputs(ticker),
       latestReportSwot(ticker, model, {
@@ -352,7 +380,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       return res.status(404).json({ error: 'Ticker not found' });
     }
 
-    res.json({
+    const body = {
       ticker,
       model,
       experimental: true,
@@ -361,7 +389,12 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         ? { status: 'ok', year: fin.year, message: null }
         : { status: 'unavailable', year: null, message: 'Financial data could not be loaded.' },
       ...mergeSwot(entry?.swot ?? null, fin ?? { strengths: [], weaknesses: [] }),
-    });
+    };
+    // Only complete results are cached, so a missing report, LLM outage or provider failure is retried next time.
+    if (fin && (report.status === 'ok' || report.status === 'no-mdna')) {
+      cachePut(key, body);
+    }
+    res.json({ ...body, cached: false, cachedAt: Date.now() });
   });
 
   return router;

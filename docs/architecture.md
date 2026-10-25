@@ -169,7 +169,7 @@ sequenceDiagram
     participant UI as StockDashboardComponent
     participant API as routes/analysis.ts
     participant Y as yearSummaries.ts
-    participant D as Disk cache (.cache/mdna)
+    participant D as Disk cache (.cache/mdna, .cache/qualitative)
     participant R as reports.ts
     participant S as Screener.in
     participant M as mdna.ts
@@ -180,9 +180,12 @@ sequenceDiagram
     opt user uploads PDFs
         UI->>API: POST .../reports?year=YYYY (application/pdf)
         API->>R: saveUpload(ticker, year, pdf)
-        API->>D: forget stored summaries for that year
+        API->>D: forget stored summaries for that year and stored judgements for the ticker
     end
     UI->>API: POST .../qualitative { peers? }
+    opt response cached in memory (6 h, keyed by ticker + model + peers)
+        API-->>UI: cached result, no report, FMP or LLM calls
+    end
     API->>Y: collectYearSummaries(ticker, model, 3)
     Y->>R: listReports(ticker, 3)
     R->>S: scrape company page for report links (if uploads < 3)
@@ -199,18 +202,19 @@ sequenceDiagram
     alt no reports
         API-->>UI: 422 no-reports
     end
-    API->>API: analysis cache (keyed by peers + summaries fingerprint)
+    API->>D: stored result for model + peers + summaries fingerprint? (.cache/qualitative, survives restarts)
     opt no peer override
         API->>F: /quote + /stock-peers → selectPeers (3-5 by market cap)
     end
     par
         API->>Q: judgeMoat(latest, peers)
         Q->>L: moat judgement (JSON)
-    and management, cached independently of peers
+    and management, stored on disk independently of peers
         API->>Q: judgeManagement(summaries)
         Q->>L: guidance vs. actuals per year pair, in parallel (JSON)
     end
     API->>Q: qualitativeScore(moat, management)
+    API->>D: store result
     API-->>UI: score 1-5 (experimental) + quotes | 503 llm-unavailable
 ```
 
@@ -228,6 +232,9 @@ sequenceDiagram
     participant L as Ollama
 
     UI->>API: POST .../swot
+    opt response cached in memory (6 h)
+        API-->>UI: cached SWOT, no upstream calls
+    end
     par financials (1 h cache)
         API->>P: latest fiscal year statements, ROE, ROCE, debt/equity
         API->>S: financialSwot → Strengths / Weaknesses (rules, no LLM)
@@ -245,7 +252,7 @@ sequenceDiagram
     API-->>UI: 2×2 SWOT (report items with verified quotes + financials items) and per-part status
 ```
 
-The SWOT is a partial-result endpoint: if Ollama is unreachable or no report is available, `report.status` explains why and the financials-based Strengths/Weaknesses are still returned. Bump `SWOT_VERSION` in `swot.ts` when section detection or the SWOT prompts change.
+The SWOT is a partial-result endpoint: if Ollama is unreachable or no report is available, `report.status` explains why and the financials-based Strengths/Weaknesses are still returned. Bump `SWOT_VERSION` in `swot.ts` when section detection or the SWOT prompts change. A complete response (financials loaded, report analysed) is also cached in memory for `ANALYSIS_TTL_MS` (6 h) so repeat requests make no IndianAPI, report-listing or LLM calls; partial results are not cached, and uploading a report clears it.
 
 MD&A summaries of past annual reports never change, so they are stored on disk per ticker, year and model and reused across restarts. Bump `SUMMARY_VERSION` in `yearSummaries.ts` when extraction, filtering or the summary prompt changes. `filterRelevant` keeps at most ~30k characters of guidance, competitive-position and results passages per year (dropping macro-economic commentary, ESG metrics and tables), so each year needs about 3 summary calls.
 
@@ -266,6 +273,7 @@ Server environment variables are loaded from `server/.env` via `dotenv`.
 | `OLLAMA_MODEL` | `qwen3:8b` | Model used for MD&A summaries and judgements |
 | `OLLAMA_NUM_CTX` | `8192` | Context window requested per Ollama call |
 | `OLLAMA_CONCURRENCY` | `4` | Max in-flight Ollama requests from the proxy (pair with Ollama's `OLLAMA_NUM_PARALLEL`) |
+| `QUALITATIVE_CACHE_DIR` | `server/.cache/qualitative` | Directory for stored Moat / Management results (bump `QUALITATIVE_VERSION` in `qualitativeStore.ts` when prompts change) |
 | `MDNA_CACHE_DIR` | `server/.cache/mdna` | Directory for stored per-year MD&A summaries |
 | `SWOT_CACHE_DIR` | `server/.cache/swot` | Directory for stored per-year report SWOT results |
 
