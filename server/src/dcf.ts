@@ -154,15 +154,19 @@ const IMPLIED_GROWTH_MAX = 50;
 const GRID_GROWTH_STEPS = [-4, -2, 0, 2, 4];
 const GRID_DISCOUNT_STEPS = [-2, -1, 0, 1, 2];
 
+// A loss-making or cash-burning base year makes scenarios and Implied growth meaningless.
+function hasMeaningfulBaseYear(history: YearFinancials[]): boolean {
+  const latest = history.find((y) => y.revenue > 0);
+  return !!latest && latest.netIncome >= 0 && latest.netIncome + latest.nonCashExpense - Math.abs(latest.capex) >= 0;
+}
+
 export function computeScenarios(
   history: YearFinancials[],
   base: DcfAssumptions,
   shares: number,
   price: number
 ): Scenarios | null {
-  const latest = history.find((y) => y.revenue > 0);
-  // A loss-making or cash-burning base year makes every scenario meaningless
-  if (!latest || latest.netIncome < 0 || latest.netIncome + latest.nonCashExpense - Math.abs(latest.capex) < 0) {
+  if (!hasMeaningfulBaseYear(history)) {
     return null;
   }
   const scenario = (assumptions: DcfAssumptions): Scenario => ({
@@ -182,9 +186,12 @@ export function computeScenarios(
       discountRate: round2(base.discountRate - SCENARIO_DISCOUNT_OFFSET),
     }),
     grid: sensitivityGrid(history, base, shares),
-    impliedGrowth: solveImpliedGrowth(history, base, shares, price),
+    impliedGrowth: impliedGrowthOrNull(solveImpliedGrowth(history, base, shares, price)),
   };
 }
+
+const impliedGrowthOrNull = (solution: ImpliedGrowthSolution) =>
+  solution && 'growth' in solution ? solution.growth : null;
 
 function sensitivityGrid(history: YearFinancials[], base: DcfAssumptions, shares: number): SensitivityGrid {
   const growth = GRID_GROWTH_STEPS.map((d) => round2(base.growthRate + d));
@@ -195,13 +202,20 @@ function sensitivityGrid(history: YearFinancials[], base: DcfAssumptions, shares
   return { growth, discount, values };
 }
 
+type ImpliedGrowthSolution = { growth: number } | { bound: number } | null;
+
+const SOLVE_TOLERANCE = 0.01; // ₹ per share
+const SOLVE_MAX_ITERATIONS = 100;
+
 // Bisection over growth, holding discount and terminal growth at the base values.
+// Returns the search bound reached when no growth in range matches the price; null when the DCF is undefined
+// or Fair value does not rise with growth (e.g. earlier losses make the average margin negative).
 function solveImpliedGrowth(
   history: YearFinancials[],
   base: DcfAssumptions,
   shares: number,
   price: number
-): number | null {
+): ImpliedGrowthSolution {
   const gap = (growthRate: number) => {
     const fv = computeFairValue(history, { ...base, growthRate }, shares);
     return fv == null ? null : fv - price;
@@ -210,15 +224,105 @@ function solveImpliedGrowth(
   let hi = IMPLIED_GROWTH_MAX;
   const gapLo = gap(lo);
   const gapHi = gap(hi);
-  if (!(price > 0) || gapLo == null || gapHi == null || Math.sign(gapLo) === Math.sign(gapHi)) {
-    return gapLo === 0 ? lo : gapHi === 0 ? hi : null;
+  if (!(price > 0) || gapLo == null || gapHi == null || gapHi <= gapLo) {
+    return null;
   }
-  for (let i = 0; i < 60 && hi - lo > 1e-4; i++) {
-    const mid = (lo + hi) / 2;
+  if (gapLo >= 0) return gapLo <= SOLVE_TOLERANCE ? { growth: lo } : { bound: lo };
+  if (gapHi <= 0) return gapHi >= -SOLVE_TOLERANCE ? { growth: hi } : { bound: hi };
+  let mid = (lo + hi) / 2;
+  for (let i = 0; i < SOLVE_MAX_ITERATIONS; i++) {
     const g = gap(mid)!;
-    if (Math.sign(g) === Math.sign(gapLo)) lo = mid;
+    if (Math.abs(g) <= SOLVE_TOLERANCE) break;
+    if (g < 0) lo = mid;
     else hi = mid;
+    mid = (lo + hi) / 2;
   }
   // + 0 turns -0 into 0
-  return round2((lo + hi) / 2) + 0;
+  return { growth: round2(mid) + 0 };
+}
+
+export type ReverseDcfVerdict = 'expects-acceleration' | 'in-line' | 'expects-slowdown';
+
+export interface ReverseDcf {
+  status: 'ok' | 'no-solution' | 'not-applicable' | 'unavailable';
+  message: string | null;
+  // Percent; null unless status is ok
+  impliedGrowth: number | null;
+  // Search bound reached when status is no-solution
+  bound: number | null;
+  historicalCagr: number | null;
+  // Filled from the Guidance scorecard once it exists
+  guidedGrowth: number | null;
+  verdict: ReverseDcfVerdict | null;
+}
+
+const CAGR_MAX_YEARS = 5;
+const VERDICT_BAND = 3;
+
+const withoutResult = (
+  status: 'not-applicable' | 'unavailable',
+  message: string,
+  historicalCagr: number | null
+): ReverseDcf => ({ status, message, impliedGrowth: null, bound: null, historicalCagr, guidedGrowth: null, verdict: null });
+
+export const reverseDcfUnavailable = (message: string): ReverseDcf => withoutResult('unavailable', message, null);
+
+export function reverseDcf(
+  history: YearFinancials[],
+  assumptions: DcfAssumptions,
+  shares: number,
+  price: number
+): ReverseDcf {
+  const historicalCagr = revenueCagr(history);
+  if (!hasMeaningfulBaseYear(history)) {
+    return withoutResult(
+      'not-applicable',
+      'The latest year is loss-making or has negative free cash flow, so a DCF base is meaningless',
+      historicalCagr
+    );
+  }
+  const solution = solveImpliedGrowth(history, assumptions, shares, price);
+  if (!solution) {
+    return withoutResult(
+      'not-applicable',
+      'Fair value does not rise with growth for this history, so the price cannot be solved for growth',
+      historicalCagr
+    );
+  }
+  const impliedGrowth = 'growth' in solution ? solution.growth : null;
+  const bound = 'bound' in solution ? solution.bound : null;
+  const compared = impliedGrowth ?? bound!;
+  return {
+    status: bound == null ? 'ok' : 'no-solution',
+    message: bound == null ? null : `Price implies ${bound > 0 ? 'more than' : 'less than'} ${formatPct(bound)} annual growth`,
+    impliedGrowth,
+    bound,
+    historicalCagr,
+    guidedGrowth: null,
+    verdict: historicalCagr == null ? null : verdictFor(compared, historicalCagr),
+  };
+}
+
+// Typographic minus so messages read "−20%"
+const formatPct = (v: number) => `${v < 0 ? '−' : ''}${Math.abs(v)}%`;
+
+// history is ordered newest first; the window covers at most CAGR_MAX_YEARS calendar years
+function revenueCagr(history: YearFinancials[]): number | null {
+  const usable = history.filter((y) => y.revenue > 0);
+  if (usable.length < 2) {
+    return null;
+  }
+  const latest = usable[0];
+  const earliest = usable.filter((y) => latest.year - y.year <= CAGR_MAX_YEARS).at(-1)!;
+  const years = latest.year - earliest.year;
+  if (years <= 0) {
+    return null;
+  }
+  return round2((Math.pow(latest.revenue / earliest.revenue, 1 / years) - 1) * 100);
+}
+
+function verdictFor(impliedGrowth: number, historicalCagr: number): ReverseDcfVerdict {
+  if (impliedGrowth > historicalCagr + VERDICT_BAND) return 'expects-acceleration';
+  if (impliedGrowth < historicalCagr - VERDICT_BAND) return 'expects-slowdown';
+  return 'in-line';
 }

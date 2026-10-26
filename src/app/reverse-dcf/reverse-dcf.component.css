@@ -1,0 +1,29 @@
+:host {
+    display: block;
+}
+
+.headline {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.verdict {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--border);
+}
+
+.verdict[data-verdict="expects-acceleration"] { color: var(--warn); }
+.verdict[data-verdict="expects-slowdown"] { color: var(--good); }
+
+.detail {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}

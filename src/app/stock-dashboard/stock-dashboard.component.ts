@@ -11,6 +11,7 @@ import { PeerRow, StockMetrics, marketCapCrores } from '../models/stock-metrics'
 import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.component';
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
 import { ScenarioRangeComponent } from '../scenario-range/scenario-range.component';
+import { ReverseDcfComponent } from '../reverse-dcf/reverse-dcf.component';
 import {
     DcfAssumptions,
     Features,
@@ -20,6 +21,7 @@ import {
     MoatRating,
     QualitativeAnalysis,
     QuantitativeAnalysis,
+    ReverseDcfAnalysis,
     SwotAnalysis,
     SwotQuadrantKey
 } from '../models/analysis';
@@ -74,7 +76,7 @@ const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'war
     selector: 'app-stock-dashboard',
     templateUrl: './stock-dashboard.component.html',
     styleUrls: ['./stock-dashboard.component.css'],
-    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent],
+    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent, ReverseDcfComponent],
     standalone: true
 })
 export class StockDashboardComponent implements OnInit, OnDestroy {
@@ -99,6 +101,10 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     quantError = '';
     assumptions: DcfAssumptions | null = null;
     showAssumptions = true;
+
+    reverseDcf: ReverseDcfAnalysis | null = null;
+    reverseDcfLoading = false;
+    reverseDcfError = '';
 
     features: Features = DEFAULT_FEATURES;
 
@@ -125,6 +131,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     private stockSub?: Subscription;
     private quantSub?: Subscription;
+    private reverseDcfSub?: Subscription;
     private insightsSub?: Subscription;
     private qualSub?: Subscription;
     private swotSub?: Subscription;
@@ -145,6 +152,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     ngOnDestroy(): void {
         this.stockSub?.unsubscribe();
         this.quantSub?.unsubscribe();
+        this.reverseDcfSub?.unsubscribe();
         this.insightsSub?.unsubscribe();
         this.qualSub?.unsubscribe();
         this.swotSub?.unsubscribe();
@@ -172,6 +180,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.resetSwot();
         this.loadStock();
         this.quant = null;
+        this.reverseDcf = null;
         this.assumptions = null;
         this.loadQuant();
         this.loadInsights();
@@ -271,6 +280,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     // ---- Quantitative analysis ---------------------------------------------
 
     loadQuant(overrides: { growth?: number | null; discount?: number | null; terminal?: number | null } = {}): void {
+        this.loadReverseDcf({ discount: overrides.discount, terminal: overrides.terminal });
         this.quantSub?.unsubscribe();
         this.quantLoading = true;
         this.quantError = '';
@@ -283,6 +293,23 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
             error: (err: HttpErrorResponse) => {
                 this.quantLoading = false;
                 this.quantError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+            }
+        });
+    }
+
+    /** Uses the same discount and terminal growth as the Fair value so both tiles agree. */
+    private loadReverseDcf(overrides: { discount?: number | null; terminal?: number | null }): void {
+        this.reverseDcfSub?.unsubscribe();
+        this.reverseDcfLoading = true;
+        this.reverseDcfError = '';
+        this.reverseDcfSub = this.analysis.getReverseDcf(this.ticker, overrides).subscribe({
+            next: (r) => {
+                this.reverseDcf = r;
+                this.reverseDcfLoading = false;
+            },
+            error: (err: HttpErrorResponse) => {
+                this.reverseDcfLoading = false;
+                this.reverseDcfError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
             }
         });
     }

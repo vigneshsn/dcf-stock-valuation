@@ -35,6 +35,26 @@ export interface Scenarios {
     impliedGrowth: number | null;
 }
 
+export type ReverseDcfVerdict = 'expects-acceleration' | 'in-line' | 'expects-slowdown';
+
+/** Rates are percentage points (9 = 9%). */
+export interface ReverseDcfAnalysis {
+    ticker: string;
+    status: 'ok' | 'no-solution' | 'not-applicable' | 'unavailable';
+    /** Why there is no Implied growth; null when status is ok. */
+    message: string | null;
+    price: number;
+    assumptions: { discountRate: number; terminalGrowthRate: number } | null;
+    impliedGrowth: number | null;
+    /** Search bound reached when status is no-solution. */
+    bound: number | null;
+    historicalCagr: number | null;
+    guidedGrowth: number | null;
+    verdict: ReverseDcfVerdict | null;
+    cached: boolean;
+    cachedAt: number;
+}
+
 export interface Peer {
     symbol: string;
     name: string;

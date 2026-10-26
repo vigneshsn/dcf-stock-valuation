@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { of } from 'rxjs';
 import { StockDashboardComponent } from './stock-dashboard.component';
 import { StockMetrics } from '../models/stock-metrics';
-import { Features, MdnaInsights, QuantitativeAnalysis } from '../models/analysis';
+import { Features, MdnaInsights, QuantitativeAnalysis, ReverseDcfAnalysis } from '../models/analysis';
 
 const STOCK_URL = 'http://localhost:3000/api/stock/';
 const ANALYSIS_URL = 'http://localhost:3000/api/analysis/';
@@ -47,6 +47,24 @@ function quant(overrides: Partial<QuantitativeAnalysis> = {}): QuantitativeAnaly
             grid: { growth: [8, 10, 12], discount: [12, 13], values: [[105, 80], [150, null], [-50, 0]] },
             impliedGrowth: 4.5
         },
+        cached: false,
+        cachedAt: 0,
+        ...overrides
+    };
+}
+
+function reverseDcf(overrides: Partial<ReverseDcfAnalysis> = {}): ReverseDcfAnalysis {
+    return {
+        ticker: 'TCS',
+        status: 'ok',
+        message: null,
+        price: 100,
+        assumptions: { discountRate: 12, terminalGrowthRate: 5 },
+        impliedGrowth: 14,
+        bound: null,
+        historicalCagr: 9,
+        guidedGrowth: null,
+        verdict: 'expects-acceleration',
         cached: false,
         cachedAt: 0,
         ...overrides
@@ -98,7 +116,7 @@ describe('StockDashboardComponent', () => {
 
     afterEach(() => {
         // MD&A insights load automatically with every ticker; tests that don't assert on them leave them pending.
-        httpMock.match((r) => r.url.endsWith('/insights'));
+        httpMock.match((r) => r.url.endsWith('/insights') || r.url.endsWith('/reverse-dcf'));
         httpMock.verify();
     });
 
@@ -109,6 +127,10 @@ describe('StockDashboardComponent', () => {
 
     function expectQuant(ticker: string) {
         return httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}${ticker}/quantitative`);
+    }
+
+    function expectReverseDcf(ticker: string) {
+        return httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}${ticker}/reverse-dcf`);
     }
 
     function text(): string {
@@ -300,6 +322,49 @@ describe('StockDashboardComponent', () => {
         // price 100: 105 is within ±10% (fair), 80 is below price (expensive), 150 is cheap, ≤ 0 is expensive
         expect(cells.map((c) => c.dataset['tone'])).toEqual(['neutral', 'bad', 'good', 'none', 'bad', 'bad']);
         expect(cells[3].textContent!.trim()).toBe('—');
+    });
+
+    it('shows the growth the price implies beside the growth the company delivered', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        expectReverseDcf('TCS').flush(reverseDcf());
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="reverse-dcf"]');
+        expect(panel.textContent).toContain('Price implies 14% growth for 5 years; company delivered 9%');
+        expect(panel.textContent).toContain('Market expects acceleration');
+    });
+
+    it('shows why the reverse DCF has no answer and omits a missing historical CAGR', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        expectReverseDcf('TCS').flush(reverseDcf({
+            status: 'no-solution', message: 'Price implies more than 50% annual growth', impliedGrowth: null, bound: 50,
+            historicalCagr: null, verdict: null
+        }));
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="reverse-dcf"]');
+        expect(panel.textContent).toContain('Price implies more than 50% annual growth');
+        expect(panel.textContent).not.toContain('company delivered');
+    });
+
+    it('re-solves the reverse DCF with the discount and terminal growth from the sliders', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        expectReverseDcf('TCS').flush(reverseDcf());
+        component.assumptions = { growthRate: 15, discountRate: 14, terminalGrowthRate: 5 };
+        component.recalculate();
+
+        expectQuant('TCS').flush(quant());
+        const req = expectReverseDcf('TCS');
+        expect(req.request.params.get('discount')).toBe('14');
+        expect(req.request.params.has('terminal')).toBeFalse();
+        expect(req.request.params.has('growth')).toBeFalse();
+        req.flush(reverseDcf());
     });
 
     it('says when no growth rate justifies the price', () => {
@@ -528,6 +593,7 @@ describe('StockDashboardComponent deep link', () => {
         httpMock.expectOne(`${STOCK_URL}ITC`).flush(emptyMetrics());
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/quantitative`).flush(quant());
         httpMock.expectOne(`${ANALYSIS_URL}ITC/insights`).flush(mdnaInsights({ ticker: 'ITC' }));
+        httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/reverse-dcf`).flush(reverseDcf({ ticker: 'ITC' }));
         httpMock.verify();
     });
 });

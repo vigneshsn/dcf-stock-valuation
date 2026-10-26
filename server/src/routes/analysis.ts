@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { del, delPrefix, get, set } from '../cache.js';
 import { fmpGet, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
-import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
+import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, reverseDcf, reverseDcfUnavailable, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
 import { saveUpload, listReports } from '../reports.js';
@@ -150,6 +150,39 @@ function parseOverride(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : NaN;
 }
 
+type AssumptionOverrides = { [K in keyof DcfAssumptions]: number | undefined };
+
+// null when any supplied override is not a number
+function parseAssumptionOverrides(query: express.Request['query']): AssumptionOverrides | null {
+  const overrides = {
+    growthRate: parseOverride(query.growth),
+    discountRate: parseOverride(query.discount),
+    terminalGrowthRate: parseOverride(query.terminal),
+  };
+  return Object.values(overrides).some((v) => Number.isNaN(v)) ? null : overrides;
+}
+
+const overridesKey = (o: AssumptionOverrides) => `${o.growthRate ?? ''}:${o.discountRate ?? ''}:${o.terminalGrowthRate ?? ''}`;
+
+const resolveAssumptions = (defaults: DcfAssumptions, o: AssumptionOverrides): DcfAssumptions => ({
+  growthRate: o.growthRate ?? defaults.growthRate,
+  discountRate: o.discountRate ?? defaults.discountRate,
+  terminalGrowthRate: o.terminalGrowthRate ?? defaults.terminalGrowthRate,
+});
+
+const invalidOverridesError = { error: 'Overrides must be numbers' };
+const discountNotAboveTerminalError = { error: 'Discount rate must be greater than terminal growth rate' };
+
+function sendCacheHit(res: express.Response, key: string): boolean {
+  const hit = cacheGet<unknown>(key);
+  if (!hit) {
+    return false;
+  }
+  console.log(`[analysis cache HIT] ${key}`);
+  res.json({ ...(hit.value as object), cached: true, cachedAt: hit.cachedAt });
+  return true;
+}
+
 export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Router {
   const provider = configuredProvider(options.provider);
   const loadQuantitativeInputs = (ticker: string): Promise<QuantitativeInputs> =>
@@ -167,19 +200,13 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
 
   router.get('/:ticker/quantitative', async (req, res) => {
     const ticker = req.params.ticker;
-    const overrides = {
-      growthRate: parseOverride(req.query.growth),
-      discountRate: parseOverride(req.query.discount),
-      terminalGrowthRate: parseOverride(req.query.terminal),
-    };
-    if (Object.values(overrides).some((v) => Number.isNaN(v))) {
-      return res.status(400).json({ error: 'Overrides must be numbers' });
+    const overrides = parseAssumptionOverrides(req.query);
+    if (!overrides) {
+      return res.status(400).json(invalidOverridesError);
     }
-    const key = `analysis:quant:${provider}:${ticker}:${overrides.growthRate ?? ''}:${overrides.discountRate ?? ''}:${overrides.terminalGrowthRate ?? ''}`;
-    const hit = cacheGet<unknown>(key);
-    if (hit) {
-      console.log(`[analysis cache HIT] ${key}`);
-      return res.json({ ...(hit.value as object), cached: true, cachedAt: hit.cachedAt });
+    const key = `analysis:quant:${provider}:${ticker}:${overridesKey(overrides)}`;
+    if (sendCacheHit(res, key)) {
+      return;
     }
     try {
       const f = await loadQuantitativeInputs(ticker);
@@ -187,13 +214,9 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       if (!defaults) {
         return res.status(422).json({ error: 'Not enough historical financials to run a DCF' });
       }
-      const assumptions: DcfAssumptions = {
-        growthRate: overrides.growthRate ?? defaults.growthRate,
-        discountRate: overrides.discountRate ?? defaults.discountRate,
-        terminalGrowthRate: overrides.terminalGrowthRate ?? defaults.terminalGrowthRate,
-      };
+      const assumptions = resolveAssumptions(defaults, overrides);
       if (assumptions.discountRate <= assumptions.terminalGrowthRate) {
-        return res.status(400).json({ error: 'Discount rate must be greater than terminal growth rate' });
+        return res.status(400).json(discountNotAboveTerminalError);
       }
       const fairValue = computeFairValue(f.history, assumptions, f.shares);
       if (fairValue == null || fairValue <= 0) {
@@ -211,6 +234,43 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         score: score.score,
         explanation: score.explanation,
         scenarios: computeScenarios(f.history, assumptions, f.shares, f.price),
+      };
+      cachePut(key, body);
+      res.json({ ...body, cached: false, cachedAt: Date.now() });
+    } catch (err) {
+      sendUpstreamError(res, ticker, err);
+    }
+  });
+
+  // Growth is what we solve for, so only discount and terminal growth can be overridden.
+  router.get('/:ticker/reverse-dcf', async (req, res) => {
+    const ticker = req.params.ticker;
+    const parsed = parseAssumptionOverrides(req.query);
+    if (!parsed) {
+      return res.status(400).json(invalidOverridesError);
+    }
+    const overrides = { ...parsed, growthRate: undefined };
+    const key = `analysis:reverse-dcf:${provider}:${ticker}:${overridesKey(overrides)}`;
+    if (sendCacheHit(res, key)) {
+      return;
+    }
+    try {
+      const f = await loadQuantitativeInputs(ticker);
+      const defaults = deriveDefaults(f.history);
+      const assumptions = defaults && resolveAssumptions(defaults, overrides);
+      if (assumptions && assumptions.discountRate <= assumptions.terminalGrowthRate) {
+        return res.status(400).json(discountNotAboveTerminalError);
+      }
+      const body = {
+        ticker,
+        price: f.price,
+        assumptions: assumptions && {
+          discountRate: assumptions.discountRate,
+          terminalGrowthRate: assumptions.terminalGrowthRate,
+        },
+        ...(assumptions
+          ? reverseDcf(f.history, assumptions, f.shares, f.price)
+          : reverseDcfUnavailable('Not enough historical financials to run a DCF')),
       };
       cachePut(key, body);
       res.json({ ...body, cached: false, cachedAt: Date.now() });

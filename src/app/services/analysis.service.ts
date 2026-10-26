@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Features, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, SwotAnalysis } from '../models/analysis';
+import { Features, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, ReverseDcfAnalysis, SwotAnalysis } from '../models/analysis';
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
@@ -18,13 +18,16 @@ export class AnalysisService {
     }
 
     getQuantitative(ticker: string, overrides: { growth?: number | null; discount?: number | null; terminal?: number | null } = {}): Observable<QuantitativeAnalysis> {
-        let params = new HttpParams();
-        for (const [key, value] of Object.entries(overrides)) {
-            if (value !== null && value !== undefined && String(value) !== '') {
-                params = params.set(key, String(value));
-            }
-        }
-        return this.http.get<QuantitativeAnalysis>(`${this.baseUrl}/${encodeURIComponent(ticker)}/quantitative`, { params });
+        return this.http.get<QuantitativeAnalysis>(`${this.baseUrl}/${encodeURIComponent(ticker)}/quantitative`, {
+            params: overrideParams(overrides)
+        });
+    }
+
+    /** Growth is what the reverse DCF solves for, so only discount and terminal growth can be overridden. */
+    getReverseDcf(ticker: string, overrides: { discount?: number | null; terminal?: number | null } = {}): Observable<ReverseDcfAnalysis> {
+        return this.http.get<ReverseDcfAnalysis>(`${this.baseUrl}/${encodeURIComponent(ticker)}/reverse-dcf`, {
+            params: overrideParams(overrides)
+        });
     }
 
     getPeers(ticker: string): Observable<{ ticker: string; peers: Peer[] }> {
@@ -46,4 +49,14 @@ export class AnalysisService {
             { headers: { 'Content-Type': 'application/pdf' } }
         );
     }
+}
+
+function overrideParams(overrides: Record<string, number | null | undefined>): HttpParams {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(overrides)) {
+        if (value !== null && value !== undefined && String(value) !== '') {
+            params = params.set(key, String(value));
+        }
+    }
+    return params;
 }

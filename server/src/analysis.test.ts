@@ -19,7 +19,7 @@ afterEach(async () => {
   })));
 });
 
-async function requestQuantitative(router: express.Router, ticker: string): Promise<Response> {
+async function requestAnalysis(router: express.Router, ticker: string, path = 'quantitative'): Promise<Response> {
   const app = express();
   app.use('/api/analysis', router);
   const server = createServer(app);
@@ -28,7 +28,7 @@ async function requestQuantitative(router: express.Router, ticker: string): Prom
   await once(server, 'listening');
   const address = server.address();
   assert(address && typeof address !== 'string');
-  return fetch(`http://127.0.0.1:${address.port}/api/analysis/${encodeURIComponent(ticker)}/quantitative`);
+  return fetch(`http://127.0.0.1:${address.port}/api/analysis/${encodeURIComponent(ticker)}/${path}`);
 }
 
 function keyed(values: Record<string, unknown>): Array<{ key: string; value: unknown }> {
@@ -71,6 +71,11 @@ function indianApiStock(ticker: string) {
   };
 }
 
+// The DCF history the router derives from indianApiStock (latest 5 annual periods)
+const indianApiHistory: YearFinancials[] = [
+  [2026, 1300, 260], [2025, 1200, 230], [2024, 1100, 200], [2023, 1000, 180], [2022, 900, 150],
+].map(([year, revenue, netIncome]) => ({ year, revenue, netIncome, capex: revenue * 0.05, nonCashExpense: revenue * 0.02 }));
+
 const failOnFmp = (url: URL) => {
   assert.notEqual(url.hostname, 'financialmodelingprep.com', `unexpected FMP request: ${url}`);
 };
@@ -93,28 +98,77 @@ test('runs the quantitative DCF on IndianAPI data when IndianAPI is the configur
     },
   });
 
-  const response = await requestQuantitative(router, 'quantind.ns');
+  const response = await requestAnalysis(router, 'quantind.ns');
   const body = await response.json();
 
-  const expectedHistory: YearFinancials[] = [
-    [2026, 1300, 260], [2025, 1200, 230], [2024, 1100, 200], [2023, 1000, 180], [2022, 900, 150],
-  ].map(([year, revenue, netIncome]) => ({
-    year,
-    revenue,
-    netIncome,
-    capex: revenue * 0.05,
-    nonCashExpense: revenue * 0.02,
-  }));
-  const defaults = deriveDefaults(expectedHistory)!;
+  const defaults = deriveDefaults(indianApiHistory)!;
   assert.equal(response.status, 200);
   assert.equal(body.price, 120.5);
   assert.deepEqual(body.ratios, { pe: 18.2, pb: 3.1, roe: 0.25 });
   assert.deepEqual(body.defaults, defaults);
-  assert.equal(body.fairValue, computeFairValue(expectedHistory, defaults, 100));
+  assert.equal(body.fairValue, computeFairValue(indianApiHistory, defaults, 100));
   assert.deepEqual(body.scenarios.base, { ...defaults, fairValuePerShare: body.fairValue });
   assert.equal(body.scenarios.grid.values.length, 5);
   assert.equal(typeof body.scenarios.impliedGrowth, 'number');
   assert.equal(requests.length, 2);
+});
+
+test('reverse DCF solves the growth the price implies, using discount and terminal overrides', async () => {
+  const router = createAnalysisRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    indianApiBaseUrl: 'https://indianapi.test',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      failOnFmp(url);
+      return new Response(url.pathname === '/industry_search' ? '[]' : JSON.stringify(indianApiStock('REVDCF')));
+    },
+  });
+
+  const response = await requestAnalysis(router, 'REVDCF', 'reverse-dcf?discount=10&terminal=4');
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.status, 'ok');
+  assert.equal(body.price, 120.5);
+  assert.deepEqual(body.assumptions, { discountRate: 10, terminalGrowthRate: 4 });
+  // 900 → 1300 over 4 years
+  assert.equal(body.historicalCagr, 9.63);
+  const atImplied = computeFairValue(indianApiHistory, { growthRate: body.impliedGrowth, discountRate: 10, terminalGrowthRate: 4 }, 100)!;
+  assert.ok(Math.abs(atImplied - 120.5) < 0.1, `Fair value at Implied growth was ${atImplied}`);
+});
+
+const indianApiRouter = (stock: object) =>
+  createAnalysisRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    indianApiBaseUrl: 'https://indianapi.test',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      failOnFmp(url);
+      return new Response(url.pathname === '/industry_search' ? '[]' : JSON.stringify(stock));
+    },
+  });
+
+test('reverse DCF rejects invalid overrides and ignores a growth override', async () => {
+  const router = indianApiRouter(indianApiStock('REVBAD'));
+  assert.equal((await requestAnalysis(router, 'REVBAD', 'reverse-dcf?discount=abc')).status, 400);
+  assert.equal((await requestAnalysis(router, 'REVBAD', 'reverse-dcf?discount=4&terminal=4')).status, 400);
+  const withGrowth = await (await requestAnalysis(router, 'REVBAD', 'reverse-dcf?discount=10&terminal=4&growth=99')).json();
+  const withoutGrowth = await (await requestAnalysis(router, 'REVBAD', 'reverse-dcf?discount=10&terminal=4')).json();
+  assert.equal(withGrowth.impliedGrowth, withoutGrowth.impliedGrowth);
+});
+
+test('reverse DCF is unavailable with fewer than two years of history', async () => {
+  const stock = indianApiStock('REVSHORT');
+  stock.financials = stock.financials.slice(0, 2); // interim + one annual period
+  const response = await requestAnalysis(indianApiRouter(stock), 'REVSHORT', 'reverse-dcf');
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.status, 'unavailable');
+  assert.match(body.message, /Not enough historical financials/);
+  assert.equal(body.assumptions, null);
+  assert.equal(body.impliedGrowth, null);
 });
 
 test('derives bank revenue from interest and non-interest income', async () => {
@@ -143,7 +197,7 @@ test('derives bank revenue from interest and non-interest income', async () => {
     },
   });
 
-  const response = await requestQuantitative(router, 'BANKQUANT');
+  const response = await requestAnalysis(router, 'BANKQUANT');
   const body = await response.json();
 
   const history: YearFinancials[] = [
@@ -170,12 +224,12 @@ test('returns not found for unresolved or non-NSE tickers with IndianAPI configu
     },
   });
 
-  const unresolved = await requestQuantitative(router, 'NOQUANT');
+  const unresolved = await requestAnalysis(router, 'NOQUANT');
   assert.equal(unresolved.status, 404);
   assert.deepEqual(await unresolved.json(), { error: 'Ticker not found' });
   assert.equal(requests, 2);
 
-  const bseTicker = await requestQuantitative(router, 'NOQUANT.BO');
+  const bseTicker = await requestAnalysis(router, 'NOQUANT.BO');
   assert.equal(bseTicker.status, 404);
   assert.equal(requests, 2);
 });
@@ -191,7 +245,7 @@ test('reports IndianAPI failures as upstream errors without falling back to FMP'
     },
   });
 
-  const response = await requestQuantitative(router, 'FAILQUANT');
+  const response = await requestAnalysis(router, 'FAILQUANT');
 
   assert.equal(response.status, 502);
   assert.deepEqual(await response.json(), { error: 'Upstream fetch failed' });
@@ -231,7 +285,7 @@ test('runs the quantitative DCF on FMP data when FMP is the configured provider'
       },
     });
 
-    const response = await requestQuantitative(router, 'FMPQUANT.NS');
+    const response = await requestAnalysis(router, 'FMPQUANT.NS');
     const body = await response.json();
 
     assert.equal(response.status, 200);

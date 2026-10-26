@@ -243,6 +243,30 @@
             }
         </article>
 
+        <!-- Reverse DCF -->
+        <article class="tile span-6" data-testid="reverse-dcf">
+            <header class="tile-head">
+                <div>
+                    <h3>What the price implies</h3>
+                    <span class="tile-sub">Reverse DCF: Implied growth vs history</span>
+                </div>
+                @if (reverseDcf?.cached) {
+                    <span class="tag" title="Served from cache">cached</span>
+                }
+            </header>
+            @if (reverseDcfLoading && !reverseDcf) {
+                <span class="skeleton" style="height: 22px; width: 80%"></span>
+            }
+            @if (reverseDcfError) {
+                <p class="alert alert-bad" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ reverseDcfError }}
+                </p>
+            }
+            @if (reverseDcf) {
+                <app-reverse-dcf [analysis]="reverseDcf" [class.refreshing]="reverseDcfLoading"></app-reverse-dcf>
+            }
+        </article>
+
         <!-- MD&A insights (Latest annual report) -->
         <article class="tile span-6" data-testid="insights-panel">
             <header class="tile-head">

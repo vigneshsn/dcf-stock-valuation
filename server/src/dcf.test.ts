@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { computeFairValue, computeScenarios, deriveDefaults, quantitativeScore, YearFinancials } from './dcf.js';
+import { computeFairValue, computeScenarios, deriveDefaults, quantitativeScore, reverseDcf, YearFinancials } from './dcf.js';
 
 const history: YearFinancials[] = [
   { year: 2024, revenue: 1210, netIncome: 121, capex: 20, nonCashExpense: 30 },
@@ -105,4 +105,91 @@ test('computeScenarios: not applicable when the latest year is loss-making or ha
   const negativeFcf = [{ ...history[0], capex: 200 }, ...history.slice(1)];
   assert.strictEqual(computeScenarios(lossYear, base, 10, 100), null);
   assert.strictEqual(computeScenarios(negativeFcf, base, 10, 100), null);
+});
+
+const zeroGrowthBase = { growthRate: 8, discountRate: 10, terminalGrowthRate: 0 };
+
+test('reverseDcf: solves Implied growth and compares it with the historical revenue CAGR', () => {
+  // At 0% growth and 10% discount the Fair value is exactly 131; revenue grew 1000 → 1210 over 2 years (10% CAGR)
+  assert.deepStrictEqual(reverseDcf(history, zeroGrowthBase, 10, 131), {
+    status: 'ok',
+    message: null,
+    impliedGrowth: 0,
+    bound: null,
+    historicalCagr: 10,
+    guidedGrowth: null,
+    verdict: 'expects-slowdown',
+  });
+});
+
+// Latest year matches `history` (Fair value 131 at 0% growth, 10% discount), with a chosen prior revenue
+const withPriorRevenue = (revenue: number): YearFinancials[] => [
+  history[0],
+  { year: 2023, revenue, netIncome: revenue * 0.1, capex: 20, nonCashExpense: 30 },
+];
+
+test('reverseDcf: verdict is in line within 3 pts of the historical CAGR and acceleration above it', () => {
+  const inLine = reverseDcf(withPriorRevenue(1186.27), zeroGrowthBase, 10, 131); // CAGR 2%
+  assert.strictEqual(inLine.historicalCagr, 2);
+  assert.strictEqual(inLine.verdict, 'in-line');
+  const acceleration = reverseDcf(withPriorRevenue(1273.68), zeroGrowthBase, 10, 131); // CAGR −5%
+  assert.strictEqual(acceleration.historicalCagr, -5);
+  assert.strictEqual(acceleration.verdict, 'expects-acceleration');
+});
+
+test('reverseDcf: historical CAGR uses at most the last 5 years and is omitted with one year of history', () => {
+  const sevenYears = [1210, 1100, 1000, 1000, 1000, 1000, 500].map((revenue, i) => ({
+    year: 2024 - i, revenue, netIncome: revenue * 0.1, capex: 20, nonCashExpense: 30,
+  }));
+  // 1000 → 1210 over 5 years, ignoring the 7th year
+  assert.strictEqual(reverseDcf(sevenYears, zeroGrowthBase, 10, 131).historicalCagr, 3.89);
+  const oneYear = reverseDcf(history.slice(0, 1), zeroGrowthBase, 10, 131);
+  assert.strictEqual(oneYear.historicalCagr, null);
+  assert.strictEqual(oneYear.verdict, null);
+});
+
+test('reverseDcf: no-solution reports the bound reached and still compares it with history', () => {
+  const tooExpensive = reverseDcf(history, zeroGrowthBase, 10, 1_000_000);
+  assert.strictEqual(tooExpensive.status, 'no-solution');
+  assert.strictEqual(tooExpensive.impliedGrowth, null);
+  assert.strictEqual(tooExpensive.bound, 50);
+  assert.match(tooExpensive.message!, /more than 50%/);
+  assert.strictEqual(tooExpensive.verdict, 'expects-acceleration');
+
+  const tooCheap = reverseDcf(history, zeroGrowthBase, 10, 1);
+  assert.strictEqual(tooCheap.status, 'no-solution');
+  assert.strictEqual(tooCheap.bound, -20);
+  assert.match(tooCheap.message!, /less than −20%/);
+  assert.strictEqual(tooCheap.verdict, 'expects-slowdown');
+});
+
+test('reverseDcf: not applicable when the latest year is loss-making or has negative free cash flow', () => {
+  const negativeFcf = [{ ...history[0], capex: 200 }, ...history.slice(1)];
+  const result = reverseDcf(negativeFcf, zeroGrowthBase, 10, 131);
+  assert.strictEqual(result.status, 'not-applicable');
+  assert.match(result.message!, /loss-making or has negative free cash flow/);
+  assert.strictEqual(result.impliedGrowth, null);
+  assert.strictEqual(result.bound, null);
+  assert.strictEqual(result.verdict, null);
+  assert.strictEqual(result.historicalCagr, 10);
+  const lossMaking = [{ ...history[0], netIncome: -1 }, ...history.slice(1)];
+  assert.strictEqual(reverseDcf(lossMaking, zeroGrowthBase, 10, 131).status, 'not-applicable');
+});
+
+test('reverseDcf: not applicable when Fair value does not rise with growth', () => {
+  // Profitable latest year, but earlier losses make the average margin negative
+  const pastLosses: YearFinancials[] = [
+    { year: 2024, revenue: 1000, netIncome: 50, capex: 20, nonCashExpense: 30 },
+    { year: 2023, revenue: 1000, netIncome: -300, capex: 20, nonCashExpense: 30 },
+    { year: 2022, revenue: 1000, netIncome: -300, capex: 20, nonCashExpense: 30 },
+  ];
+  const result = reverseDcf(pastLosses, zeroGrowthBase, 10, 100);
+  assert.strictEqual(result.status, 'not-applicable');
+  assert.strictEqual(result.bound, null);
+  assert.strictEqual(result.verdict, null);
+});
+
+test('reverseDcf: historical CAGR spans the actual years when a year is missing', () => {
+  const gap: YearFinancials[] = [history[0], { ...history[2], year: 2020 }]; // 1000 → 1210 over 4 years
+  assert.strictEqual(reverseDcf(gap, zeroGrowthBase, 10, 131).historicalCagr, 4.88);
 });
