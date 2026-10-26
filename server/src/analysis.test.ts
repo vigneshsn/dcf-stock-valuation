@@ -486,6 +486,7 @@ const sampleInsights: Insights = {
   headwinds: [],
   risks: [{ point: 'Input costs', quote: null }],
   moat: { rating: 'narrow', reasoning: 'Brand.', quote: null },
+  guidance: [],
 };
 
 test('insights: analyses the latest report once and serves repeats from cache', async () => {
@@ -540,4 +541,47 @@ test('insights: missing report is 422 no-reports, LLM failure is 503 and not cac
   const recovered = await fetch(`${flaky}/FLAKY/insights`);
   assert.equal(recovered.status, 200);
   assert.equal((await recovered.json()).cached, false);
+});
+
+test('guidance: scores cached claims against actuals, extracts once per report, partial when the LLM is down', async () => {
+  process.env.GUIDANCE_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'guidance-route-'));
+  const guidanceText = [
+    'Management Discussion and Analysis',
+    ...Array.from({ length: 30 }, (_, i) => `We expect revenue growth of 10% in FY24 and our outlook ${i} remains strong.`),
+    'Directors Report',
+  ].join('\n');
+  const quote = 'We expect revenue growth of 10% in FY24';
+  let extractions = 0;
+  let llmDown = false;
+  const base = await serve(createAnalysisRouter({
+    provider: 'indianapi',
+    indianApiKey: 'test-key',
+    indianApiBaseUrl: 'https://indianapi.test',
+    fetcher: async (input) => {
+      const url = new URL(String(input));
+      return new Response(url.pathname === '/industry_search' ? '[]' : JSON.stringify(indianApiStock('GUIDECO')));
+    },
+    guidance: {
+      listReports: async () => [2024, 2023].map((year) => ({ year, source: 'screener' as const, load: async () => Buffer.from('pdf') })),
+      textOf: async () => guidanceText,
+      sharedClaims: async () => undefined,
+      extract: async (year) => {
+        extractions++;
+        if (llmDown && year === 2023) throw new LlmError('quota');
+        return [{ metric: 'revenueGrowth', target: { min: 0.1, max: 0.1 }, horizon: year + 1, quote }];
+      },
+    },
+  }));
+
+  const first = await (await fetch(`${base}/GUIDECO/guidance`, { method: 'POST' })).json();
+  assert.equal(first.experimental, true);
+  assert.equal(first.lowerConfidence, true);
+  assert.deepEqual(first.years.map((y: any) => [y.year, y.status, y.claims[0].verdict]), [[2024, 'ok', 'near'], [2023, 'ok', 'met']]);
+  assert.equal(first.hitRate, 0.5);
+  assert.equal(extractions, 2);
+
+  llmDown = true;
+  const second = await (await fetch(`${base}/GUIDECO/guidance`, { method: 'POST' })).json();
+  assert.equal(extractions, 2);
+  assert.equal(second.years.length, 2);
 });

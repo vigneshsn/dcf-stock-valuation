@@ -4,15 +4,16 @@ import { extractMdna, filterRelevant, pdfToText } from './mdna.js';
 import { generateJson } from './llm.js';
 import { MoatJudgement, MoatRating, verifiedQuote } from './qualitative.js';
 import { AnnualReportRef } from './reports.js';
+import { GUIDANCE_SCHEMA_PROMPT, GuidanceClaim, parseGuidanceClaims } from './guidance.js';
 import { extractSwotSections, opportunityThreatPassages } from './swot.js';
 
 // Bump when input selection or the prompt changes so stored insights are recomputed.
-export const INSIGHTS_VERSION = 2;
+export const INSIGHTS_VERSION = 3;
 // ~5k tokens, so the single request fits free-tier per-minute token limits (Groq ≈ 8k TPM) with room for the answer.
 export const MAX_INSIGHTS_INPUT_CHARS = 20_000;
 const MAX_OUTLOOK_CHARS = 8_000;
 export const MAX_INSIGHT_ITEMS = 4;
-const INSIGHTS_MAX_TOKENS = 1500;
+const INSIGHTS_MAX_TOKENS = 2200;
 
 export interface InsightItem {
   point: string;
@@ -25,6 +26,8 @@ export const INSIGHT_LISTS: readonly InsightListKey[] = ['keyPoints', 'growthStr
 
 export interface Insights extends Record<InsightListKey, InsightItem[]> {
   moat: MoatJudgement;
+  // Forward-looking claims for the Guidance scorecard, extracted in the same call
+  guidance: GuidanceClaim[];
 }
 
 export interface ReportInsights {
@@ -90,9 +93,11 @@ export const judgeInsights: InsightsJudge = async (year, text) => {
       '- risks: risks an investor in the company should watch.\n' +
       'Each item has a "point" (at most 20 words) and a "quote": one contiguous phrase of 8-30 words copied verbatim from the text (no "..."), supporting the point.\n' +
       'Also judge the economic moat (durable competitive advantage) from the text.\n' +
+      `Also extract the management guidance, as a "guidance" list:\n${GUIDANCE_SCHEMA_PROMPT}\n` +
       'Only include points supported by the text. Use empty lists if nothing qualifies.\n' +
       'Reply as JSON: {"keyPoints":[{"point":"","quote":""}],"growthStrategy":[],"tailwinds":[],"headwinds":[],"risks":[],' +
-      '"moat":{"rating":"wide|narrow|none","reasoning":"<2 sentences>","quote":""}}\n\n' +
+      '"moat":{"rating":"wide|narrow|none","reasoning":"<2 sentences>","quote":""},' +
+      '"guidance":[{"metric":"","target":{"min":0,"max":0},"horizon":0,"quote":""}]}\n\n' +
       text,
     INSIGHTS_MAX_TOKENS
   );
@@ -108,6 +113,7 @@ export const judgeInsights: InsightsJudge = async (year, text) => {
       reasoning: typeof moat.reasoning === 'string' ? moat.reasoning.trim() : '',
       quote: verifiedQuote(moat.quote, text),
     },
+    guidance: parseGuidanceClaims(raw?.guidance, text),
   };
 };
 

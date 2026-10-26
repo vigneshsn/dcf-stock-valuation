@@ -12,7 +12,8 @@ import { LlmError, llmConfig } from '../llm.js';
 import { ManagementJudgement, Peer, judgeManagement, judgeMoat, qualitativeScore, selectPeers } from '../qualitative.js';
 import { forgetStoredQualitative, readStoredQualitative, writeStoredQualitative } from '../qualitativeStore.js';
 import { ReportSwotDeps, financialSwot, forgetStoredSwot, latestReportSwot, mergeSwot } from '../swot.js';
-import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights } from '../insights.js';
+import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights, readStoredInsights } from '../insights.js';
+import { GuidanceDeps, GuidanceYear, collectGuidance, forgetStoredGuidance, guidanceScorecard } from '../guidance.js';
 import { Features, features } from '../features.js';
 import { redFlagScan } from '../redFlags.js';
 
@@ -31,6 +32,7 @@ interface AnalysisRouterOptions {
   fetcher?: typeof fetch;
   swot?: Partial<ReportSwotDeps>;
   insights?: Partial<ReportInsightsDeps>;
+  guidance?: Partial<GuidanceDeps>;
   // Overrides the ENABLE_* environment flags (tests).
   features?: Partial<Features>;
 }
@@ -47,6 +49,7 @@ function cacheGet<T>(key: string): Stamped<T> | undefined {
 const swotKey = (ticker: string, model: string) => `analysis:swot:${ticker.trim().toUpperCase()}:${model}`;
 const qualPrefix = (ticker: string) => `analysis:qual:${ticker.trim().toUpperCase()}:`;
 const insightsKey = (ticker: string, model: string) => `analysis:insights:${ticker.trim().toUpperCase()}:${model}`;
+const guidanceKey = (ticker: string, model: string) => `analysis:guidance:${ticker.trim().toUpperCase()}:${model}`;
 
 function cachePut<T>(key: string, value: T): void {
   set<Stamped<T>>(key, { value, cachedAt: Date.now() }, ANALYSIS_TTL_MS);
@@ -337,11 +340,13 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       const { model } = llmConfig();
       del(swotKey(req.params.ticker, model));
       del(insightsKey(req.params.ticker, model));
+      del(guidanceKey(req.params.ticker, model));
       delPrefix(qualPrefix(req.params.ticker));
       await Promise.all([
         forgetStoredYear(req.params.ticker, year),
         forgetStoredSwot(req.params.ticker, year),
         forgetStoredInsights(req.params.ticker, year),
+        forgetStoredGuidance(req.params.ticker, year),
         forgetStoredQualitative(req.params.ticker),
       ]);
       res.status(201).json({ ticker: req.params.ticker, year, bytes: body.length });
@@ -388,6 +393,40 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         return res.status(503).json({ error: 'llm-unavailable', message: `The language model is unavailable: ${err.message}` });
       }
       res.status(502).json({ error: 'failed', message: 'The annual report could not be analysed.' });
+    }
+  });
+
+  // At most one LLM call per annual report, ever (stored on disk); scoring against the financials is deterministic.
+  // Returns a partial result: a year whose extraction fails does not hide the cached years.
+  router.post('/:ticker/guidance', async (req, res) => {
+    const ticker = req.params.ticker;
+    const { model } = llmConfig();
+    const key = guidanceKey(ticker, model);
+    try {
+      let years = cacheGet<GuidanceYear[]>(key)?.value;
+      if (!years) {
+        years = await collectGuidance(ticker, model, 3, {
+          listReports: options.guidance?.listReports ?? ((t, n) => listReports(t, n, options.fetcher)),
+          textOf: options.guidance?.textOf,
+          extract: options.guidance?.extract,
+          sharedClaims:
+            options.guidance?.sharedClaims ?? (async (year) => (await readStoredInsights(ticker, year, model))?.insights?.guidance),
+        });
+        if (years.every((y) => y.status === 'ok' || y.status === 'no-guidance')) {
+          cachePut(key, years);
+        }
+      }
+      if (!years.length) {
+        return res.status(422).json({
+          error: 'no-reports',
+          message: 'Annual reports could not be fetched. Upload them as PDFs via POST /api/analysis/:ticker/reports?year=YYYY.',
+        });
+      }
+      const financials = await loadQuantitativeInputs(ticker);
+      res.json({ ticker, model, experimental: true, ...guidanceScorecard(years, financials.history) });
+    } catch (err: any) {
+      console.error(`[guidance error] ${ticker}: ${err?.message || err}`);
+      sendUpstreamError(res, ticker, err);
     }
   });
 

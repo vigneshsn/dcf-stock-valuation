@@ -164,3 +164,34 @@ export interface RedFlagScan {
     /** Rules not evaluated because the data source does not supply their inputs. */
     skipped: { id: RedFlagId; reason: string }[];
 }
+
+export type GuidanceMetric = 'revenueGrowth' | 'netProfitGrowth' | 'margin' | 'capex' | 'debt' | 'other';
+export type GuidanceVerdict = 'met' | 'near' | 'missed' | 'pending' | 'unscored';
+
+export interface GuidanceClaim {
+    metric: GuidanceMetric;
+    /** Fractions for growth, margin and capex (share of revenue); debt-to-equity ratio for debt. */
+    target: { min: number; max: number } | null;
+    horizon: number | null;
+    quote: string;
+    actual: number | null;
+    verdict: GuidanceVerdict;
+}
+
+export interface GuidanceYear {
+    year: number;
+    status: 'ok' | 'no-report' | 'no-guidance' | 'llm-unavailable' | 'failed';
+    cached: boolean;
+    claims: GuidanceClaim[];
+}
+
+/** Guidance scorecard: what management guided to in each report vs what the financials showed. Unscored. */
+export interface GuidanceScorecard {
+    ticker: string;
+    model: string;
+    experimental: true;
+    lowerConfidence: boolean;
+    /** met / (met + near + missed); null when nothing is scored. */
+    hitRate: number | null;
+    years: GuidanceYear[];
+}

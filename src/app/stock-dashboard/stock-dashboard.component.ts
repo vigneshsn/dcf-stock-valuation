@@ -25,6 +25,10 @@ import {
     RedFlagScan,
     ReverseDcfAnalysis,
     SwotAnalysis,
+    GuidanceClaim,
+    GuidanceMetric,
+    GuidanceScorecard,
+    GuidanceVerdict,
     SwotQuadrantKey
 } from '../models/analysis';
 
@@ -84,6 +88,15 @@ const RED_FLAG_NAMES: Record<RedFlagId, string> = {
 };
 
 const MOAT_TONES: Record<MoatRating, Tone> = { wide: 'good', narrow: 'neutral', none: 'bad' };
+const VERDICT_TONES: Record<GuidanceVerdict, Tone> = { met: 'good', near: 'warn', missed: 'bad', pending: 'neutral', unscored: 'neutral' };
+const GUIDANCE_METRICS: Record<GuidanceMetric, string> = {
+    revenueGrowth: 'Revenue growth',
+    netProfitGrowth: 'Net profit growth',
+    margin: 'Net margin',
+    capex: 'Capex / revenue',
+    debt: 'Debt / equity',
+    other: 'Other'
+};
 const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'warn', missed: 'bad' };
 
 @Component({
@@ -148,6 +161,10 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     swotError = '';
     readonly swotQuadrants = SWOT_QUADRANTS;
 
+    guidance: GuidanceScorecard | null = null;
+    guidanceLoading = false;
+    guidanceError = '';
+
     private stockSub?: Subscription;
     private quantSub?: Subscription;
     private reverseDcfSub?: Subscription;
@@ -155,6 +172,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private insightsSub?: Subscription;
     private qualSub?: Subscription;
     private swotSub?: Subscription;
+    private guidanceSub?: Subscription;
 
     ngOnInit(): void {
         this.analysis.getFeatures().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -177,6 +195,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.insightsSub?.unsubscribe();
         this.qualSub?.unsubscribe();
         this.swotSub?.unsubscribe();
+        this.guidanceSub?.unsubscribe();
     }
 
     search(): void {
@@ -199,6 +218,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.showFullDescription = false;
         this.resetQualitative();
         this.resetSwot();
+        this.resetGuidance();
         this.loadStock();
         this.quant = null;
         this.reverseDcf = null;
@@ -480,6 +500,60 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     outcomeTone(outcome: GuidanceOutcome): Tone {
         return OUTCOME_TONES[outcome] ?? 'neutral';
+    }
+
+    // ---- Guidance scorecard --------------------------------------------------
+
+    runGuidance(): void {
+        this.guidanceSub?.unsubscribe();
+        this.guidanceLoading = true;
+        this.guidanceError = '';
+        this.guidanceSub = this.analysis.getGuidance(this.ticker).subscribe({
+            next: (g) => {
+                this.guidance = g;
+                this.guidanceLoading = false;
+            },
+            error: (err: HttpErrorResponse) => {
+                this.guidance = null;
+                this.guidanceLoading = false;
+                this.guidanceError = err.status === 404
+                    ? 'Ticker not found'
+                    : err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+            }
+        });
+    }
+
+    verdictTone(verdict: GuidanceVerdict): Tone {
+        return VERDICT_TONES[verdict];
+    }
+
+    guidanceMetricLabel(metric: GuidanceMetric): string {
+        return GUIDANCE_METRICS[metric];
+    }
+
+    /** "15%" or "12–15%" for ratio metrics; "0.5×" for debt-to-equity. */
+    guidanceValue(metric: GuidanceMetric, value: number | null | undefined): string {
+        if (value == null) {
+            return '—';
+        }
+        return metric === 'debt' ? `${+value.toFixed(2)}×` : `${+(value * 100).toFixed(1)}%`;
+    }
+
+    guidanceTarget(claim: GuidanceClaim): string {
+        if (!claim.target) {
+            return '—';
+        }
+        const { min, max } = claim.target;
+        return min === max
+            ? this.guidanceValue(claim.metric, min)
+            : `${this.guidanceValue(claim.metric, min)} – ${this.guidanceValue(claim.metric, max)}`;
+    }
+
+    private resetGuidance(): void {
+        this.guidanceSub?.unsubscribe();
+        this.guidance = null;
+        this.guidanceLoading = false;
+        this.guidanceError = '';
     }
 
     // ---- SWOT analysis -------------------------------------------------------

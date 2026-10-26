@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Features, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, SwotAnalysis } from '../models/analysis';
+import { Features, GuidanceScorecard, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, SwotAnalysis } from '../models/analysis';
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
@@ -32,6 +32,10 @@ export class AnalysisService {
 
     getRedFlags(ticker: string): Observable<RedFlagScan> {
         return this.http.get<RedFlagScan>(`${this.baseUrl}/${encodeURIComponent(ticker)}/red-flags`);
+    }
+
+    getGuidance(ticker: string): Observable<GuidanceScorecard> {
+        return this.http.post<GuidanceScorecard>(`${this.baseUrl}/${encodeURIComponent(ticker)}/guidance`, {});
     }
 
     getPeers(ticker: string): Observable<{ ticker: string; peers: Peer[] }> {

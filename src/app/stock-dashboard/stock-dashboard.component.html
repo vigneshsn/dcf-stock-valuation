@@ -520,6 +520,79 @@
             </article>
         }
 
+        <!-- Guidance scorecard: evidence behind Management trustworthiness, unscored -->
+        <article class="tile span-12" data-testid="guidance-panel">
+            <header class="tile-head">
+                <div>
+                    <h3>Guidance scorecard</h3>
+                    <span class="tile-sub">What management guided to in each annual report vs what the financials showed · unscored</span>
+                </div>
+                <div class="pills">
+                    @if (guidance && guidance.hitRate !== null) {
+                        <span class="pill" data-testid="guidance-hit-rate">{{ guidance.hitRate | percent: '1.0-0' }} met</span>
+                    }
+                    @if (guidance?.lowerConfidence) {
+                        <span class="tag tag-warn" data-testid="guidance-low-confidence">lower confidence</span>
+                    }
+                    <span class="tag tag-warn">experimental</span>
+                </div>
+            </header>
+
+            @if (!guidance && !guidanceLoading) {
+                <div class="qual-cta">
+                    <p class="muted">Extracts the forward-looking targets from each of the last 3 annual reports and checks them against
+                        the actuals. One language-model call per report, stored for good ☕</p>
+                    <button type="button" class="btn" (click)="runGuidance()">
+                        <span class="material-icons" aria-hidden="true">fact_check</span> Run guidance scorecard
+                    </button>
+                </div>
+            }
+
+            @if (guidanceLoading) {
+                <div class="thinking">
+                    <div class="orb" aria-hidden="true"></div>
+                    <p>Reading the annual reports' outlook sections...</p>
+                </div>
+            }
+
+            @if (guidanceError) {
+                <p class="alert alert-bad" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ guidanceError }}
+                </p>
+            }
+
+            @if (guidance && !guidanceLoading) {
+                @for (y of guidance.years; track y.year) {
+                    <section class="guidance-year" [attr.data-testid]="'guidance-year-' + y.year">
+                        <h4>FY{{ y.year }} report @if (y.cached) { <span class="tag">cached</span> }</h4>
+                        @switch (y.status) {
+                            @case ('no-report') { <p class="muted small">The report could not be fetched. Upload it as a PDF.</p> }
+                            @case ('no-guidance') { <p class="muted small">No forward-looking targets found.</p> }
+                            @case ('llm-unavailable') { <p class="alert alert-warn small">The language model is unavailable; retry later.</p> }
+                            @case ('failed') { <p class="alert alert-warn small">This report could not be analysed.</p> }
+                        }
+                        @if (y.claims.length) {
+                            <ul class="timeline">
+                                @for (c of y.claims; track $index) {
+                                    <li>
+                                        <span class="pill" [attr.data-tone]="verdictTone(c.verdict)">{{ c.verdict }}</span>
+                                        <span class="small">
+                                            @if (c.metric !== 'other') {
+                                                {{ guidanceMetricLabel(c.metric) }} · target {{ guidanceTarget(c) }}
+                                                @if (c.horizon) { for FY{{ c.horizon }} }
+                                                @if (c.actual !== null) { · actual {{ guidanceValue(c.metric, c.actual) }} }
+                                            }
+                                            <em>“{{ c.quote }}”</em>
+                                        </span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </section>
+                }
+            }
+        </article>
+
         <!-- SWOT analysis (off unless the server enables it) -->
         @if (features.swot) {
             <article class="tile span-12" data-testid="swot-panel">

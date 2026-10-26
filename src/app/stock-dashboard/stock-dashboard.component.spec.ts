@@ -609,6 +609,47 @@ describe('StockDashboardComponent', () => {
         expect(panel.querySelector('[data-testid="swot-opportunities"]')?.textContent).toContain('Nothing identified.');
     });
 
+    it('runs the Guidance scorecard on demand and shows each claim with its verdict', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('[data-testid="guidance-panel"]')?.textContent).toContain('Run guidance scorecard');
+
+        component.runGuidance();
+        const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/guidance`);
+        expect(req.request.method).toBe('POST');
+        req.flush({
+            ticker: 'TCS',
+            model: 'm',
+            experimental: true,
+            lowerConfidence: true,
+            hitRate: 0,
+            years: [
+                {
+                    year: 2023,
+                    status: 'ok',
+                    cached: true,
+                    claims: [
+                        { metric: 'revenueGrowth', target: { min: 0.15, max: 0.15 }, horizon: 2024, quote: 'We expect 15% growth in FY24', actual: 0.09, verdict: 'missed' },
+                        { metric: 'other', target: null, horizon: null, quote: 'Strong growth ahead for our business', actual: null, verdict: 'unscored' }
+                    ]
+                },
+                { year: 2022, status: 'llm-unavailable', cached: false, claims: [] }
+            ]
+        });
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="guidance-panel"]');
+        expect(panel.querySelector('[data-testid="guidance-hit-rate"]')?.textContent).toContain('0% met');
+        expect(panel.querySelector('[data-testid="guidance-low-confidence"]')).not.toBeNull();
+        const year = panel.querySelector('[data-testid="guidance-year-2023"]')!;
+        expect(year.textContent?.replace(/\s+/g, ' ')).toContain('Revenue growth · target 15% for FY2024 · actual 9%');
+        expect(year.querySelector('[data-tone="bad"]')?.textContent).toContain('missed');
+        expect(year.textContent).toContain('Strong growth ahead for our business');
+        expect(panel.querySelector('[data-testid="guidance-year-2022"]')?.textContent).toContain('language model is unavailable');
+    });
+
     it('records the ticker in the URL so the page can be shared', () => {
         const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
         search('infy');

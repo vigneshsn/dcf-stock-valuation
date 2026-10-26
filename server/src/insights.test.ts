@@ -41,6 +41,7 @@ const emptyInsights = (): Insights => ({
   headwinds: [],
   risks: [],
   moat: { rating: 'none', reasoning: '', quote: null },
+  guidance: [],
 });
 
 test('insightsInput: combines MD&A passages with the risk and opportunity sections within the budget', () => {
@@ -73,6 +74,7 @@ test('judgeInsights: one LLM call, verified quotes only, capped and de-duplicate
     headwinds: 'not a list',
     risks: [{ point: 'Raw material volatility', quote: 'Volatile raw material prices could compress margins significantly' }],
     moat: { rating: 'Narrow', reasoning: ' Premium brand. ', quote: 'market share in the premium segment rose' },
+    guidance: [{ metric: 'revenueGrowth', target: { min: 15, max: 15 }, horizon: 2026, quote: 'revenue grew 18% this year' }],
   };
   globalThis.fetch = (async () => (calls++, new Response(JSON.stringify({ response: JSON.stringify(answer) })))) as typeof fetch;
   try {
@@ -87,6 +89,7 @@ test('judgeInsights: one LLM call, verified quotes only, capped and de-duplicate
     assert.deepEqual(r.headwinds, []);
     assert.equal(r.risks[0].quote, 'Volatile raw material prices could compress margins significantly');
     assert.deepEqual(r.moat, { rating: 'narrow', reasoning: 'Premium brand.', quote: 'market share in the premium segment rose' });
+    assert.deepEqual(r.guidance, [{ metric: 'revenueGrowth', target: { min: 0.15, max: 0.15 }, horizon: 2026, quote: 'revenue grew 18% this year' }]);
   } finally {
     globalThis.fetch = realFetch;
     if (saved.providers === undefined) delete process.env.LLM_PROVIDERS;
