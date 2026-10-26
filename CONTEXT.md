@@ -59,3 +59,31 @@ _Avoid_: Last year's report, current report
 **SWOT item**:
 One entry in a SWOT quadrant, tagged with its source: *report* (backed by a verified quote from the Latest annual report) or *financials* (backed by a named metric and its value). Opportunities and Threats come only from the report; Threats include the report's "Risks and concerns". An Opportunities or Threats quadrant found without its dedicated report section is flagged lower-confidence.
 _Avoid_: Point, factor
+
+**Implied growth**:
+The annual growth rate that makes the DCF Fair value equal the current market price, i.e. what the market is pricing in. Unscored.
+_Avoid_: Market expectation, reverse growth
+
+**Guidance claim**:
+A forward-looking, measurable statement in an annual report (metric, target, horizon year, verbatim quote). Scored only when its metric exists in the financial data; vague claims stay unscored.
+_Avoid_: Promise, forecast
+
+**Guidance scorecard**:
+The per-claim comparison of Guidance claims with the later actuals, giving each claim a verdict (met, near, missed, pending). Evidence behind Management trustworthiness; unscored itself.
+_Avoid_: Management report card
+
+**Red flag**:
+A deterministic warning raised by a rule over the financials (earnings quality, leverage, promoter holding). Unscored; absence of flags is not a positive signal.
+_Avoid_: Risk score, alert
+
+**Scenario**:
+A bear, base or bull Fair value computed by shifting growth and discount rate around the base DCF assumptions. The base scenario is the Fair value.
+_Avoid_: Forecast case
+
+**Thesis**:
+A user's recorded reason for owning a stock, expressed as measurable Thesis checkpoints that are re-evaluated as new financials arrive. Never feeds into a score.
+_Avoid_: Note, watch reason
+
+**Thesis checkpoint**:
+One measurable condition of a Thesis (metric, operator, target, optional year) with a status of intact, weakening, broken or pending.
+_Avoid_: Milestone, alert
