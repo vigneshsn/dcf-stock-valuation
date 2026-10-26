@@ -135,3 +135,32 @@ export interface MdnaInsights {
     cached: boolean;
     cachedAt: number;
 }
+
+export type RedFlagId =
+    | 'profit-not-backed-by-cash'
+    | 'cash-conversion-drop'
+    | 'receivables-outpacing-sales'
+    | 'debt-outpacing-revenue'
+    | 'high-leverage'
+    | 'shrinking-margins'
+    | 'promoter-stake-falling'
+    | 'promoter-pledging'
+    | 'negative-free-cash-flow';
+
+export interface RedFlag {
+    id: RedFlagId;
+    severity: 'watch' | 'warning';
+    text: string;
+    /** The metric values and years compared, so the flag can be verified. */
+    evidence: string;
+}
+
+/** Red-flag scan: unscored, deterministic warnings; no flags is not a positive signal. */
+export interface RedFlagScan {
+    ticker: string;
+    status: 'ok' | 'unavailable';
+    message: string | null;
+    flags: RedFlag[];
+    /** Rules not evaluated because the data source does not supply their inputs. */
+    skipped: { id: RedFlagId; reason: string }[];
+}

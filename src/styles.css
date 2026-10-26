@@ -326,6 +326,7 @@ input.editable {
 }
 
 .tag-warn { background: var(--warn-bg); color: var(--warn); }
+.tag-bad { background: var(--bad-bg); color: var(--bad); }
 .tag-accent { background: rgba(167, 139, 250, 0.16); color: var(--violet); }
 
 [data-tone="good"] { --tone: var(--good); --tone-bg: var(--good-bg); }

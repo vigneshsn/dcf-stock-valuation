@@ -14,6 +14,7 @@ import { forgetStoredQualitative, readStoredQualitative, writeStoredQualitative 
 import { ReportSwotDeps, financialSwot, forgetStoredSwot, latestReportSwot, mergeSwot } from '../swot.js';
 import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights } from '../insights.js';
 import { Features, features } from '../features.js';
+import { redFlagScan } from '../redFlags.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
@@ -65,21 +66,28 @@ async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promis
   const [income, cash, balance, ratios] = await Promise.all([
     fmpGet<any[]>('/income-statement', ticker, { limit: 5 }, fetcher),
     fmpGet<any[]>('/cash-flow-statement', ticker, { limit: 5 }, fetcher),
-    fmpGet<any[]>('/balance-sheet-statement', ticker, { limit: 1 }, fetcher),
+    fmpGet<any[]>('/balance-sheet-statement', ticker, { limit: 5 }, fetcher),
     fmpGet<any[]>('/ratios-ttm', ticker, {}, fetcher).catch(() => [] as any[]),
   ]);
   const yearOf = (row: any) => Number(row.fiscalYear ?? row.calendarYear ?? String(row.date ?? '').slice(0, 4));
   const cashByYear = new Map<number, any>((cash ?? []).map((c) => [yearOf(c), c]));
+  const balanceByYear = new Map<number, any>((balance ?? []).map((b) => [yearOf(b), b]));
+  const metric = (v: unknown) => (v == null || !Number.isFinite(Number(v)) ? null : Number(v));
   const history: YearFinancials[] = (income ?? [])
     .map((row) => {
       const year = yearOf(row);
       const cf = cashByYear.get(year) ?? {};
+      const bs = balanceByYear.get(year) ?? {};
       return {
         year,
         revenue: Number(row.revenue ?? 0),
         netIncome: Number(row.netIncome ?? 0),
         capex: Math.abs(Number(cf.capitalExpenditure ?? 0)),
         nonCashExpense: Number(cf.depreciationAndAmortization ?? row.depreciationAndAmortization ?? 0),
+        operatingCashFlow: metric(cf.operatingCashFlow),
+        receivables: metric(bs.netReceivables),
+        totalDebt: metric(bs.totalDebt),
+        totalEquity: metric(bs.totalStockholdersEquity),
       };
     })
     .filter((y) => Number.isFinite(y.year) && y.revenue > 0)
@@ -274,6 +282,19 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       };
       cachePut(key, body);
       res.json({ ...body, cached: false, cachedAt: Date.now() });
+    } catch (err) {
+      sendUpstreamError(res, ticker, err);
+    }
+  });
+
+  // Deterministic, so it is computed on every request from the cached financials.
+  router.get('/:ticker/red-flags', async (req, res) => {
+    const ticker = req.params.ticker;
+    try {
+      const f = await loadQuantitativeInputs(ticker);
+      res.json(f.history.length
+        ? { ticker, status: 'ok', message: null, ...redFlagScan(f) }
+        : { ticker, status: 'unavailable', message: 'No annual financials available to scan', flags: [], skipped: [] });
     } catch (err) {
       sendUpstreamError(res, ticker, err);
     }

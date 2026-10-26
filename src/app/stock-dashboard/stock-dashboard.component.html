@@ -359,6 +359,58 @@
             }
         </article>
 
+        <!-- Red-flag scan (deterministic, unscored) -->
+        <article class="tile span-6" data-testid="red-flags">
+            <header class="tile-head">
+                <div>
+                    <h3>Red flags</h3>
+                    <span class="tile-sub">Earnings-quality and balance-sheet warnings from the financials; unscored</span>
+                </div>
+            </header>
+            @if (redFlagsLoading) {
+                <span class="skeleton" style="height: 22px; width: 80%"></span>
+            }
+            @if (redFlagsError) {
+                <p class="alert alert-bad" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ redFlagsError }}
+                </p>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="loadRedFlags()">
+                    <span class="material-icons" aria-hidden="true">refresh</span> Try again
+                </button>
+            }
+            @if (redFlags; as r) {
+                @if (r.status !== 'ok' && r.message) {
+                    <p class="alert alert-warn">
+                        <span class="material-icons" aria-hidden="true">info</span> {{ r.message }}
+                    </p>
+                } @else {
+                    <ul class="swot-items">
+                        @for (flag of r.flags; track flag.id) {
+                            <li data-testid="red-flag">
+                                <details>
+                                    <summary>
+                                        <span class="tag" [class.tag-bad]="flag.severity === 'warning'" [class.tag-warn]="flag.severity === 'watch'">{{ flag.severity }}</span>
+                                        {{ flag.text }}
+                                    </summary>
+                                    <p class="small">{{ flag.evidence }}</p>
+                                </details>
+                            </li>
+                        } @empty {
+                            <li class="muted small">No red flags detected on available data</li>
+                        }
+                    </ul>
+                    @if (r.skipped.length) {
+                        <p class="small">
+                            Not checked:
+                            @for (s of r.skipped; track s.id; let last = $last) {
+                                {{ redFlagNames[s.id] }}: {{ s.reason }}{{ last ? '' : ';' }}
+                            }
+                        </p>
+                    }
+                }
+            }
+        </article>
+
         <!-- Qualitative analysis (needs 3 annual reports; off unless the server enables it) -->
         @if (features.qualitative) {
             <article class="tile score-tile span-6" data-testid="qual-panel">

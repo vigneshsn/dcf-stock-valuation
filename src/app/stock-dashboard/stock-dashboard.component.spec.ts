@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { of } from 'rxjs';
 import { StockDashboardComponent } from './stock-dashboard.component';
 import { StockMetrics } from '../models/stock-metrics';
-import { Features, MdnaInsights, QuantitativeAnalysis, ReverseDcfAnalysis } from '../models/analysis';
+import { Features, MdnaInsights, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis } from '../models/analysis';
 
 const STOCK_URL = 'http://localhost:3000/api/stock/';
 const ANALYSIS_URL = 'http://localhost:3000/api/analysis/';
@@ -73,6 +73,20 @@ function reverseDcf(overrides: Partial<ReverseDcfAnalysis> = {}): ReverseDcfAnal
 
 const DEFAULT_FEATURES: Features = { insights: true, qualitative: false, swot: false };
 
+function redFlags(overrides: Partial<RedFlagScan> = {}): RedFlagScan {
+    return {
+        ticker: 'TCS',
+        status: 'ok',
+        message: null,
+        flags: [
+            { id: 'high-leverage', severity: 'warning', text: 'High leverage', evidence: 'Debt / equity 1.80 (FY25)' },
+            { id: 'cash-conversion-drop', severity: 'watch', text: 'Cash conversion fell 40 pts in FY25', evidence: 'OCF/NI 0.95 → 0.55 (FY24 → FY25)' }
+        ],
+        skipped: [{ id: 'promoter-pledging', reason: 'not provided by data source' }],
+        ...overrides
+    };
+}
+
 function mdnaInsights(overrides: Partial<MdnaInsights> = {}): MdnaInsights {
     return {
         ticker: 'TCS',
@@ -115,8 +129,8 @@ describe('StockDashboardComponent', () => {
     });
 
     afterEach(() => {
-        // MD&A insights load automatically with every ticker; tests that don't assert on them leave them pending.
-        httpMock.match((r) => r.url.endsWith('/insights') || r.url.endsWith('/reverse-dcf'));
+        // MD&A insights, the reverse DCF and red flags load automatically with every ticker; tests that don't assert on them leave them pending.
+        httpMock.match((r) => r.url.endsWith('/insights') || r.url.endsWith('/reverse-dcf') || r.url.endsWith('/red-flags'));
         httpMock.verify();
     });
 
@@ -131,6 +145,10 @@ describe('StockDashboardComponent', () => {
 
     function expectReverseDcf(ticker: string) {
         return httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}${ticker}/reverse-dcf`);
+    }
+
+    function expectRedFlags(ticker: string) {
+        return httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}${ticker}/red-flags`);
     }
 
     function text(): string {
@@ -349,6 +367,35 @@ describe('StockDashboardComponent', () => {
         const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="reverse-dcf"]');
         expect(panel.textContent).toContain('Price implies more than 50% annual growth');
         expect(panel.textContent).not.toContain('company delivered');
+    });
+
+    it('loads red flags automatically and shows each with its severity and evidence', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        expectRedFlags('TCS').flush(redFlags());
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="red-flags"]');
+        const items = panel.querySelectorAll('[data-testid="red-flag"]');
+        expect(items.length).toBe(2);
+        expect(items[0].textContent).toContain('warning');
+        expect(items[0].textContent).toContain('High leverage');
+        expect(items[0].textContent).toContain('Debt / equity 1.80 (FY25)');
+        expect(items[1].textContent).toContain('watch');
+        expect(panel.textContent).toContain('Promoter pledging: not provided by data source');
+        expect(panel.textContent).not.toContain('No red flags detected');
+    });
+
+    it('says no red flags were detected rather than giving a positive signal', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        expectRedFlags('TCS').flush(redFlags({ flags: [], skipped: [] }));
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="red-flags"]');
+        expect(panel.textContent).toContain('No red flags detected on available data');
     });
 
     it('re-solves the reverse DCF with the discount and terminal growth from the sliders', () => {
@@ -594,6 +641,7 @@ describe('StockDashboardComponent deep link', () => {
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/quantitative`).flush(quant());
         httpMock.expectOne(`${ANALYSIS_URL}ITC/insights`).flush(mdnaInsights({ ticker: 'ITC' }));
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/reverse-dcf`).flush(reverseDcf({ ticker: 'ITC' }));
+        httpMock.expectOne(`${ANALYSIS_URL}ITC/red-flags`).flush(redFlags({ ticker: 'ITC' }));
         httpMock.verify();
     });
 });

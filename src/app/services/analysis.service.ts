@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Features, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, ReverseDcfAnalysis, SwotAnalysis } from '../models/analysis';
+import { Features, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, SwotAnalysis } from '../models/analysis';
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
@@ -28,6 +28,10 @@ export class AnalysisService {
         return this.http.get<ReverseDcfAnalysis>(`${this.baseUrl}/${encodeURIComponent(ticker)}/reverse-dcf`, {
             params: overrideParams(overrides)
         });
+    }
+
+    getRedFlags(ticker: string): Observable<RedFlagScan> {
+        return this.http.get<RedFlagScan>(`${this.baseUrl}/${encodeURIComponent(ticker)}/red-flags`);
     }
 
     getPeers(ticker: string): Observable<{ ticker: string; peers: Peer[] }> {

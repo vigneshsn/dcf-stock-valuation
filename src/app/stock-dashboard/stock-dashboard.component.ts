@@ -21,6 +21,8 @@ import {
     MoatRating,
     QualitativeAnalysis,
     QuantitativeAnalysis,
+    RedFlagId,
+    RedFlagScan,
     ReverseDcfAnalysis,
     SwotAnalysis,
     SwotQuadrantKey
@@ -69,6 +71,18 @@ const INSIGHT_SECTIONS: { key: InsightListKey; label: string; icon: string; tone
 // Used until the server answers (or when it is too old to expose /features): only the always-on features.
 const DEFAULT_FEATURES: Features = { insights: true, qualitative: false, swot: false };
 
+const RED_FLAG_NAMES: Record<RedFlagId, string> = {
+    'profit-not-backed-by-cash': 'Profit not backed by cash',
+    'cash-conversion-drop': 'Cash conversion drop',
+    'receivables-outpacing-sales': 'Receivables outpacing sales',
+    'debt-outpacing-revenue': 'Debt outpacing revenue',
+    'high-leverage': 'High leverage',
+    'shrinking-margins': 'Shrinking margins, 3 years',
+    'promoter-stake-falling': 'Promoter stake falling',
+    'promoter-pledging': 'Promoter pledging',
+    'negative-free-cash-flow': 'Negative free cash flow, 3 years'
+};
+
 const MOAT_TONES: Record<MoatRating, Tone> = { wide: 'good', narrow: 'neutral', none: 'bad' };
 const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'warn', missed: 'bad' };
 
@@ -106,6 +120,11 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     reverseDcfLoading = false;
     reverseDcfError = '';
 
+    redFlags: RedFlagScan | null = null;
+    redFlagsLoading = false;
+    redFlagsError = '';
+    readonly redFlagNames = RED_FLAG_NAMES;
+
     features: Features = DEFAULT_FEATURES;
 
     insights: MdnaInsights | null = null;
@@ -132,6 +151,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private stockSub?: Subscription;
     private quantSub?: Subscription;
     private reverseDcfSub?: Subscription;
+    private redFlagsSub?: Subscription;
     private insightsSub?: Subscription;
     private qualSub?: Subscription;
     private swotSub?: Subscription;
@@ -153,6 +173,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.stockSub?.unsubscribe();
         this.quantSub?.unsubscribe();
         this.reverseDcfSub?.unsubscribe();
+        this.redFlagsSub?.unsubscribe();
         this.insightsSub?.unsubscribe();
         this.qualSub?.unsubscribe();
         this.swotSub?.unsubscribe();
@@ -183,6 +204,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.reverseDcf = null;
         this.assumptions = null;
         this.loadQuant();
+        this.loadRedFlags();
         this.loadInsights();
     }
 
@@ -310,6 +332,25 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
             error: (err: HttpErrorResponse) => {
                 this.reverseDcfLoading = false;
                 this.reverseDcfError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+            }
+        });
+    }
+
+    // ---- Red-flag scan --------------------------------------------------------
+
+    loadRedFlags(): void {
+        this.redFlagsSub?.unsubscribe();
+        this.redFlags = null;
+        this.redFlagsLoading = true;
+        this.redFlagsError = '';
+        this.redFlagsSub = this.analysis.getRedFlags(this.ticker).subscribe({
+            next: (r) => {
+                this.redFlags = r;
+                this.redFlagsLoading = false;
+            },
+            error: (err: HttpErrorResponse) => {
+                this.redFlagsLoading = false;
+                this.redFlagsError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
             }
         });
     }

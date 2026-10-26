@@ -1,9 +1,16 @@
+import type { PromoterHolding } from './redFlags.js';
+
 export interface YearFinancials {
   year: number;
   revenue: number;
   netIncome: number;
   capex: number;
   nonCashExpense: number;
+  // Only used by the Red-flag scan. Undefined when the provider does not supply the metric, null when missing that year.
+  operatingCashFlow?: number | null;
+  receivables?: number | null;
+  totalDebt?: number | null;
+  totalEquity?: number | null;
 }
 
 // Statement totals and share count must share a unit scale so totals / shares is a per-share price.
@@ -16,6 +23,8 @@ export interface QuantitativeInputs {
   // Latest fiscal year, as fractions; only used by the SWOT analysis.
   roce?: number | null;
   debtToEquity?: number | null;
+  // Only used by the Red-flag scan; undefined when the provider does not supply it.
+  promoterHolding?: PromoterHolding[];
   history: YearFinancials[];
 }
 

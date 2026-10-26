@@ -1,5 +1,6 @@
 import { calculateAnnualReturns, mapAnnualStatements } from './finance.js';
 import { QuantitativeInputs, YearFinancials } from './dcf.js';
+import { PromoterHolding } from './redFlags.js';
 
 const DEFAULT_INDIANAPI_URL = 'https://stock.indianapi.in';
 const LIVEMINT_URL = 'https://www.livemint.com';
@@ -161,6 +162,7 @@ function annualHistory(rows: JsonRecord[]): YearFinancials[] {
       const year = fiscalYear(row);
       const income = statement(row, 'INC');
       const cash = statement(row, 'CAS');
+      const balance = statement(row, 'BAL');
       const revenue = numberValue(income.TotalRevenue, income.Revenue) ?? bankRevenue(income);
       const netIncome = numberValue(income.NetIncome);
       if (year == null || revenue == null || revenue <= 0 || netIncome == null) {
@@ -172,6 +174,10 @@ function annualHistory(rows: JsonRecord[]): YearFinancials[] {
         netIncome,
         capex: Math.abs(numberValue(cash.CapitalExpenditures) ?? 0),
         nonCashExpense: numberValue(cash['Depreciation/Depletion'], income['Depreciation/Amortization']) ?? 0,
+        operatingCashFlow: numberValue(cash.CashfromOperatingActivities),
+        receivables: numberValue(balance.TotalReceivablesNet),
+        totalDebt: numberValue(balance.TotalDebt),
+        totalEquity: numberValue(balance.TotalEquity),
       }];
     })
     .sort((a, b) => b.year - a.year)
@@ -183,6 +189,24 @@ function annualHistory(rows: JsonRecord[]): YearFinancials[] {
       return true;
     })
     .slice(0, 5);
+}
+
+// Quarterly promoter holding, oldest first; undefined when the response has no shareholding section.
+// A company without a promoter group (e.g. ITC) reports an empty list.
+function promoterHolding(shareholding: unknown): PromoterHolding[] | undefined {
+  if (!Array.isArray(shareholding)) {
+    return undefined;
+  }
+  const promoter = shareholding.map(record).find((group) =>
+    /promoter/i.test(stringValue(group.displayName, group.categoryName) ?? ''));
+  return (Array.isArray(promoter?.categories) ? promoter.categories : [])
+    .map(record)
+    .flatMap((entry) => {
+      const date = stringValue(entry.holdingDate);
+      const percent = numberValue(entry.percentage);
+      return date && /^\d{4}-\d{2}-\d{2}$/.test(date) && percent != null ? [{ date, percent }] : [];
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function normalizeNews(value: unknown): StockNewsItem[] {
@@ -474,5 +498,6 @@ export async function fetchIndianApiQuantitativeInputs(
     roce: roce == null ? null : roce / 100,
     debtToEquity: totalDebt != null && totalEquity != null && totalEquity > 0 ? totalDebt / totalEquity : null,
     history: annualHistory(rows),
+    promoterHolding: promoterHolding(response.shareholding),
   };
 }

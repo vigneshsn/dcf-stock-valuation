@@ -171,6 +171,61 @@ test('reverse DCF is unavailable with fewer than two years of history', async ()
   assert.equal(body.impliedGrowth, null);
 });
 
+test('red flags: scans IndianAPI cash flow, balance sheet and promoter holding', async () => {
+  const period = (year: number, cfo: string, debt: string) => {
+    const base = annualPeriod(year, 1000, 100, 100);
+    const map = base.stockFinancialMap;
+    return {
+      ...base,
+      stockFinancialMap: {
+        ...map,
+        CAS: [...map.CAS, ...keyed({ CashfromOperatingActivities: cfo })],
+        BAL: [...map.BAL, ...keyed({ TotalDebt: debt, TotalReceivablesNet: '200' })],
+      },
+    };
+  };
+  const stock = {
+    ...indianApiStock('REDFLAG'),
+    financials: [period(2026, '10', '900'), period(2025, '49', '500'), period(2024, '120', '480')],
+    shareholding: [
+      {
+        displayName: 'Promoter',
+        categories: [{ holdingDate: '2025-09-30', percentage: '50.10' }, { holdingDate: '2026-06-30', percentage: '49.00' }],
+      },
+      { displayName: 'FII', categories: [{ holdingDate: '2026-06-30', percentage: '20.00' }] },
+    ],
+  };
+
+  const response = await requestAnalysis(indianApiRouter(stock), 'REDFLAG', 'red-flags');
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ticker, 'REDFLAG');
+  assert.equal(body.status, 'ok');
+  // Equity is 4 × net income = 400, so debt / equity is 2.25.
+  assert.deepEqual(body.flags.map((f: { id: string }) => f.id), [
+    'profit-not-backed-by-cash',
+    'cash-conversion-drop',
+    'debt-outpacing-revenue',
+    'high-leverage',
+  ]);
+  assert.equal(body.flags[0].evidence, 'OCF/NI 0.49, 0.10 (FY25, FY26)');
+  assert.deepEqual(body.skipped, [
+    { id: 'promoter-stake-falling', reason: 'data source provides less than 2 years of promoter holding' },
+    { id: 'promoter-pledging', reason: 'not provided by data source' },
+  ]);
+});
+
+test('red flags are unavailable without annual financials', async () => {
+  const stock = { ...indianApiStock('REDNONE'), financials: [] };
+  const response = await requestAnalysis(indianApiRouter(stock), 'REDNONE', 'red-flags');
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.status, 'unavailable');
+  assert.deepEqual(body.flags, []);
+  assert.match(body.message, /No annual financials/);
+});
+
 test('derives bank revenue from interest and non-interest income', async () => {
   const bankPeriod = (year: number, interest: number) => ({
     FiscalYear: String(year),
