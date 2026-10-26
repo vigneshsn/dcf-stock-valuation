@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { del, delPrefix, get, set } from '../cache.js';
 import { fmpGet, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
-import { YearFinancials, deriveDefaults, computeFairValue, quantitativeScore, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
+import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
 import { saveUpload, listReports } from '../reports.js';
@@ -210,6 +210,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
         fairValue,
         score: score.score,
         explanation: score.explanation,
+        scenarios: computeScenarios(f.history, assumptions, f.shares, f.price),
       };
       cachePut(key, body);
       res.json({ ...body, cached: false, cachedAt: Date.now() });

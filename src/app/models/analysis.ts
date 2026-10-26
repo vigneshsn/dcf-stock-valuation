@@ -14,8 +14,25 @@ export interface QuantitativeAnalysis {
     fairValue: number;
     score: number;
     explanation: string;
+    /** null when the latest year is loss-making or has negative free cash flow. */
+    scenarios: Scenarios | null;
     cached: boolean;
     cachedAt: number;
+}
+
+export interface Scenario extends DcfAssumptions {
+    /** null when the DCF is undefined for these assumptions. */
+    fairValuePerShare: number | null;
+}
+
+export interface Scenarios {
+    bear: Scenario;
+    base: Scenario;
+    bull: Scenario;
+    /** values[i][j] is the Fair value per share for growth[i] and discount[j]. */
+    grid: { growth: number[]; discount: number[]; values: (number | null)[][] };
+    /** Implied growth (percent): Fair value equals the price; null when none in [-20, 50]. */
+    impliedGrowth: number | null;
 }
 
 export interface Peer {

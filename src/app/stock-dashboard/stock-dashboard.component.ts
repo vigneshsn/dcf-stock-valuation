@@ -10,6 +10,7 @@ import { AnalysisService } from '../services/analysis.service';
 import { PeerRow, StockMetrics, marketCapCrores } from '../models/stock-metrics';
 import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.component';
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
+import { ScenarioRangeComponent } from '../scenario-range/scenario-range.component';
 import {
     DcfAssumptions,
     Features,
@@ -73,7 +74,7 @@ const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'war
     selector: 'app-stock-dashboard',
     templateUrl: './stock-dashboard.component.html',
     styleUrls: ['./stock-dashboard.component.css'],
-    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent],
+    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent],
     standalone: true
 })
 export class StockDashboardComponent implements OnInit, OnDestroy {

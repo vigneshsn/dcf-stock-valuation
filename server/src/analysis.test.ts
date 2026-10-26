@@ -111,6 +111,9 @@ test('runs the quantitative DCF on IndianAPI data when IndianAPI is the configur
   assert.deepEqual(body.ratios, { pe: 18.2, pb: 3.1, roe: 0.25 });
   assert.deepEqual(body.defaults, defaults);
   assert.equal(body.fairValue, computeFairValue(expectedHistory, defaults, 100));
+  assert.deepEqual(body.scenarios.base, { ...defaults, fairValuePerShare: body.fairValue });
+  assert.equal(body.scenarios.grid.values.length, 5);
+  assert.equal(typeof body.scenarios.impliedGrowth, 'number');
   assert.equal(requests.length, 2);
 });
 

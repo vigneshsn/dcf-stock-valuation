@@ -40,6 +40,13 @@ function quant(overrides: Partial<QuantitativeAnalysis> = {}): QuantitativeAnaly
         fairValue: 150,
         score: 5,
         explanation: 'Price is more than 30% below Fair value.',
+        scenarios: {
+            bear: { growthRate: 5, discountRate: 13, terminalGrowthRate: 5, fairValuePerShare: 80 },
+            base: { growthRate: 10, discountRate: 12, terminalGrowthRate: 5, fairValuePerShare: 150 },
+            bull: { growthRate: 15, discountRate: 11, terminalGrowthRate: 5, fairValuePerShare: 220 },
+            grid: { growth: [8, 10, 12], discount: [12, 13], values: [[105, 80], [150, null], [-50, 0]] },
+            impliedGrowth: 4.5
+        },
         cached: false,
         cachedAt: 0,
         ...overrides
@@ -272,6 +279,47 @@ describe('StockDashboardComponent', () => {
         expect(component.upside).toBeCloseTo(50, 5);
         expect(content).toContain('+50%');
         expect(fixture.nativeElement.querySelector('[data-testid="insights-panel"]')).not.toBeNull();
+    });
+
+    it('shows bear, base and bull Fair values, the Implied growth and a price-coloured sensitivity grid', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="scenarios"]');
+        const range = Array.from(panel.querySelectorAll('[data-testid="scenario-range"] > *'))
+            .map((el) => Array.from(el.children).map((c) => c.textContent!.trim()).join(' '));
+        expect(range).toEqual(['Bear ₹80', 'Base ₹150', 'Bull ₹220']);
+        expect(panel.querySelector('[data-testid="scenario-price-marker"]')).not.toBeNull();
+        expect(panel.textContent).toContain('Needs 4.5% annual growth for 5 years to justify today\'s price');
+
+        panel.querySelector<HTMLButtonElement>('[data-testid="sensitivity-toggle"]')!.click();
+        fixture.detectChanges();
+        const cells = Array.from(panel.querySelectorAll<HTMLElement>('[data-testid="sensitivity-cell"]'));
+        // price 100: 105 is within ±10% (fair), 80 is below price (expensive), 150 is cheap, ≤ 0 is expensive
+        expect(cells.map((c) => c.dataset['tone'])).toEqual(['neutral', 'bad', 'good', 'none', 'bad', 'bad']);
+        expect(cells[3].textContent!.trim()).toBe('—');
+    });
+
+    it('says when no growth rate justifies the price', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        const q = quant();
+        expectQuant('TCS').flush(quant({ scenarios: { ...q.scenarios!, impliedGrowth: null } }));
+        fixture.detectChanges();
+
+        expect(text()).toContain('No growth rate between −20% and 50% justifies today\'s price');
+    });
+
+    it('explains when scenarios are not applicable to the latest year', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant({ scenarios: null }));
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.querySelector('[data-testid="scenarios"]')).toBeNull();
+        expect(text()).toContain('Scenario range not applicable');
     });
 
     it('loads MD&A insights automatically and shows each section with its verified quote', () => {

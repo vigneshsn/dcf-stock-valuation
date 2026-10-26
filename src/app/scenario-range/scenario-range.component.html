@@ -1,0 +1,54 @@
+<section class="scenarios" data-testid="scenarios" aria-label="Scenario range">
+    <div class="scenario-range" data-testid="scenario-range">
+        @for (c of scenarioList; track c.name) {
+            <div class="scenario" [title]="'Growth ' + c.scenario.growthRate + '%, discount ' + c.scenario.discountRate + '%'">
+                <span class="label">{{ c.name }}</span>
+                <span class="fv">{{ c.scenario.fairValuePerShare == null ? 'N/A' : '₹' + (c.scenario.fairValuePerShare | number:'1.0-0') }}</span>
+            </div>
+        }
+    </div>
+    @if (marker !== null) {
+        <div class="range-bar" aria-hidden="true">
+            <span class="price-marker" data-testid="scenario-price-marker"
+                  [style.left.%]="marker"></span>
+        </div>
+    }
+    <p class="implied-growth">
+        @if (scenarios.impliedGrowth != null) {
+            Needs {{ scenarios.impliedGrowth | number:'1.0-2' }}% annual growth for 5 years to justify today's price.
+        } @else {
+            No growth rate between −20% and 50% justifies today's price.
+        }
+    </p>
+
+    <button type="button" class="disclosure" data-testid="sensitivity-toggle"
+            (click)="showSensitivity = !showSensitivity" [attr.aria-expanded]="showSensitivity">
+        <span class="material-icons" aria-hidden="true">grid_on</span>
+        Sensitivity grid
+        <span class="material-icons chevron" [class.open]="showSensitivity" aria-hidden="true">expand_more</span>
+    </button>
+    @if (showSensitivity) {
+        <table class="sensitivity">
+            <thead>
+                <tr>
+                    <th scope="col">Growth ↓ / Discount →</th>
+                    @for (d of scenarios.grid.discount; track $index) {
+                        <th scope="col">{{ d | number:'1.0-2' }}%</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (g of scenarios.grid.growth; track $index; let i = $index) {
+                    <tr>
+                        <th scope="row">{{ g | number:'1.0-2' }}%</th>
+                        @for (v of scenarios.grid.values[i]; track $index) {
+                            <td data-testid="sensitivity-cell" [attr.data-tone]="tone(v)">
+                                {{ v == null ? '—' : '₹' + (v | number:'1.0-0') }}
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>

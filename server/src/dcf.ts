@@ -124,3 +124,101 @@ export function quantitativeScore(fairValue: number, price: number): Quantitativ
     explanation: `Market price ${round2(price)} is ${band} of ${round2(fairValue)}, giving a score of ${score}/5. Ratios do not affect this score.`,
   };
 }
+
+export interface Scenario extends DcfAssumptions {
+  // null when the DCF is undefined for these assumptions (e.g. discount rate ≤ terminal growth)
+  fairValuePerShare: number | null;
+}
+
+export interface Scenarios {
+  bear: Scenario;
+  base: Scenario;
+  bull: Scenario;
+  grid: SensitivityGrid;
+  // Implied growth (percent): Fair value equals the price; null when none in the search range
+  impliedGrowth: number | null;
+}
+
+export interface SensitivityGrid {
+  growth: number[];
+  discount: number[];
+  // values[i][j] is the Fair value per share for growth[i] and discount[j]
+  values: (number | null)[][];
+}
+
+// Percentage-point offsets around the base assumptions.
+const SCENARIO_GROWTH_OFFSET = 5;
+const SCENARIO_DISCOUNT_OFFSET = 1;
+const IMPLIED_GROWTH_MIN = -20;
+const IMPLIED_GROWTH_MAX = 50;
+const GRID_GROWTH_STEPS = [-4, -2, 0, 2, 4];
+const GRID_DISCOUNT_STEPS = [-2, -1, 0, 1, 2];
+
+export function computeScenarios(
+  history: YearFinancials[],
+  base: DcfAssumptions,
+  shares: number,
+  price: number
+): Scenarios | null {
+  const latest = history.find((y) => y.revenue > 0);
+  // A loss-making or cash-burning base year makes every scenario meaningless
+  if (!latest || latest.netIncome < 0 || latest.netIncome + latest.nonCashExpense - Math.abs(latest.capex) < 0) {
+    return null;
+  }
+  const scenario = (assumptions: DcfAssumptions): Scenario => ({
+    ...assumptions,
+    fairValuePerShare: computeFairValue(history, assumptions, shares),
+  });
+  return {
+    bear: scenario({
+      ...base,
+      growthRate: round2(base.growthRate - SCENARIO_GROWTH_OFFSET),
+      discountRate: round2(base.discountRate + SCENARIO_DISCOUNT_OFFSET),
+    }),
+    base: scenario(base),
+    bull: scenario({
+      ...base,
+      growthRate: round2(base.growthRate + SCENARIO_GROWTH_OFFSET),
+      discountRate: round2(base.discountRate - SCENARIO_DISCOUNT_OFFSET),
+    }),
+    grid: sensitivityGrid(history, base, shares),
+    impliedGrowth: solveImpliedGrowth(history, base, shares, price),
+  };
+}
+
+function sensitivityGrid(history: YearFinancials[], base: DcfAssumptions, shares: number): SensitivityGrid {
+  const growth = GRID_GROWTH_STEPS.map((d) => round2(base.growthRate + d));
+  const discount = GRID_DISCOUNT_STEPS.map((d) => round2(base.discountRate + d));
+  const values = growth.map((growthRate) =>
+    discount.map((discountRate) => computeFairValue(history, { ...base, growthRate, discountRate }, shares))
+  );
+  return { growth, discount, values };
+}
+
+// Bisection over growth, holding discount and terminal growth at the base values.
+function solveImpliedGrowth(
+  history: YearFinancials[],
+  base: DcfAssumptions,
+  shares: number,
+  price: number
+): number | null {
+  const gap = (growthRate: number) => {
+    const fv = computeFairValue(history, { ...base, growthRate }, shares);
+    return fv == null ? null : fv - price;
+  };
+  let lo = IMPLIED_GROWTH_MIN;
+  let hi = IMPLIED_GROWTH_MAX;
+  const gapLo = gap(lo);
+  const gapHi = gap(hi);
+  if (!(price > 0) || gapLo == null || gapHi == null || Math.sign(gapLo) === Math.sign(gapHi)) {
+    return gapLo === 0 ? lo : gapHi === 0 ? hi : null;
+  }
+  for (let i = 0; i < 60 && hi - lo > 1e-4; i++) {
+    const mid = (lo + hi) / 2;
+    const g = gap(mid)!;
+    if (Math.sign(g) === Math.sign(gapLo)) lo = mid;
+    else hi = mid;
+  }
+  // + 0 turns -0 into 0
+  return round2((lo + hi) / 2) + 0;
+}
