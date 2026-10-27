@@ -28,7 +28,26 @@ An unscored, deterministic checklist of **earnings-quality and balance-sheet war
 | Promoter pledging | Pledged share of promoter holding > 20% | warning |
 | Negative free cash flow, 3 years | FCF < 0 in each of last 3 years | warning |
 
-Thresholds live in one constants block so they are easy to tune.
+Thresholds live in one constants block (`RED_FLAG_THRESHOLDS` in `server/src/redFlags.ts`) so they are easy to tune.
+
+Notes on the rules as implemented:
+
+- Every multi-year rule needs consecutive fiscal years; otherwise it is skipped silently.
+- Cash-flow rules ignore years with net income ≤ 0 (OCF / NI has no meaning there).
+- "Down each of last 3 years" means three year-over-year declines, so four fiscal years of net margin.
+- Growth rules need a positive prior-year value (no growth rate from zero debt or receivables).
+- Free cash flow is net income + non-cash expense − capex, the same definition as the DCF and SWOT.
+- Promoter stake compares the latest filing with the latest filing at least 2 years earlier.
+
+## Provider coverage
+
+| Data | IndianAPI | FMP |
+| --- | --- | --- |
+| Operating cash flow | `CAS.CashfromOperatingActivities` | `operatingCashFlow` |
+| Receivables | `BAL.TotalReceivablesNet` | `netReceivables` |
+| Total debt, equity | `BAL.TotalDebt`, `BAL.TotalEquity` | `totalDebt`, `totalStockholdersEquity` |
+| Promoter holding | `shareholding` (about 4 quarters, so usually skipped as under 2 years; empty for companies without a promoter group) | not supplied → skipped |
+| Promoter pledging | not supplied → skipped | not supplied → skipped |
 
 ## API
 
@@ -37,7 +56,8 @@ Thresholds live in one constants block so they are easy to tune.
 ```jsonc
 {
   "ticker": "TCS",
-  "status": "ok",                   // ok | unavailable
+  "status": "ok",                   // ok | unavailable (no annual financials)
+  "message": null,                  // why the scan is unavailable
   "flags": [
     { "id": "cash-conversion-drop", "severity": "watch", "text": "...", "evidence": "OCF/NI 0.95 → 0.55 (FY24 → FY25)" }
   ],
