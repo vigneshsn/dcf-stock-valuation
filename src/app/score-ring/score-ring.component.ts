@@ -3,7 +3,7 @@ import { Component, Input } from '@angular/core';
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-/** Circular 0-5 gauge used for the Quantitative and Qualitative scores. */
+/** Circular 0-5 gauge used for the Quantitative score. */
 @Component({
     selector: 'app-score-ring',
     standalone: true,

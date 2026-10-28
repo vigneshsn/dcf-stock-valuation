@@ -435,26 +435,15 @@
     gap: 12px;
 }
 
-/* ---------- Qualitative ---------- */
-.qual-cta {
+/* ---------- Annual report ---------- */
+.run-cta {
     display: grid;
     gap: 14px;
     justify-items: start;
 }
 
-.qual-cta p {
+.run-cta p {
     margin: 0;
-}
-
-.peer-override {
-    width: 100%;
-}
-
-.peer-override summary {
-    cursor: pointer;
-    color: var(--muted);
-    font-size: 0.88rem;
-    margin-bottom: 8px;
 }
 
 .thinking {
@@ -510,11 +499,6 @@
     display: none;
 }
 
-.mini-head {
-    margin: 18px 0 8px;
-    font-size: 0.95rem;
-}
-
 .timeline {
     list-style: none;
     padding: 0;
@@ -539,19 +523,7 @@ blockquote {
     color: var(--muted);
 }
 
-/* ---------- SWOT ---------- */
-.swot-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    margin: 12px 0 14px;
-}
-
-@media (max-width: 720px) {
-    .swot-grid { grid-template-columns: 1fr; }
-}
-
-.swot-quadrant,
+/* ---------- Insight lists ---------- */
 .insight-section {
     padding: 14px 16px;
     border-radius: var(--radius);
@@ -561,7 +533,7 @@ blockquote {
 
 .insight-section { margin-top: 12px; }
 
-.swot-head {
+.item-head {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -570,7 +542,7 @@ blockquote {
     color: var(--tone);
 }
 
-.swot-items {
+.item-list {
     list-style: none;
     padding: 0;
     margin: 0;
@@ -578,23 +550,8 @@ blockquote {
     gap: 8px;
 }
 
-.swot-items summary {
+.item-list summary {
     cursor: pointer;
-}
-
-.swot-badge {
-    display: inline-block;
-    margin-right: 6px;
-    padding: 1px 8px;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    background: rgba(167, 139, 250, 0.16);
-    color: var(--violet);
-}
-
-.swot-badge[data-source="financials"] {
-    background: var(--neutral-bg);
-    color: var(--neutral);
 }
 
 /* ---------- Empty / error ---------- */

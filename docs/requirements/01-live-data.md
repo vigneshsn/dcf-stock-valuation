@@ -8,6 +8,7 @@ The agent should do a fundamental analysis on two angles,
     - Come up with Quantitave score (1-5) and explain why
 
 2. Qualitative analysis
+    > Retired by [#20](https://github.com/vigneshsn/dcf-stock-valuation/issues/20): no Qualitative score or Management trustworthiness; see `docs/adr/0001-evidence-without-verdict.md`.
     The annual report `management analysis` section is read and compares with other company from same industry to identity moat.
     Also, scan last few year annual report and analyse if the management is trustworthy.
     Come up with Qualitative score (1-5) and explain why

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { YearFinancials } from './dcf.js';
 import { LlmError, generateJson } from './llm.js';
 import { extractMdna, filterRelevant, pdfToText } from './mdna.js';
-import { verifiedQuote } from './qualitative.js';
+import { verifiedQuote } from './quotes.js';
 import { AnnualReportRef } from './reports.js';
 
 // Bump when the input selection, prompt or claim parsing changes so stored claims are recomputed.
@@ -184,18 +184,14 @@ export function scoreClaim(claim: GuidanceClaim, history: YearFinancials[]): Sco
 
 export interface GuidanceScorecard {
   lowerConfidence: boolean;
-  // met / (met + near + missed); null when nothing is scored
-  hitRate: number | null;
   years: ScoredGuidanceYear[];
 }
 
 export function guidanceScorecard(years: GuidanceYear[], history: YearFinancials[]): GuidanceScorecard {
   const scored = years.map((y) => ({ ...y, claims: y.claims.map((c) => scoreClaim(c, history)) }));
-  const verdicts = scored.flatMap((y) => y.claims.map((c) => c.verdict)).filter((v) => v === 'met' || v === 'near' || v === 'missed');
   const reports = years.filter((y) => y.status === 'ok' || y.status === 'no-guidance').length;
   return {
     lowerConfidence: reports < 3,
-    hitRate: verdicts.length ? verdicts.filter((v) => v === 'met').length / verdicts.length : null,
     years: scored,
   };
 }

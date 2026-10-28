@@ -99,17 +99,16 @@ test('scoreClaim: pending without horizon-year financials, unscored when vague o
   assert.equal(scoreClaim(claim({ metric: 'debt', horizon: 2023 }), history).verdict, 'unscored');
 });
 
-test('guidanceScorecard: hit rate over scored claims and the lower-confidence flag', () => {
+test('guidanceScorecard: per-claim verdicts and the lower-confidence flag, with no hit rate or trust score', () => {
   const history = [row(2023, 1000, 100), row(2024, 1200, 120)];
   const year = (y: number, status: 'ok' | 'no-report', claims: GuidanceClaim[]) => ({ year: y, status, cached: true, claims });
   const claims = [claim(), claim({ target: { min: 0.5, max: 0.5 } }), claim({ metric: 'other', target: null }), claim({ horizon: 2030 })];
   const full = guidanceScorecard([year(2023, 'ok', claims), year(2022, 'ok', []), year(2021, 'ok', [])], history);
-  assert.equal(full.hitRate, 0.5);
+  assert.equal('hitRate' in full, false);
   assert.equal(full.lowerConfidence, false);
   assert.deepEqual(full.years[0].claims.map((c) => c.verdict), ['met', 'missed', 'unscored', 'pending']);
 
   const partial = guidanceScorecard([year(2023, 'ok', [claim({ metric: 'other', target: null })]), year(2022, 'no-report', [])], history);
-  assert.equal(partial.hitRate, null);
   assert.equal(partial.lowerConfidence, true);
 });
 

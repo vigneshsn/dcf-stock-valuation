@@ -1,20 +1,15 @@
 import express, { Router } from 'express';
-import { createHash } from 'node:crypto';
-import { del, delPrefix, get, set } from '../cache.js';
+import { del, get, set } from '../cache.js';
 import { fmpGet, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, reverseDcf, reverseDcfUnavailable, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
 import { saveUpload, listReports } from '../reports.js';
-import { collectYearSummaries, forgetStoredYear } from '../yearSummaries.js';
 import { LlmError, llmConfig } from '../llm.js';
-import { ManagementJudgement, Peer, judgeManagement, judgeMoat, qualitativeScore, selectPeers } from '../qualitative.js';
-import { forgetStoredQualitative, readStoredQualitative, writeStoredQualitative } from '../qualitativeStore.js';
-import { ReportSwotDeps, financialSwot, forgetStoredSwot, latestReportSwot, mergeSwot } from '../swot.js';
+import { Peer, selectPeers } from '../peers.js';
 import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights, readStoredInsights } from '../insights.js';
 import { GuidanceDeps, GuidanceYear, collectGuidance, forgetStoredGuidance, guidanceScorecard } from '../guidance.js';
-import { Features, features } from '../features.js';
 import { redFlagScan } from '../redFlags.js';
 import { financialStatements } from '../statements.js';
 
@@ -33,11 +28,8 @@ interface AnalysisRouterOptions {
   indianApiKey?: string;
   indianApiBaseUrl?: string;
   fetcher?: typeof fetch;
-  swot?: Partial<ReportSwotDeps>;
   insights?: Partial<ReportInsightsDeps>;
   guidance?: Partial<GuidanceDeps>;
-  // Overrides the ENABLE_* environment flags (tests).
-  features?: Partial<Features>;
 }
 
 interface Stamped<T> {
@@ -49,8 +41,6 @@ function cacheGet<T>(key: string): Stamped<T> | undefined {
   return get<Stamped<T>>(key);
 }
 
-const swotKey = (ticker: string, model: string) => `analysis:swot:${ticker.trim().toUpperCase()}:${model}`;
-const qualPrefix = (ticker: string) => `analysis:qual:${ticker.trim().toUpperCase()}:`;
 const insightsKey = (ticker: string, model: string) => `analysis:insights:${ticker.trim().toUpperCase()}:${model}`;
 const guidanceKey = (ticker: string, model: string) => `analysis:guidance:${ticker.trim().toUpperCase()}:${model}`;
 
@@ -206,15 +196,6 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
   const loadQuantitativeInputs = (ticker: string): Promise<QuantitativeInputs> =>
     provider === 'indianapi' ? loadIndianApiFinancials(ticker, options) : loadFmpFinancials(ticker, options.fetcher);
   const router = Router();
-  const enabled = (): Features => ({ ...features(), ...options.features });
-
-  function sendDisabled(res: express.Response, feature: string, flag: string) {
-    return res.status(404).json({ error: 'disabled', message: `${feature} is disabled on this server. Set ${flag}=true to enable it.` });
-  }
-
-  router.get('/features', (_req, res) => {
-    res.json(enabled());
-  });
 
   router.get('/:ticker/quantitative', async (req, res) => {
     const ticker = req.params.ticker;
@@ -330,7 +311,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
   });
 
   async function defaultPeers(ticker: string): Promise<Peer[]> {
-    // Qualitative peer selection stays on FMP regardless of the configured stock-data provider.
+    // Peer selection stays on FMP regardless of the configured stock-data provider.
     const f = await loadFmpFinancials(ticker, options.fetcher);
     const raw = await fmpGet<any[]>('/stock-peers', ticker, {}, options.fetcher);
     const candidates: Peer[] = (raw ?? []).map((p) => ({
@@ -355,16 +336,11 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       }
       saveUpload(req.params.ticker, year, body);
       const { model } = llmConfig();
-      del(swotKey(req.params.ticker, model));
       del(insightsKey(req.params.ticker, model));
       del(guidanceKey(req.params.ticker, model));
-      delPrefix(qualPrefix(req.params.ticker));
       await Promise.all([
-        forgetStoredYear(req.params.ticker, year),
-        forgetStoredSwot(req.params.ticker, year),
         forgetStoredInsights(req.params.ticker, year),
         forgetStoredGuidance(req.params.ticker, year),
-        forgetStoredQualitative(req.params.ticker),
       ]);
       res.status(201).json({ ticker: req.params.ticker, year, bytes: body.length });
     }
@@ -445,160 +421,6 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       console.error(`[guidance error] ${ticker}: ${err?.message || err}`);
       sendUpstreamError(res, ticker, err);
     }
-  });
-
-  router.post('/:ticker/qualitative', express.json(), async (req, res) => {
-    if (!enabled().qualitative) {
-      return sendDisabled(res, 'The Qualitative analysis', 'ENABLE_QUALITATIVE');
-    }
-    const ticker = req.params.ticker;
-    const peerOverride: string[] | undefined = Array.isArray(req.body?.peers)
-      ? req.body.peers.filter((p: unknown): p is string => typeof p === 'string' && p.trim().length > 0).map((p: string) => p.trim())
-      : undefined;
-    const { model } = llmConfig();
-    const peerTag = (peerOverride ?? ['default']).join(',');
-    // Checked before listing reports, so a repeat request makes no report, FMP or LLM calls.
-    const key = `${qualPrefix(ticker)}${model}:${peerTag}`;
-    const hit = cacheGet<unknown>(key);
-    if (hit) {
-      console.log(`[analysis cache HIT] ${key}`);
-      return res.json({ ...(hit.value as object), cached: true, cachedAt: hit.cachedAt });
-    }
-    try {
-      const started = Date.now();
-      const { reportCount, summaries, skippedYears: skipped } = await collectYearSummaries(ticker, model, 3);
-      if (!reportCount) {
-        return res.status(422).json({
-          error: 'no-reports',
-          message: 'Annual reports could not be fetched from BSE/NSE. Upload PDFs via POST /api/analysis/:ticker/reports?year=YYYY.',
-        });
-      }
-      if (!summaries.length) {
-        return res.status(422).json({ error: 'no-mdna', message: 'No Management Discussion and Analysis section found in the reports.', skippedYears: skipped });
-      }
-
-      const fingerprint = createHash('sha1').update(JSON.stringify(summaries)).digest('hex').slice(0, 16);
-      const resultKey = `result:${model}:${peerTag}:${fingerprint}`;
-      const stored = await readStoredQualitative<object>(ticker, resultKey);
-      if (stored) {
-        console.log(`[qualitative cache HIT] ${ticker} ${resultKey}`);
-        cachePut(key, stored);
-        return res.json({ ...stored, cached: true, cachedAt: Date.now() });
-      }
-
-      const peers: Peer[] = peerOverride
-        ? peerOverride.map((symbol) => ({ symbol, name: symbol, marketCap: null }))
-        : await defaultPeers(ticker).catch(() => [] as Peer[]);
-      // Management depends only on the summaries, so a peer change re-runs just the Moat call.
-      const mgmtKey = `management:${model}:${fingerprint}`;
-      const [moat, management] = await Promise.all([
-        judgeMoat(summaries[0], peers),
-        readStoredQualitative<ManagementJudgement>(ticker, mgmtKey).then(
-          (m) => m ?? judgeManagement(summaries).then(async (j) => (await writeStoredQualitative(ticker, mgmtKey, j), j))
-        ),
-      ]);
-      console.log(`[qualitative] ${ticker}: ${summaries.length} year(s) analysed in ${Date.now() - started}ms`);
-      const score = qualitativeScore(moat, management);
-      const body = {
-        ticker,
-        model,
-        peers,
-        peersOverridden: !!peerOverride,
-        yearsAnalysed: summaries.map((s) => s.year),
-        skippedYears: skipped,
-        moat,
-        management,
-        score: score.score,
-        experimental: true,
-        explanation: score.explanation,
-        quotes: score.quotes,
-      };
-      cachePut(key, body);
-      await writeStoredQualitative(ticker, resultKey, body);
-      res.json({ ...body, cached: false, cachedAt: Date.now() });
-    } catch (err: any) {
-      console.error(`[qualitative error] ${ticker}: ${err?.message || err}`);
-      if (err instanceof LlmError) {
-        return res.status(503).json({ error: 'llm-unavailable', message: err.message });
-      }
-      sendUpstreamError(res, ticker, err);
-    }
-  });
-
-  // SWOT returns a partial result: financials S/W survive a missing report or an unreachable LLM, and vice versa.
-  router.post('/:ticker/swot', async (req, res) => {
-    if (!enabled().swot) {
-      return sendDisabled(res, 'The SWOT analysis', 'ENABLE_SWOT');
-    }
-    const ticker = req.params.ticker;
-    const { model } = llmConfig();
-    const key = swotKey(ticker, model);
-    const hit = cacheGet<any>(key);
-    if (hit) {
-      console.log(`[analysis cache HIT] ${key}`);
-      return res.json({ ...hit.value, report: { ...hit.value.report, cached: true }, cached: true, cachedAt: hit.cachedAt });
-    }
-    const [financialsResult, reportResult] = await Promise.allSettled([
-      loadQuantitativeInputs(ticker),
-      latestReportSwot(ticker, model, {
-        listReports: options.swot?.listReports ?? ((t, n) => listReports(t, n, options.fetcher)),
-        textOf: options.swot?.textOf,
-        judge: options.swot?.judge,
-      }),
-    ]);
-
-    const fin = financialsResult.status === 'fulfilled' ? financialSwot(financialsResult.value) : null;
-    if (financialsResult.status === 'rejected') {
-      console.error(`[swot financials error] ${ticker}: ${financialsResult.reason?.message || financialsResult.reason}`);
-    }
-
-    let report: { status: 'ok' | 'no-reports' | 'no-mdna' | 'llm-unavailable' | 'failed'; message: string | null; year: number | null; source: string | null; cached: boolean };
-    const entry = reportResult.status === 'fulfilled' ? reportResult.value.entry : null;
-    if (reportResult.status === 'rejected') {
-      const err = reportResult.reason;
-      console.error(`[swot report error] ${ticker}: ${err?.message || err}`);
-      report = err instanceof LlmError
-        ? { status: 'llm-unavailable', message: `The language model is unavailable: ${err.message}`, year: null, source: null, cached: false }
-        : { status: 'failed', message: 'The annual report could not be analysed.', year: null, source: null, cached: false };
-    } else if (!entry) {
-      report = {
-        status: 'no-reports',
-        message: 'No annual report could be fetched. Upload the latest annual report PDF.',
-        year: null,
-        source: null,
-        cached: false,
-      };
-    } else {
-      report = {
-        status: entry.found ? 'ok' : 'no-mdna',
-        message: entry.found ? null : 'No Management Discussion and Analysis or SWOT sections found in the report.',
-        year: entry.year,
-        source: entry.source,
-        cached: reportResult.status === 'fulfilled' && reportResult.value.cached,
-      };
-    }
-
-    const reason = financialsResult.status === 'rejected' ? financialsResult.reason : null;
-    const notFound = reason instanceof StockNotFoundError || (reason instanceof FmpError && reason.status === 404);
-    if (notFound && !entry) {
-      return res.status(404).json({ error: 'Ticker not found' });
-    }
-
-    const body = {
-      ticker,
-      model,
-      experimental: true,
-      report,
-      financials: fin
-        ? { status: 'ok', year: fin.year, message: null }
-        : { status: 'unavailable', year: null, message: 'Financial data could not be loaded.' },
-      ...mergeSwot(entry?.swot ?? null, fin ?? { strengths: [], weaknesses: [] }),
-    };
-    // Only complete results are cached, so a missing report, LLM outage or provider failure is retried next time.
-    if (fin && (report.status === 'ok' || report.status === 'no-mdna')) {
-      cachePut(key, body);
-    }
-    res.json({ ...body, cached: false, cachedAt: Date.now() });
   });
 
   return router;

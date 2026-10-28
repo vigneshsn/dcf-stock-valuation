@@ -1,5 +1,4 @@
 import { PDFParse } from 'pdf-parse';
-import { generate } from './llm.js';
 
 const START = /management(?:['’]s)?\s+discussion\s+(?:and|&)\s+analysis/gi;
 const END = /(?:directors['’]?\s+report|report\s+on\s+corporate\s+governance|corporate\s+governance\s+report|business\s+responsibility|independent\s+auditor['’]?s?\s+report|notice\s+of\s+(?:the\s+)?annual\s+general)/gi;
@@ -35,9 +34,7 @@ export function extractMdna(text: string): string | null {
   return best;
 }
 
-// ~3k tokens per chunk; fits the configured num_ctx with room for the prompt and the summary.
-export const SUMMARY_CHUNK_CHARS = 12_000;
-// Upper bound on MD&A text summarised per year (≈3 chunks) so latency stays predictable.
+// Upper bound on MD&A text sent to the model so latency stays predictable.
 export const MAX_FILTERED_CHARS = 30_000;
 const PASSAGE_CHARS = 600;
 
@@ -92,7 +89,7 @@ export function passages(section: string): string[] {
 }
 
 // Keep the passages most likely to inform Moat and guidance-vs-actuals; drop macro commentary, ESG metrics and tables.
-// Falls back to the raw section when the filter finds too little, so unusual layouts still get summarised.
+// Falls back to the raw section when the filter finds too little, so unusual layouts still get read.
 export function filterRelevant(section: string, maxChars = MAX_FILTERED_CHARS): string {
   const scored = passages(section).map((text, index) => ({ text, index, score: passageScore(text) }));
   const relevant = scored.filter((p) => p.score > 0);
@@ -118,50 +115,4 @@ export function filterRelevant(section: string, maxChars = MAX_FILTERED_CHARS): 
     out += sep + kept[i].text;
   }
   return out;
-}
-
-export function chunkText(text: string, size = SUMMARY_CHUNK_CHARS): string[] {
-  const paragraphs = text.split(/\n\s*\n/);
-  const chunks: string[] = [];
-  let current = '';
-  for (const p of paragraphs) {
-    if (current && current.length + p.length > size) {
-      chunks.push(current);
-      current = '';
-    }
-    let piece = p;
-    while (piece.length > size) {
-      chunks.push(piece.slice(0, size));
-      piece = piece.slice(size);
-    }
-    current = current ? `${current}\n\n${piece}` : piece;
-  }
-  if (current.trim()) {
-    chunks.push(current);
-  }
-  return chunks;
-}
-
-export interface MdnaSummary {
-  chunkCount: number;
-  summary: string;
-  excerpt: string;
-}
-
-// Summarise each chunk, then judge from the joined summaries (reports exceed the model's context window).
-// Chunks run concurrently; generate() caps how many hit the LLM at once.
-export async function summariseMdna(section: string): Promise<MdnaSummary> {
-  const chunks = chunkText(filterRelevant(section));
-  const parts = await Promise.all(
-    chunks.map((chunk) =>
-      generate(
-        'Summarise these excerpts of a company annual report\'s management discussion and analysis in at most 200 words. ' +
-          'Keep concrete facts: guidance, targets, market position, competitive strengths, and actual results. ' +
-          'Keep short exact phrases from the text in double quotes where they support a claim.\n\n' +
-          chunk,
-        { maxTokens: 400 }
-      )
-    )
-  );
-  return { chunkCount: chunks.length, summary: parts.join('\n\n'), excerpt: section.slice(0, 1500) };
 }

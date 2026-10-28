@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 import { StockDashboardComponent } from './stock-dashboard.component';
 import { StockMetrics } from '../models/stock-metrics';
 import { READING_MODE_KEY, ReadingModeService } from '../services/reading-mode.service';
-import { Features, MdnaInsights, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, StatementYear } from '../models/analysis';
+import { GuidanceScorecard, MdnaInsights, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, StatementYear } from '../models/analysis';
 
 const STOCK_URL = 'http://localhost:3000/api/stock/';
 const ANALYSIS_URL = 'http://localhost:3000/api/analysis/';
@@ -72,7 +72,6 @@ function reverseDcf(overrides: Partial<ReverseDcfAnalysis> = {}): ReverseDcfAnal
     };
 }
 
-const DEFAULT_FEATURES: Features = { insights: true, qualitative: false, swot: false };
 
 function redFlags(overrides: Partial<RedFlagScan> = {}): RedFlagScan {
     return {
@@ -145,7 +144,6 @@ describe('StockDashboardComponent', () => {
         component = fixture.componentInstance;
         httpMock = TestBed.inject(HttpTestingController);
         fixture.detectChanges();
-        httpMock.expectOne(`${ANALYSIS_URL}features`).flush(DEFAULT_FEATURES);
     });
 
     afterEach(() => {
@@ -307,7 +305,7 @@ describe('StockDashboardComponent', () => {
             .map((el) => el.dataset['testid']);
         expect(sections(blocks[0])).toEqual(['company', 'key-stats']);
         expect(sections(blocks[1])).toEqual(['statements', 'red-flags', 'peers']);
-        expect(sections(blocks[2])).toEqual(['insights-panel', 'guidance-panel']);
+        expect(sections(blocks[2])).toEqual(['insights-panel', 'guidance-panel', 'moat-panel']);
         expect(sections(blocks[3])).toEqual(['quant-panel', 'reverse-dcf']);
     });
 
@@ -613,7 +611,8 @@ describe('StockDashboardComponent', () => {
 
         const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="insights-panel"]');
         expect(panel.querySelector('[data-testid="insights-report"]')?.textContent).toContain('FY2025 · fetched');
-        expect(panel.querySelector('[data-testid="insights-moat"]')?.textContent).toContain('Moat: narrow');
+        expect(panel.querySelector('h3')?.textContent).toContain('What does management say?');
+        expect(panel.textContent).not.toContain('Moat');
         const keyPoints = panel.querySelector('[data-testid="insights-keyPoints"]')!;
         expect(keyPoints.textContent).toContain('Revenue grew 18%');
         expect(keyPoints.querySelector('blockquote')?.textContent).toContain('revenue grew 18% this year on strong demand');
@@ -682,20 +681,6 @@ describe('StockDashboardComponent', () => {
         expect(component.insightsError).toBe('');
     });
 
-    it('hides the Qualitative and SWOT panels unless the server enables them', () => {
-        search('TCS');
-        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
-        expectQuant('TCS').flush(quant());
-        fixture.detectChanges();
-        expect(fixture.nativeElement.querySelector('[data-testid="qual-panel"]')).toBeNull();
-        expect(fixture.nativeElement.querySelector('[data-testid="swot-panel"]')).toBeNull();
-
-        component.features = { insights: true, qualitative: true, swot: true };
-        fixture.detectChanges();
-        expect(fixture.nativeElement.querySelector('[data-testid="qual-panel"]')).not.toBeNull();
-        expect(fixture.nativeElement.querySelector('[data-testid="swot-panel"]')).not.toBeNull();
-    });
-
     it('sends only the DCF assumptions that differ from the defaults when recalculating', () => {
         search('TCS');
         httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
@@ -726,54 +711,46 @@ describe('StockDashboardComponent', () => {
         expect(text()).toContain('Discount rate must be greater than terminal growth rate');
     });
 
-    it('offers a PDF upload when no annual reports can be fetched', () => {
+    it('shows the Moat as management\'s own view from the latest annual report, with its quote', () => {
         search('TCS');
         httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
         expectQuant('TCS').flush(quant());
-
-        component.features = { insights: true, qualitative: true, swot: false };
-        component.peersText = 'INFY, WIPRO';
-        component.runQualitative();
-        const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/qualitative`);
-        expect(req.request.body).toEqual({ peers: ['INFY', 'WIPRO'] });
-        req.flush({ error: 'no-reports', message: 'Annual reports could not be fetched' }, { status: 422, statusText: 'Unprocessable' });
-
-        expect(component.needsUpload).toBeTrue();
-        const qualPanel: HTMLElement = (fixture.detectChanges(), fixture.nativeElement.querySelector('[data-testid="qual-panel"]'));
-        expect(qualPanel.textContent).toContain('Upload annual report PDF');
-    });
-
-    it('runs the SWOT analysis and shows a partial result when the report is unavailable', () => {
-        search('TCS');
-        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
-        expectQuant('TCS').flush(quant());
-
-        component.features = { insights: true, qualitative: false, swot: true };
-        component.runSwot();
-        const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/swot`);
-        expect(req.request.method).toBe('POST');
-        const empty = { items: [], lowerConfidence: false };
-        req.flush({
-            ticker: 'TCS',
-            model: 'm',
-            experimental: true,
-            report: { status: 'llm-unavailable', message: 'The local model is unavailable.', year: null, source: null, cached: false },
-            financials: { status: 'ok', year: 2025, message: null },
-            strengths: { items: [{ text: 'High ROE of 25.0%', source: 'financials', evidence: 'ROE: 25.0%' }], lowerConfidence: false },
-            weaknesses: empty,
-            opportunities: empty,
-            threats: { items: [], lowerConfidence: true }
-        });
+        const insights = mdnaInsights();
+        insights.insights!.moat = { rating: 'narrow', reasoning: 'Strong brand in the premium segment.', quote: 'our brands lead the premium segment' };
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(insights);
         fixture.detectChanges();
 
-        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="swot-panel"]');
-        expect(panel.querySelector('[data-testid="swot-report-status"]')?.textContent).toContain('The local model is unavailable.');
-        const strengths = panel.querySelector('[data-testid="swot-strengths"]')!;
-        expect(strengths.textContent).toContain('High ROE of 25.0%');
-        expect(strengths.querySelector('[data-source="financials"]')).not.toBeNull();
-        expect(strengths.textContent).toContain('ROE: 25.0%');
-        expect(panel.querySelector('[data-testid="swot-threats"]')?.textContent).toContain('lower confidence');
-        expect(panel.querySelector('[data-testid="swot-opportunities"]')?.textContent).toContain('Nothing identified.');
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="moat-panel"]');
+        expect(panel.querySelector('h3')?.textContent).toContain('Moat');
+        expect(panel.textContent).toContain('management’s own view');
+        expect(panel.querySelector('[data-testid="moat-rating"]')?.textContent).toContain('narrow');
+        expect(panel.textContent).toContain('Strong brand in the premium segment.');
+        expect(panel.querySelector('blockquote')?.textContent).toContain('our brands lead the premium segment');
+        expect(panel.textContent).toContain('not compared with peers');
+    });
+
+    it('says the Moat is unavailable when the annual report could not be read', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(mdnaInsights({ status: 'no-mdna', message: 'No MD&A', insights: null }));
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="moat-panel"]');
+        expect(panel.querySelector('[data-testid="moat-rating"]')).toBeNull();
+        expect(panel.textContent).toContain('No Moat rating');
+    });
+
+    it('offers no SWOT, Qualitative score or Management trustworthiness', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(mdnaInsights());
+
+        const content = text();
+        expect(content).not.toMatch(/SWOT|Qualitative|trustworth/i);
+        expect(fixture.nativeElement.querySelector('[data-testid="qual-panel"]')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="swot-panel"]')).toBeNull();
     });
 
     it('runs the Guidance scorecard on demand and shows each claim with its verdict', () => {
@@ -786,12 +763,11 @@ describe('StockDashboardComponent', () => {
         component.runGuidance();
         const req = httpMock.expectOne(`${ANALYSIS_URL}TCS/guidance`);
         expect(req.request.method).toBe('POST');
-        req.flush({
+        req.flush(<GuidanceScorecard>{
             ticker: 'TCS',
             model: 'm',
             experimental: true,
             lowerConfidence: true,
-            hitRate: 0,
             years: [
                 {
                     year: 2023,
@@ -808,7 +784,9 @@ describe('StockDashboardComponent', () => {
         fixture.detectChanges();
 
         const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="guidance-panel"]');
-        expect(panel.querySelector('[data-testid="guidance-hit-rate"]')?.textContent).toContain('0% met');
+        expect(panel.querySelector('h3')?.textContent).toContain('Do they deliver?');
+        expect(panel.querySelector('[data-testid="guidance-counts"]')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('0 met · 0 near · 1 missed · 0 pending');
+        expect(panel.textContent).not.toMatch(/\d+% met|trust/i);
         expect(panel.querySelector('[data-testid="guidance-low-confidence"]')).not.toBeNull();
         const year = panel.querySelector('[data-testid="guidance-year-2023"]')!;
         expect(year.textContent?.replace(/\s+/g, ' ')).toContain('Revenue growth · target 15% for FY2024 · actual 9%');
@@ -844,7 +822,6 @@ describe('StockDashboardComponent deep link', () => {
         fixture.detectChanges();
 
         expect(fixture.componentInstance.ticker).toBe('ITC');
-        httpMock.expectOne(`${ANALYSIS_URL}features`).flush(DEFAULT_FEATURES);
         httpMock.expectOne(`${STOCK_URL}ITC`).flush(emptyMetrics());
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/quantitative`).flush(quant());
         httpMock.expectOne(`${ANALYSIS_URL}ITC/insights`).flush(mdnaInsights({ ticker: 'ITC' }));

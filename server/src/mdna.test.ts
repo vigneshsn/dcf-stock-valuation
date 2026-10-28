@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { chunkText, extractMdna, filterRelevant } from './mdna.js';
+import { extractMdna, filterRelevant } from './mdna.js';
 
 // Column-wrapped like real PDF text: short lines, no blank lines between paragraphs.
 const wrap = (s: string) => s.replace(/(.{1,35})(\s|$)/g, '$1\n');
@@ -44,10 +44,3 @@ test('extractMdna returns null when absent', () => {
   assert.strictEqual(extractMdna('nothing relevant'), null);
 });
 
-test('chunkText bounds chunk size and keeps all text', () => {
-  const text = Array.from({ length: 50 }, (_, i) => `Paragraph ${i} ${'x'.repeat(300)}`).join('\n\n');
-  const chunks = chunkText(text, 1000);
-  assert.ok(chunks.every((c) => c.length <= 1000 + 400));
-  assert.ok(chunks.length > 5);
-  assert.ok(chunks.join('').includes('Paragraph 49'));
-});

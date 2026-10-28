@@ -2,10 +2,10 @@ import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/pro
 import path from 'node:path';
 import { extractMdna, filterRelevant, pdfToText } from './mdna.js';
 import { generateJson } from './llm.js';
-import { MoatJudgement, MoatRating, verifiedQuote } from './qualitative.js';
+import { verifiedQuote } from './quotes.js';
 import { AnnualReportRef } from './reports.js';
 import { GUIDANCE_SCHEMA_PROMPT, GuidanceClaim, parseGuidanceClaims } from './guidance.js';
-import { extractSwotSections, opportunityThreatPassages } from './swot.js';
+import { extractOutlookSections, outlookPassages } from './reportSections.js';
 
 // Bump when input selection or the prompt changes so stored insights are recomputed.
 export const INSIGHTS_VERSION = 3;
@@ -14,6 +14,15 @@ export const MAX_INSIGHTS_INPUT_CHARS = 20_000;
 const MAX_OUTLOOK_CHARS = 8_000;
 export const MAX_INSIGHT_ITEMS = 4;
 const INSIGHTS_MAX_TOKENS = 2200;
+
+export type MoatRating = 'wide' | 'narrow' | 'none';
+
+// Rated from the Latest annual report alone, so it is management's own view, not a peer-relative judgement.
+export interface MoatJudgement {
+  rating: MoatRating;
+  reasoning: string;
+  quote: string | null;
+}
 
 export interface InsightItem {
   point: string;
@@ -42,9 +51,9 @@ export interface ReportInsights {
 // MD&A passages about results, strategy and competitive position, plus the report's opportunities/threats/risks text.
 export function insightsInput(reportText: string, maxChars = MAX_INSIGHTS_INPUT_CHARS): string | null {
   const mdna = extractMdna(reportText);
-  const sections = extractSwotSections(mdna ?? reportText);
+  const sections = extractOutlookSections(mdna ?? reportText);
   const dedicated = [sections.opportunitiesAndThreats, sections.risks].filter((s): s is string => !!s).join('\n\n');
-  const outlook = (dedicated || (mdna ? opportunityThreatPassages(mdna, MAX_OUTLOOK_CHARS) : '')).slice(0, MAX_OUTLOOK_CHARS);
+  const outlook = (dedicated || (mdna ? outlookPassages(mdna, MAX_OUTLOOK_CHARS) : '')).slice(0, MAX_OUTLOOK_CHARS);
   const discussion = mdna ? filterRelevant(mdna, maxChars - outlook.length) : '';
   if (!discussion && !outlook) {
     return null;

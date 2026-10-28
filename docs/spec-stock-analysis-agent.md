@@ -30,6 +30,8 @@ For a listed stock (Indian market first), produce an **Analysis** from live fina
 
 ## Qualitative analysis
 
+> **Retired** ([#20](https://github.com/vigneshsn/dcf-stock-valuation/issues/20)): the Qualitative score, Management trustworthiness and the peer-relative Moat were removed. The Management & annual report block now shows MD&A insights, the [Guidance scorecard](spec-guidance-scorecard.md) as evidence, and the Moat as management's own view. Kept below for history.
+
 Inputs: annual reports for the last 3 years.
 
 - **Report acquisition**: fetch from BSE/NSE filings where possible; fall back to user upload.

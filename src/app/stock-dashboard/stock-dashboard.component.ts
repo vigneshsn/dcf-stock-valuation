@@ -16,23 +16,18 @@ import { ReverseDcfComponent } from '../reverse-dcf/reverse-dcf.component';
 import { FinancialStatementsComponent } from '../financial-statements/financial-statements.component';
 import {
     DcfAssumptions,
-    Features,
     FinancialStatements,
-    GuidanceOutcome,
     InsightListKey,
     MdnaInsights,
     MoatRating,
-    QualitativeAnalysis,
     QuantitativeAnalysis,
     RedFlagId,
     RedFlagScan,
     ReverseDcfAnalysis,
-    SwotAnalysis,
     GuidanceClaim,
     GuidanceMetric,
     GuidanceScorecard,
-    GuidanceVerdict,
-    SwotQuadrantKey
+    GuidanceVerdict
 } from '../models/analysis';
 
 type LoadState = 'idle' | 'loading' | 'data' | 'error';
@@ -52,21 +47,6 @@ const QUANT_VERDICTS: Record<number, Verdict> = {
     1: { label: 'Overhyped', emoji: '🫠', tone: 'bad' }
 };
 
-const QUAL_VERDICTS: Record<number, Verdict> = {
-    5: { label: 'Elite quality', emoji: '👑', tone: 'good' },
-    4: { label: 'Solid business', emoji: '💪', tone: 'good' },
-    3: { label: 'Mixed signals', emoji: '🤷', tone: 'neutral' },
-    2: { label: 'Shaky', emoji: '⚠️', tone: 'warn' },
-    1: { label: 'Red flags', emoji: '🚩', tone: 'bad' }
-};
-
-const SWOT_QUADRANTS: { key: SwotQuadrantKey; label: string; icon: string; tone: Tone }[] = [
-    { key: 'strengths', label: 'Strengths', icon: 'trending_up', tone: 'good' },
-    { key: 'weaknesses', label: 'Weaknesses', icon: 'trending_down', tone: 'bad' },
-    { key: 'opportunities', label: 'Opportunities', icon: 'lightbulb', tone: 'neutral' },
-    { key: 'threats', label: 'Threats', icon: 'warning_amber', tone: 'warn' }
-];
-
 const INSIGHT_SECTIONS: { key: InsightListKey; label: string; icon: string; tone: Tone }[] = [
     { key: 'keyPoints', label: 'Key points', icon: 'summarize', tone: 'neutral' },
     { key: 'growthStrategy', label: 'Revenue growth strategy', icon: 'rocket_launch', tone: 'good' },
@@ -74,9 +54,6 @@ const INSIGHT_SECTIONS: { key: InsightListKey; label: string; icon: string; tone
     { key: 'headwinds', label: 'Headwinds', icon: 'trending_down', tone: 'warn' },
     { key: 'risks', label: 'Investment risks', icon: 'warning_amber', tone: 'bad' }
 ];
-
-// Used until the server answers (or when it is too old to expose /features): only the always-on features.
-const DEFAULT_FEATURES: Features = { insights: true, qualitative: false, swot: false };
 
 const RED_FLAG_NAMES: Record<RedFlagId, string> = {
     'profit-not-backed-by-cash': 'Profit not backed by cash',
@@ -134,7 +111,6 @@ const GUIDANCE_METRICS: Record<GuidanceMetric, string> = {
     debt: 'Debt / equity',
     other: 'Other'
 };
-const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'warn', missed: 'bad' };
 
 @Component({
     selector: 'app-stock-dashboard',
@@ -184,8 +160,6 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     redFlagsError = '';
     readonly redFlagNames = RED_FLAG_NAMES;
 
-    features: Features = DEFAULT_FEATURES;
-
     insights: MdnaInsights | null = null;
     insightsLoading = false;
     insightsError = '';
@@ -194,18 +168,8 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     insightsElapsedMs: number | null = null;
     readonly insightSections = INSIGHT_SECTIONS;
 
-    qual: QualitativeAnalysis | null = null;
-    qualLoading = false;
-    qualError = '';
-    needsUpload = false;
-    peersText = '';
     uploadYear = new Date().getFullYear() - 1;
     uploadMessage = '';
-
-    swot: SwotAnalysis | null = null;
-    swotLoading = false;
-    swotError = '';
-    readonly swotQuadrants = SWOT_QUADRANTS;
 
     guidance: GuidanceScorecard | null = null;
     guidanceLoading = false;
@@ -217,15 +181,9 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private statementsSub?: Subscription;
     private redFlagsSub?: Subscription;
     private insightsSub?: Subscription;
-    private qualSub?: Subscription;
-    private swotSub?: Subscription;
     private guidanceSub?: Subscription;
 
     ngOnInit(): void {
-        this.analysis.getFeatures().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: (f) => (this.features = { ...DEFAULT_FEATURES, ...f }),
-            error: () => (this.features = DEFAULT_FEATURES)
-        });
         this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
             const q = this.normalise(params.get('q') ?? '');
             if (q && q !== this.ticker) {
@@ -241,8 +199,6 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.statementsSub?.unsubscribe();
         this.redFlagsSub?.unsubscribe();
         this.insightsSub?.unsubscribe();
-        this.qualSub?.unsubscribe();
-        this.swotSub?.unsubscribe();
         this.guidanceSub?.unsubscribe();
     }
 
@@ -265,8 +221,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.query = ticker;
         this.showFullDescription = false;
         this.collapsedBlocks.clear();
-        this.resetQualitative();
-        this.resetSwot();
+        this.uploadMessage = '';
         this.resetGuidance();
         this.loadStock();
         this.quant = null;
@@ -524,28 +479,6 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         return i ? `FY${i.year} · ${i.source === 'upload' ? 'uploaded' : 'fetched'}` : null;
     }
 
-    // ---- Qualitative analysis ----------------------------------------------
-
-    runQualitative(): void {
-        this.qualSub?.unsubscribe();
-        this.qualLoading = true;
-        this.qualError = '';
-        this.needsUpload = false;
-        const peers = this.peersText.split(',').map((p) => p.trim()).filter(Boolean);
-        this.qualSub = this.analysis.getQualitative(this.ticker, peers.length ? peers : undefined).subscribe({
-            next: (q) => {
-                this.qual = q;
-                this.qualLoading = false;
-            },
-            error: (err: HttpErrorResponse) => {
-                this.qual = null;
-                this.qualLoading = false;
-                this.needsUpload = err.error?.error === 'no-reports';
-                this.qualError = err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
-            }
-        });
-    }
-
     onFileSelected(event: Event): void {
         const file = (event.target as HTMLInputElement).files?.[0];
         if (!file) {
@@ -553,23 +486,15 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         }
         this.analysis.uploadReport(this.ticker, this.uploadYear, file).subscribe({
             next: (r) => {
-                this.uploadMessage = `Uploaded ${r.year} annual report, run the analysis again`;
+                this.uploadMessage = `Uploaded the FY${r.year} annual report`;
                 this.loadInsights();
             },
             error: (err: HttpErrorResponse) => (this.uploadMessage = err.error?.error ?? 'Upload failed')
         });
     }
 
-    qualVerdict(score: number): Verdict {
-        return QUAL_VERDICTS[score] ?? QUAL_VERDICTS[3];
-    }
-
     moatTone(rating: MoatRating): Tone {
         return MOAT_TONES[rating] ?? 'neutral';
-    }
-
-    outcomeTone(outcome: GuidanceOutcome): Tone {
-        return OUTCOME_TONES[outcome] ?? 'neutral';
     }
 
     // ---- Guidance scorecard --------------------------------------------------
@@ -591,6 +516,17 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
                     : err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
             }
         });
+    }
+
+    /** How many claims were met, near, missed or are still pending; unscored claims are not counted. */
+    get guidanceCounts(): Record<Exclude<GuidanceVerdict, 'unscored'>, number> {
+        const counts = { met: 0, near: 0, missed: 0, pending: 0 };
+        for (const claim of this.guidance?.years.flatMap((y) => y.claims) ?? []) {
+            if (claim.verdict !== 'unscored') {
+                counts[claim.verdict]++;
+            }
+        }
+        return counts;
     }
 
     verdictTone(verdict: GuidanceVerdict): Tone {
@@ -624,52 +560,6 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.guidance = null;
         this.guidanceLoading = false;
         this.guidanceError = '';
-    }
-
-    // ---- SWOT analysis -------------------------------------------------------
-
-    runSwot(): void {
-        this.swotSub?.unsubscribe();
-        this.swotLoading = true;
-        this.swotError = '';
-        this.swotSub = this.analysis.getSwot(this.ticker).subscribe({
-            next: (s) => {
-                this.swot = s;
-                this.swotLoading = false;
-            },
-            error: (err: HttpErrorResponse) => {
-                this.swot = null;
-                this.swotLoading = false;
-                this.swotError = err.status === 404
-                    ? 'Ticker not found'
-                    : err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
-            }
-        });
-    }
-
-    get swotReportLabel(): string | null {
-        const r = this.swot?.report;
-        if (!r?.year) {
-            return null;
-        }
-        return `FY${r.year} · ${r.source === 'upload' ? 'uploaded' : 'fetched'}`;
-    }
-
-    private resetSwot(): void {
-        this.swotSub?.unsubscribe();
-        this.swot = null;
-        this.swotLoading = false;
-        this.swotError = '';
-    }
-
-    private resetQualitative(): void {
-        this.qualSub?.unsubscribe();
-        this.qual = null;
-        this.qualLoading = false;
-        this.qualError = '';
-        this.needsUpload = false;
-        this.uploadMessage = '';
-        this.peersText = '';
     }
 
     private normalise(value: string): string {
