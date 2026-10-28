@@ -70,10 +70,9 @@ flowchart LR
 | Quantitative analysis (DCF Fair value + score) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
 | Financial statements (5 fiscal years: income, balance sheet, cash flow; unscored) | `FinancialStatementsComponent`, `AnalysisService` | `GET /api/analysis/:ticker/statements` | IndianAPI or FMP (cached financials, amounts in ₹ crore) |
 | Strength / Weakness findings (ROCE, ROE, net margin, revenue growth, debt / equity, cash conversion vs own history or Peer set median; ≥20% gaps only; unscored) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/strengths-weaknesses` | IndianAPI or FMP (cached financials); peer ROE and net margin from IndianAPI only |
-| MD&A insights (key points, growth strategy, tailwinds, headwinds, risks, Moat; loads automatically) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/insights` | Latest annual report (Screener.in / upload), one LLM call |
-| Feature flags (which optional panels to show) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/features` | `ENABLE_QUALITATIVE`, `ENABLE_SWOT` |
-| Qualitative analysis (Moat + Management trustworthiness; off unless `ENABLE_QUALITATIVE`) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/qualitative` | Screener.in / uploaded PDFs, FMP peers, LLM |
-| SWOT analysis (unscored, see [spec](spec-swot-analysis.md); off unless `ENABLE_SWOT`) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/swot` | Latest annual report (Screener.in / upload), LLM, IndianAPI or FMP financials |
+| MD&A insights ("What does management say?" and the Moat, management's own view; loads automatically) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/insights` | Latest annual report (Screener.in / upload), one LLM call |
+| Guidance scorecard ("Do they deliver?"; met / near / missed / pending counts, no trust score; see [spec](spec-guidance-scorecard.md)) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/guidance` | Up to 3 past annual reports, one cached LLM call each, IndianAPI or FMP financials |
+| Peer set (benchmark for Strength / Weakness; not yet shown) | `AnalysisService.getPeers` | `GET /api/analysis/:ticker/peers` | FMP |
 | Feedback | `FeedbackComponent` | — | Embedded Google Form |
 
 ## Backend modules
@@ -95,22 +94,21 @@ flowchart TB
     subgraph domain["Domain logic (pure, unit-tested)"]
         finance["finance.ts<br/>ROCE · ROE · annual alignment"]
         dcf["dcf.ts<br/>deriveDefaults · computeFairValue<br/>quantitativeScore"]
-        mdna["mdna.ts<br/>pdfToText · extractMdna<br/>filterRelevant · summariseMdna"]
-        years["yearSummaries.ts<br/>collectYearSummaries<br/>(disk cache per ticker/year/model)"]
-        qual["qualitative.ts<br/>selectPeers · judgeMoat<br/>judgeManagement · qualitativeScore"]
-        swot["swot.ts<br/>financialSwot · extractSwotSections<br/>latestReportSwot (disk cache per ticker/year/model)"]
+        mdna["mdna.ts<br/>pdfToText · extractMdna · passages"]
+        sections["reportSections.ts<br/>extractOutlookSections · outlookPassages"]
+        quotes["quotes.ts<br/>verifiedQuote"]
+        peers["peers.ts<br/>selectPeers"]
+        guidance["guidance.ts<br/>collectGuidance · guidanceScorecard<br/>(disk cache per ticker/year/model)"]
         insights["insights.ts<br/>insightsInput · judgeInsights<br/>latestReportInsights (disk cache per ticker/year/model)"]
     end
 
-    infra["provider.ts · cache.ts · features.ts"]
+    infra["provider.ts · cache.ts"]
 
     stockR --> indianapi & fmpA & finance & infra
-    analysisR --> indianapi & fmpA & dcf & years & qual & swot & insights & finance & infra
-    years --> reports & mdna
-    swot --> mdna & llmA
-    insights --> mdna & swot & llmA
-    mdna --> llmA
-    qual --> llmA
+    analysisR --> indianapi & fmpA & reports & dcf & peers & guidance & insights & finance & infra
+    sections --> mdna
+    insights --> mdna & sections & quotes & guidance & llmA
+    guidance --> mdna & quotes & llmA
 ```
 
 ## Request flows
@@ -198,105 +196,6 @@ sequenceDiagram
 
 The ~20k-character budget (~5k tokens) keeps the single request inside free-tier per-minute token limits. Bump `INSIGHTS_VERSION` in `insights.ts` when input selection or the prompt changes.
 
-### Qualitative analysis — `POST /api/analysis/:ticker/qualitative`
-
-Disabled unless `ENABLE_QUALITATIVE=true` (the endpoint returns `404 disabled`); it needs about 11 LLM calls per new ticker.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant UI as StockDashboardComponent
-    participant API as routes/analysis.ts
-    participant Y as yearSummaries.ts
-    participant D as Disk cache (.cache/mdna, .cache/qualitative)
-    participant R as reports.ts
-    participant S as Screener.in
-    participant M as mdna.ts
-    participant Q as qualitative.ts
-    participant F as FMP
-    participant L as LLM (Gemini → Groq → Ollama)
-
-    opt user uploads PDFs
-        UI->>API: POST .../reports?year=YYYY (application/pdf)
-        API->>R: saveUpload(ticker, year, pdf)
-        API->>D: forget stored summaries for that year and stored judgements for the ticker
-    end
-    UI->>API: POST .../qualitative { peers? }
-    opt response cached in memory (6 h, keyed by ticker + model + peers)
-        API-->>UI: cached result, no report, FMP or LLM calls
-    end
-    API->>Y: collectYearSummaries(ticker, model, 3)
-    Y->>R: listReports(ticker, 3)
-    R->>S: scrape company page for report links (if uploads < 3)
-    R-->>Y: up to 3 report refs (uploads win per year, nothing downloaded yet)
-    par each year in parallel
-        Y->>D: stored summary for ticker/year/model?
-        opt miss
-            Y->>R: load() downloads the PDF
-            Y->>M: pdfToText, extractMdna, filterRelevant, summariseMdna
-            M->>L: summarise up to ~3 chunks concurrently (LLM_CONCURRENCY)
-            Y->>D: store summary (or "no MD&A")
-        end
-    end
-    alt no reports
-        API-->>UI: 422 no-reports
-    end
-    API->>D: stored result for model + peers + summaries fingerprint? (.cache/qualitative, survives restarts)
-    opt no peer override
-        API->>F: /quote + /stock-peers → selectPeers (3-5 by market cap)
-    end
-    par
-        API->>Q: judgeMoat(latest, peers)
-        Q->>L: moat judgement (JSON)
-    and management, stored on disk independently of peers
-        API->>Q: judgeManagement(summaries)
-        Q->>L: guidance vs. actuals per year pair, in parallel (JSON)
-    end
-    API->>Q: qualitativeScore(moat, management)
-    API->>D: store result
-    API-->>UI: score 1-5 (experimental) + quotes | 503 llm-unavailable
-```
-
-### SWOT analysis — `POST /api/analysis/:ticker/swot`
-
-Disabled unless `ENABLE_SWOT=true` (the endpoint returns `404 disabled`).
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant UI as StockDashboardComponent
-    participant API as routes/analysis.ts
-    participant P as IndianAPI / FMP
-    participant S as swot.ts
-    participant D as Disk cache (.cache/swot)
-    participant R as reports.ts
-    participant L as LLM (Gemini → Groq → Ollama)
-
-    UI->>API: POST .../swot
-    opt response cached in memory (6 h)
-        API-->>UI: cached SWOT, no upstream calls
-    end
-    par financials (1 h cache)
-        API->>P: latest fiscal year statements, ROE, ROCE, debt/equity
-        API->>S: financialSwot → Strengths / Weaknesses (rules, no LLM)
-    and latest annual report
-        API->>S: latestReportSwot(ticker, model)
-        S->>R: listReports → newest year (uploads win)
-        S->>D: stored SWOT for ticker/year/model?
-        opt miss
-            S->>R: load() downloads the PDF
-            S->>S: extractMdna · extractSwotSections (O&T, Risks and Concerns)
-            S->>L: S/W from MD&A ∥ O/T from sections (or MD&A fallback, lower-confidence)
-            S->>D: store result
-        end
-    end
-    API-->>UI: 2×2 SWOT (report items with verified quotes + financials items) and per-part status
-```
-
-The SWOT is a partial-result endpoint: if every LLM provider fails or no report is available, `report.status` explains why and the financials-based Strengths/Weaknesses are still returned. Bump `SWOT_VERSION` in `swot.ts` when section detection or the SWOT prompts change. A complete response (financials loaded, report analysed) is also cached in memory for `ANALYSIS_TTL_MS` (6 h) so repeat requests make no IndianAPI, report-listing or LLM calls; partial results are not cached, and uploading a report clears it.
-
-MD&A summaries of past annual reports never change, so they are stored on disk per ticker, year and model and reused across restarts. Bump `SUMMARY_VERSION` in `yearSummaries.ts` when extraction, filtering or the summary prompt changes. `filterRelevant` keeps at most ~30k characters of guidance, competitive-position and results passages per year (dropping macro-economic commentary, ESG metrics and tables), so each year needs about 3 summary calls.
-
 ## Configuration
 
 Server environment variables are loaded from `server/.env` via `dotenv`.
@@ -307,11 +206,9 @@ Server environment variables are loaded from `server/.env` via `dotenv`.
 | `STOCK_DATA_PROVIDER` | `indianapi` | `indianapi` or `fmp` for stock and quantitative data |
 | `INDIANAPI_API_KEY` | — | IndianAPI key |
 | `INDIANAPI_BASE_URL` | `https://stock.indianapi.in` | IndianAPI base URL |
-| `FMP_API_KEY` | — | FMP key (also required for qualitative peer selection) |
+| `FMP_API_KEY` | — | FMP key (also required for the Peer set) |
 | `FINANCIALS_TTL_MS` | `3600000` (1 h) | Cache TTL for raw financials |
 | `ANALYSIS_TTL_MS` | `21600000` (6 h) | Cache TTL for computed analyses |
-| `ENABLE_QUALITATIVE` | `false` | Enables the 3-report Qualitative analysis endpoint and panel |
-| `ENABLE_SWOT` | `false` | Enables the SWOT analysis endpoint and panel |
 | `LLM_PROVIDERS` | keyed cloud providers, then `ollama` | Comma-separated order of `gemini`, `groq`, `ollama`; the next is tried when one fails |
 | `LLM_CONCURRENCY` | `4` (or `OLLAMA_CONCURRENCY`) | Max in-flight LLM requests from the proxy; use 1–2 on free cloud tiers, pair with Ollama's `OLLAMA_NUM_PARALLEL` locally |
 | `LLM_MAX_RETRIES` | `2` | Retries per provider on 429 / 5xx before falling back |
@@ -326,10 +223,8 @@ Server environment variables are loaded from `server/.env` via `dotenv`.
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `qwen3:8b` | Local model |
 | `OLLAMA_NUM_CTX` | `8192` | Context window requested per Ollama call |
-| `QUALITATIVE_CACHE_DIR` | `server/.cache/qualitative` | Directory for stored Moat / Management results (bump `QUALITATIVE_VERSION` in `qualitativeStore.ts` when prompts change) |
-| `MDNA_CACHE_DIR` | `server/.cache/mdna` | Directory for stored per-year MD&A summaries |
-| `SWOT_CACHE_DIR` | `server/.cache/swot` | Directory for stored per-year report SWOT results |
 | `INSIGHTS_CACHE_DIR` | `server/.cache/insights` | Directory for stored per-year MD&A insights |
+| `GUIDANCE_CACHE_DIR` | `server/.cache/guidance` | Directory for stored per-year guidance claims |
 
 The frontend services hard-code the proxy at `http://localhost:3000`.
 
@@ -339,9 +234,9 @@ The frontend services hard-code the proxy at `http://localhost:3000`.
 - **NSE only.** Tickers are bare NSE symbols (an optional `.NS` suffix is accepted). Other exchange suffixes are rejected as not found.
 - **Peer selection always uses FMP**, regardless of `STOCK_DATA_PROVIDER`.
 - **All state is in process memory.** The response cache and uploaded PDFs are lost on restart and are not shared between instances.
-- **Separate scores.** Quantitative and Qualitative scores are shown side by side and never blended. The Qualitative score is labelled experimental. MD&A insights and the SWOT analysis are unscored and also labelled experimental.
-- **Free-tier LLM budget.** MD&A insights use one LLM call per annual report and are the only LLM feature on by default; the many-call Qualitative and SWOT analyses are opt-in via `ENABLE_QUALITATIVE` / `ENABLE_SWOT`.
-- **Swappable LLM.** `llm.ts` tries Gemini, Groq and local Ollama in the configured order, retrying rate limits before falling back; an answer that is not valid JSON (or is cut off at `max_tokens`) also falls back. Disk and memory caches are keyed on the first provider's model, so a fallback answer is cached under the same key. If every provider fails, the insights and qualitative endpoints return `503 llm-unavailable` and the rest of the app keeps working.
+- **One score.** The Quantitative score is the only score. MD&A insights, the Moat (management's own view) and the Guidance scorecard are unscored evidence; there is no Qualitative score or trust score (see [ADR 0001](adr/0001-evidence-without-verdict.md)).
+- **Free-tier LLM budget.** MD&A insights use one LLM call per annual report and load automatically; the Guidance scorecard uses one cached call per past report and runs on demand.
+- **Swappable LLM.** `llm.ts` tries Gemini, Groq and local Ollama in the configured order, retrying rate limits before falling back; an answer that is not valid JSON (or is cut off at `max_tokens`) also falls back. Disk and memory caches are keyed on the first provider's model, so a fallback answer is cached under the same key. If every provider fails, the insights and guidance endpoints return `503 llm-unavailable` and the rest of the app keeps working.
 
 ## Testing
 

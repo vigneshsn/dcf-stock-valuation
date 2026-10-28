@@ -1,17 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Features, FinancialStatements, GuidanceScorecard, MdnaInsights, Peer, QualitativeAnalysis, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, StrengthsWeaknesses, SwotAnalysis } from '../models/analysis';
+import { FinancialStatements, GuidanceScorecard, MdnaInsights, Peer, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, StrengthsWeaknesses } from '../models/analysis';
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
     private readonly baseUrl = 'http://localhost:3000/api/analysis';
 
     constructor(private http: HttpClient) {}
-
-    getFeatures(): Observable<Features> {
-        return this.http.get<Features>(`${this.baseUrl}/features`);
-    }
 
     getInsights(ticker: string): Observable<MdnaInsights> {
         return this.http.get<MdnaInsights>(`${this.baseUrl}/${encodeURIComponent(ticker)}/insights`);
@@ -48,14 +44,6 @@ export class AnalysisService {
 
     getPeers(ticker: string): Observable<{ ticker: string; peers: Peer[] }> {
         return this.http.get<{ ticker: string; peers: Peer[] }>(`${this.baseUrl}/${encodeURIComponent(ticker)}/peers`);
-    }
-
-    getQualitative(ticker: string, peers?: string[]): Observable<QualitativeAnalysis> {
-        return this.http.post<QualitativeAnalysis>(`${this.baseUrl}/${encodeURIComponent(ticker)}/qualitative`, peers ? { peers } : {});
-    }
-
-    getSwot(ticker: string): Observable<SwotAnalysis> {
-        return this.http.post<SwotAnalysis>(`${this.baseUrl}/${encodeURIComponent(ticker)}/swot`, {});
     }
 
     uploadReport(ticker: string, year: number, file: File): Observable<{ year: number; bytes: number }> {

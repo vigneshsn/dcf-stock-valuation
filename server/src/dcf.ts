@@ -28,7 +28,7 @@ export interface QuantitativeInputs {
   pe: number | null;
   pb: number | null;
   roe: number | null;
-  // Latest fiscal year, as fractions; only used by the SWOT analysis.
+  // Latest fiscal year, as fractions.
   roce?: number | null;
   debtToEquity?: number | null;
   // Only used by the Red-flag scan; undefined when the provider does not supply it.

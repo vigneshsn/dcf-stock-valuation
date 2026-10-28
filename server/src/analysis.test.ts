@@ -475,82 +475,6 @@ test('statements: FMP amounts are converted from rupees to crores', async () => 
   }
 });
 
-test('SWOT returns financials strengths when no annual report is available', async () => {
-  process.env.SWOT_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'swot-route-'));
-  const router = createAnalysisRouter({
-    provider: 'indianapi',
-    indianApiKey: 'test-key',
-    indianApiBaseUrl: 'https://indianapi.test',
-    fetcher: async (input) => {
-      const url = new URL(String(input));
-      failOnFmp(url);
-      return url.pathname === '/industry_search' ? new Response('[]') : new Response(JSON.stringify(indianApiStock('SWOTIND')));
-    },
-    swot: { listReports: async () => [] },
-    features: { swot: true },
-  });
-  const app = express();
-  app.use('/api/analysis', router);
-  const server = createServer(app);
-  servers.push(server);
-  server.listen(0);
-  await once(server, 'listening');
-  const address = server.address();
-  assert(address && typeof address !== 'string');
-
-  const response = await fetch(`http://127.0.0.1:${address.port}/api/analysis/SWOTIND/swot`, { method: 'POST' });
-  const body = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(body.report.status, 'no-reports');
-  assert.deepEqual(body.financials, { status: 'ok', year: 2026, message: null });
-  assert.deepEqual(body.strengths.items.map((i: { evidence: string }) => i.evidence), ['ROE: 25.0%', 'ROCE: 20.0%']);
-  assert.deepEqual(body.opportunities.items, []);
-  assert.equal(body.experimental, true);
-});
-
-test('SWOT caches a complete result so a repeat request makes no upstream calls', async () => {
-  process.env.SWOT_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'swot-route-'));
-  let fetches = 0;
-  let listings = 0;
-  const router = createAnalysisRouter({
-    provider: 'indianapi',
-    indianApiKey: 'test-key',
-    indianApiBaseUrl: 'https://indianapi.test',
-    fetcher: async (input) => {
-      const url = new URL(String(input));
-      failOnFmp(url);
-      fetches++;
-      return url.pathname === '/industry_search' ? new Response('[]') : new Response(JSON.stringify(indianApiStock('SWOTCACHE')));
-    },
-    swot: {
-      listReports: async () => (listings++, [{ year: 2026, source: 'screener', load: async () => Buffer.from('pdf') }]),
-      textOf: async () => 'A report without any MD&A section.',
-    },
-    features: { swot: true },
-  });
-  const app = express();
-  app.use('/api/analysis', router);
-  const server = createServer(app);
-  servers.push(server);
-  server.listen(0);
-  await once(server, 'listening');
-  const address = server.address();
-  assert(address && typeof address !== 'string');
-  const run = async () => (await fetch(`http://127.0.0.1:${address.port}/api/analysis/SWOTCACHE/swot`, { method: 'POST' })).json();
-
-  const first = await run();
-  const callsAfterFirst = { fetches, listings };
-  const second = await run();
-
-  assert.equal(first.report.status, 'no-mdna');
-  assert.equal(first.cached, false);
-  assert.equal(second.cached, true);
-  assert.equal(second.report.cached, true);
-  assert.deepEqual(second.strengths, first.strengths);
-  assert.deepEqual({ fetches, listings }, callsAfterFirst);
-});
-
 async function serve(router: express.Router): Promise<string> {
   const app = express();
   app.use('/api/analysis', router);
@@ -563,29 +487,11 @@ async function serve(router: express.Router): Promise<string> {
   return `http://127.0.0.1:${address.port}/api/analysis`;
 }
 
-test('features: SWOT and the Qualitative analysis are off by default, MD&A insights on', async () => {
-  const saved = { q: process.env.ENABLE_QUALITATIVE, s: process.env.ENABLE_SWOT };
-  delete process.env.ENABLE_QUALITATIVE;
-  delete process.env.ENABLE_SWOT;
-  try {
-    const base = await serve(createAnalysisRouter({ provider: 'indianapi' }));
-    assert.deepEqual(await (await fetch(`${base}/features`)).json(), { insights: true, qualitative: false, swot: false });
-
-    for (const [path, flag] of [['SOME/swot', 'ENABLE_SWOT'], ['SOME/qualitative', 'ENABLE_QUALITATIVE']]) {
-      const response = await fetch(`${base}/${path}`, { method: 'POST' });
-      assert.equal(response.status, 404);
-      const body = await response.json();
-      assert.equal(body.error, 'disabled');
-      assert.match(body.message, new RegExp(flag));
-    }
-
-    process.env.ENABLE_SWOT = 'true';
-    assert.equal((await (await fetch(`${base}/features`)).json()).swot, true);
-  } finally {
-    if (saved.q === undefined) delete process.env.ENABLE_QUALITATIVE;
-    else process.env.ENABLE_QUALITATIVE = saved.q;
-    if (saved.s === undefined) delete process.env.ENABLE_SWOT;
-    else process.env.ENABLE_SWOT = saved.s;
+test('SWOT, the Qualitative analysis and their feature flags are gone', async () => {
+  const base = await serve(createAnalysisRouter({ provider: 'indianapi' }));
+  assert.equal((await fetch(`${base}/features`)).status, 404);
+  for (const path of ['SOME/swot', 'SOME/qualitative']) {
+    assert.equal((await fetch(`${base}/${path}`, { method: 'POST' })).status, 404);
   }
 });
 
@@ -695,7 +601,7 @@ test('guidance: scores cached claims against actuals, extracts once per report, 
   assert.equal(first.experimental, true);
   assert.equal(first.lowerConfidence, true);
   assert.deepEqual(first.years.map((y: any) => [y.year, y.status, y.claims[0].verdict]), [[2024, 'ok', 'near'], [2023, 'ok', 'met']]);
-  assert.equal(first.hitRate, 0.5);
+  assert.equal('hitRate' in first, false);
   assert.equal(extractions, 2);
 
   llmDown = true;

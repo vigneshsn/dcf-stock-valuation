@@ -43,7 +43,7 @@ The normalized response always includes stable section keys. News and peers are 
 - Do not invent or discover additional peers. Keep a peer when an individual comparison value is missing; display an empty placeholder for that cell.
 - Include company name, price, market cap, P/E, P/B, trailing-12-month ROE, debt/equity, trailing-12-month profit margin, and dividend yield when supplied. Use percentage points and display `%` for ROE, profit margin, and dividend yield; display P/E, P/B, and debt/equity as ratios.
 - Do not substitute five-year-average ROE or profit margin when trailing-12-month values are absent.
-- Do not add a user override control for this table. Existing qualitative-analysis peer selection and override behavior remain unchanged.
+- Do not add a user override control for this table. Peer set selection stays on FMP.
 
 ### Analyst consensus
 

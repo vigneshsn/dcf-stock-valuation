@@ -2,6 +2,8 @@
 
 Spec: `docs/spec-stock-analysis-agent.md`. GitHub issues: vigneshsn/dcf-stock-valuation.
 
+> #9 and #10 (Management trustworthiness, Qualitative score) were retired by [#20](https://github.com/vigneshsn/dcf-stock-valuation/issues/20).
+
 | # | Ticket | Blocked by |
 |---|---|---|
 | [#2](https://github.com/vigneshsn/dcf-stock-valuation/issues/2) | Ratios and Fair value on the dashboard | none |

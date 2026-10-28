@@ -8,7 +8,7 @@ Solve the DCF backwards: given today's price, find the **Implied growth** the ma
 | --- | --- |
 | 1 | Reuses the existing DCF in `server/src/dcf.ts`. Holds discount rate and terminal growth at the same values the Fair value uses, and solves for `growthRate` so that `fairValuePerShare == price`. |
 | 2 | Solved numerically (bisection over `growthRate` in [-20%, +50%], stopping once the Fair value is within ₹0.01/share of the price; Implied growth is reported to 0.01 pt). If no solution exists in the range, return `status: "no-solution"` with the bound reached. If Fair value does not rise with growth (e.g. earlier losses make the average margin negative), return `status: "not-applicable"`. |
-| 3 | Unscored. Never affects the Quantitative or Qualitative score. |
+| 3 | Unscored. Never affects the Quantitative score. |
 | 4 | Comparators shown beside Implied growth: **historical revenue CAGR** (up to 5 calendar years from `history`, spanning the actual fiscal years so gaps are not overstated) and **guided growth** when the Guidance scorecard has a revenue claim (see [spec-guidance-scorecard.md](spec-guidance-scorecard.md)). Missing comparators are omitted, not estimated. |
 | 5 | Plain-language verdict computed by thresholds, not an LLM: Implied growth > historical CAGR + 3 pts → "market expects acceleration"; < CAGR − 3 pts → "market expects slowdown"; otherwise "in line with history". |
 | 6 | Loss-making or negative-FCF base year → `status: "not-applicable"` with a message (DCF base is meaningless). |

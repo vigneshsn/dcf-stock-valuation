@@ -6,7 +6,7 @@ An unscored, deterministic checklist of **earnings-quality and balance-sheet war
 
 | # | Decision |
 | --- | --- |
-| 1 | Unscored, informational; never affects any score. Same tile style as SWOT. |
+| 1 | Unscored, informational; never affects any score. Same item-list style as MD&A insights. |
 | 2 | Pure rules over `history` and latest-year metrics (see table). Missing metrics are skipped silently. |
 | 3 | Each flag carries a name, severity (*watch* / *warning*), the metric values and the years compared, so it is verifiable. |
 | 4 | Latest fiscal year vs previous (and 3-year trend where noted). Absolute / year-over-year only; no Peer set comparison in v1. |
@@ -36,7 +36,7 @@ Notes on the rules as implemented:
 - Cash-flow rules ignore years with net income ≤ 0 (OCF / NI has no meaning there).
 - "Down each of last 3 years" means three year-over-year declines, so four fiscal years of net margin.
 - Growth rules need a positive prior-year value (no growth rate from zero debt or receivables).
-- Free cash flow is net income + non-cash expense − capex, the same definition as the DCF and SWOT.
+- Free cash flow is net income + non-cash expense − capex, the same definition as the DCF.
 - Promoter stake compares the latest filing with the latest filing at least 2 years earlier.
 
 ## Provider coverage
