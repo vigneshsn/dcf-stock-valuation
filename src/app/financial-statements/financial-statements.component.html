@@ -1,0 +1,46 @@
+@for (st of statements(); track st.key) {
+    <section class="statement" [attr.data-statement]="st.key">
+        <h4>{{ st.title }}</h4>
+        @if (!dense()) {
+            <p class="what" data-testid="statement-what">{{ st.what }}</p>
+            @if (st.takeaway) {
+                <p class="takeaway" data-testid="statement-takeaway">{{ st.takeaway }}</p>
+            }
+            <div class="trend-grid">
+                @for (item of st.items; track item.label) {
+                    <div class="trend" data-testid="trend">
+                        <div class="trend-label">{{ item.label }}</div>
+                        <svg viewBox="0 0 112 46" width="112" height="46" role="img" [attr.aria-label]="item.label + ' trend'">
+                            @for (b of item.bars; track b.x) {
+                                <rect [attr.x]="b.x" [attr.y]="b.y" width="16" [attr.height]="b.h" [class.neg]="b.neg" />
+                            }
+                        </svg>
+                        <div class="trend-last">{{ format(item.latest, item.unit) }} <small>FY{{ latestYear() }}</small></div>
+                        <div class="trend-explain">{{ item.explain }}</div>
+                    </div>
+                }
+            </div>
+            <button type="button" class="link" data-testid="table-toggle"
+                [attr.aria-expanded]="isTableOpen(st.key)" (click)="toggleTable(st.key)">
+                {{ isTableOpen(st.key) ? 'Hide' : 'Show' }} full table
+            </button>
+        }
+        @if (isTableOpen(st.key)) {
+            <div class="table-wrap">
+                <table class="num">
+                    <thead>
+                        <tr><th></th>@for (y of years(); track y.year) {<th scope="col">FY{{ y.year }}</th>}</tr>
+                    </thead>
+                    <tbody>
+                        @for (item of st.items; track item.label) {
+                            <tr>
+                                <th scope="row">{{ item.label }}</th>
+                                @for (v of item.values; track $index) {<td>{{ format(v, item.unit) }}</td>}
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}

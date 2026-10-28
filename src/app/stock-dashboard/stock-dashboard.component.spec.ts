@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 import { StockDashboardComponent } from './stock-dashboard.component';
 import { StockMetrics } from '../models/stock-metrics';
 import { READING_MODE_KEY, ReadingModeService } from '../services/reading-mode.service';
-import { Features, MdnaInsights, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis } from '../models/analysis';
+import { Features, MdnaInsights, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis, StatementYear } from '../models/analysis';
 
 const STOCK_URL = 'http://localhost:3000/api/stock/';
 const ANALYSIS_URL = 'http://localhost:3000/api/analysis/';
@@ -88,6 +88,24 @@ function redFlags(overrides: Partial<RedFlagScan> = {}): RedFlagScan {
     };
 }
 
+function statementYear(year: number): StatementYear {
+    return {
+        year,
+        revenue: 1000,
+        ebitda: 200,
+        netProfit: 100,
+        netMargin: 10,
+        totalAssets: 2000,
+        borrowings: 100,
+        equity: 1000,
+        debtToEquity: 0.1,
+        operatingCashFlow: 120,
+        capex: 50,
+        freeCashFlow: 70,
+        cashConversion: 120
+    };
+}
+
 function mdnaInsights(overrides: Partial<MdnaInsights> = {}): MdnaInsights {
     return {
         ticker: 'TCS',
@@ -132,8 +150,8 @@ describe('StockDashboardComponent', () => {
 
     afterEach(() => {
         localStorage.removeItem(READING_MODE_KEY);
-        // MD&A insights, the reverse DCF and red flags load automatically with every ticker; tests that don't assert on them leave them pending.
-        httpMock.match((r) => r.url.endsWith('/insights') || r.url.endsWith('/reverse-dcf') || r.url.endsWith('/red-flags'));
+        // MD&A insights, the reverse DCF, statements and red flags load automatically with every ticker; tests that don't assert on them leave them pending.
+        httpMock.match((r) => ['/insights', '/reverse-dcf', '/statements', '/red-flags'].some((end) => r.url.endsWith(end)));
         httpMock.verify();
     });
 
@@ -288,7 +306,7 @@ describe('StockDashboardComponent', () => {
         const sections = (b: HTMLElement) => Array.from(b.querySelectorAll('article[data-testid]') as NodeListOf<HTMLElement>)
             .map((el) => el.dataset['testid']);
         expect(sections(blocks[0])).toEqual(['company', 'key-stats']);
-        expect(sections(blocks[1])).toEqual(['red-flags', 'peers']);
+        expect(sections(blocks[1])).toEqual(['statements', 'red-flags', 'peers']);
         expect(sections(blocks[2])).toEqual(['insights-panel', 'guidance-panel']);
         expect(sections(blocks[3])).toEqual(['quant-panel', 'reverse-dcf']);
     });
@@ -518,6 +536,33 @@ describe('StockDashboardComponent', () => {
 
         const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="red-flags"]');
         expect(panel.textContent).toContain('No red flags detected on available data');
+    });
+
+    it('loads the financial statements automatically at the top of Financials', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/statements`).flush({ ticker: 'TCS', years: [statementYear(2024), statementYear(2025)] });
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-block="financials"] [data-testid="statements"]');
+        expect(panel.textContent).toContain('Income statement');
+        expect(panel.textContent).toContain('Cash flow');
+    });
+
+    it('says when no annual statements are available and retries after an error', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/statements`).flush({ error: 'Upstream fetch failed' }, { status: 502, statusText: 'Bad Gateway' });
+        fixture.detectChanges();
+
+        const panel = () => fixture.nativeElement.querySelector('[data-testid="statements"]') as HTMLElement;
+        expect(panel().textContent).toContain('Upstream fetch failed');
+        (panel().querySelector('[data-testid="statements-retry"]') as HTMLButtonElement).click();
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/statements`).flush({ ticker: 'TCS', years: [] });
+        fixture.detectChanges();
+        expect(panel().textContent).toContain('No annual financial statements available');
     });
 
     it('re-solves the reverse DCF with the discount and terminal growth from the sliders', () => {
@@ -804,6 +849,7 @@ describe('StockDashboardComponent deep link', () => {
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/quantitative`).flush(quant());
         httpMock.expectOne(`${ANALYSIS_URL}ITC/insights`).flush(mdnaInsights({ ticker: 'ITC' }));
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/reverse-dcf`).flush(reverseDcf({ ticker: 'ITC' }));
+        httpMock.expectOne(`${ANALYSIS_URL}ITC/statements`).flush({ ticker: 'ITC', years: [] });
         httpMock.expectOne(`${ANALYSIS_URL}ITC/red-flags`).flush(redFlags({ ticker: 'ITC' }));
         httpMock.verify();
     });

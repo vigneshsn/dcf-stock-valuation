@@ -13,9 +13,11 @@ import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.comp
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
 import { ScenarioRangeComponent } from '../scenario-range/scenario-range.component';
 import { ReverseDcfComponent } from '../reverse-dcf/reverse-dcf.component';
+import { FinancialStatementsComponent } from '../financial-statements/financial-statements.component';
 import {
     DcfAssumptions,
     Features,
+    FinancialStatements,
     GuidanceOutcome,
     InsightListKey,
     MdnaInsights,
@@ -138,7 +140,7 @@ const OUTCOME_TONES: Record<GuidanceOutcome, Tone> = { met: 'good', partly: 'war
     selector: 'app-stock-dashboard',
     templateUrl: './stock-dashboard.component.html',
     styleUrls: ['./stock-dashboard.component.css'],
-    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent, ReverseDcfComponent],
+    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent, ReverseDcfComponent, FinancialStatementsComponent],
     standalone: true
 })
 export class StockDashboardComponent implements OnInit, OnDestroy {
@@ -172,6 +174,10 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     reverseDcf: ReverseDcfAnalysis | null = null;
     reverseDcfLoading = false;
     reverseDcfError = '';
+
+    statements: FinancialStatements | null = null;
+    statementsLoading = false;
+    statementsError = '';
 
     redFlags: RedFlagScan | null = null;
     redFlagsLoading = false;
@@ -208,6 +214,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private stockSub?: Subscription;
     private quantSub?: Subscription;
     private reverseDcfSub?: Subscription;
+    private statementsSub?: Subscription;
     private redFlagsSub?: Subscription;
     private insightsSub?: Subscription;
     private qualSub?: Subscription;
@@ -231,6 +238,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.stockSub?.unsubscribe();
         this.quantSub?.unsubscribe();
         this.reverseDcfSub?.unsubscribe();
+        this.statementsSub?.unsubscribe();
         this.redFlagsSub?.unsubscribe();
         this.insightsSub?.unsubscribe();
         this.qualSub?.unsubscribe();
@@ -265,6 +273,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.reverseDcf = null;
         this.assumptions = null;
         this.loadQuant();
+        this.loadStatements();
         this.loadRedFlags();
         this.loadInsights();
     }
@@ -394,6 +403,25 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
             error: (err: HttpErrorResponse) => {
                 this.reverseDcfLoading = false;
                 this.reverseDcfError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+            }
+        });
+    }
+
+    // ---- Financial statements -------------------------------------------------
+
+    loadStatements(): void {
+        this.statementsSub?.unsubscribe();
+        this.statements = null;
+        this.statementsLoading = true;
+        this.statementsError = '';
+        this.statementsSub = this.analysis.getStatements(this.ticker).subscribe({
+            next: (s) => {
+                this.statements = s;
+                this.statementsLoading = false;
+            },
+            error: (err: HttpErrorResponse) => {
+                this.statementsLoading = false;
+                this.statementsError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
             }
         });
     }

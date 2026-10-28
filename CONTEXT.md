@@ -56,6 +56,10 @@ _Avoid_: Promise, forecast
 The per-claim comparison of Guidance claims with the later actuals, giving each claim a verdict (met, near, missed, pending). The evidence for whether management delivers, left for the user to judge; unscored, with no trust score derived from it.
 _Avoid_: Management report card, Management trustworthiness, Qualitative score
 
+**Financial statements**:
+The curated income statement, balance sheet and cash flow for up to five fiscal years at the top of the Financials block, each with a plain-language note on what it tells you, a factual one-line takeaway, small trend charts and the full table. Amounts in ₹ crore. Unscored.
+_Avoid_: Financial analysis, P&L summary
+
 **Strength / Weakness**:
 A deterministic, fact-based finding where a financial metric is clearly better (Strength) or worse (Weakness) than the company's own history or the Peer set median, stated with both numbers. Unscored. Compared on a fixed set of metrics and only listed when the difference is clear.
 _Avoid_: Pros and cons, SWOT
