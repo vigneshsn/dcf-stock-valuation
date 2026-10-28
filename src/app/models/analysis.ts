@@ -189,6 +189,32 @@ export interface FinancialStatements {
     years: StatementYear[];
 }
 
+export type StrengthMetric = 'roce' | 'roe' | 'netMargin' | 'revenueGrowth' | 'debtToEquity' | 'cashConversion';
+export type StrengthBenchmark = 'history' | 'peers';
+
+/** A metric at least 20% better or worse than the company's own earlier years or the Peer set median. */
+export interface StrengthFinding {
+    metric: StrengthMetric;
+    benchmark: StrengthBenchmark;
+    /** States both numbers and the benchmark, e.g. "ROE 25.0% in FY26 vs 18.0% FY22–FY25 average". */
+    text: string;
+    value: number;
+    benchmarkValue: number;
+    /** Signed difference as a percent of the benchmark. */
+    differencePct: number;
+}
+
+/** Strength / Weakness findings: deterministic and unscored; they never feed any score. */
+export interface StrengthsWeaknesses {
+    ticker: string;
+    status: 'ok' | 'unavailable';
+    message: string | null;
+    strengths: StrengthFinding[];
+    weaknesses: StrengthFinding[];
+    /** Comparisons not made, and why. */
+    skipped: { metric: StrengthMetric; benchmark: StrengthBenchmark; reason: string }[];
+}
+
 export type GuidanceMetric = 'revenueGrowth' | 'netProfitGrowth' | 'margin' | 'capex' | 'debt' | 'other';
 export type GuidanceVerdict = 'met' | 'near' | 'missed' | 'pending' | 'unscored';
 

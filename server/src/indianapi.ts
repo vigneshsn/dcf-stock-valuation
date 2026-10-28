@@ -1,6 +1,7 @@
 import { calculateAnnualReturns, mapAnnualStatements } from './finance.js';
 import { QuantitativeInputs, YearFinancials } from './dcf.js';
 import { PromoterHolding } from './redFlags.js';
+import { PeerRatios } from './strengths.js';
 
 const DEFAULT_INDIANAPI_URL = 'https://stock.indianapi.in';
 const LIVEMINT_URL = 'https://www.livemint.com';
@@ -185,6 +186,8 @@ function annualHistory(rows: JsonRecord[]): YearFinancials[] {
         reportedCapex: capex == null ? null : Math.abs(capex),
         ebitda: operatingIncome == null || depreciation == null ? null : operatingIncome + depreciation,
         totalAssets: numberValue(balance.TotalAssets),
+        ebit: operatingIncome,
+        currentLiabilities: numberValue(balance.TotalCurrentLiabilities),
       }];
     })
     .sort((a, b) => b.year - a.year)
@@ -506,5 +509,15 @@ export async function fetchIndianApiQuantitativeInputs(
     debtToEquity: totalDebt != null && totalEquity != null && totalEquity > 0 ? totalDebt / totalEquity : null,
     history: annualHistory(rows),
     promoterHolding: promoterHolding(response.shareholding),
+    peers: peerRatios(record(response.companyProfile).peerCompanyList ?? response.peerCompanyList),
   };
+}
+
+// Undefined when the response has no peer list, so the peer benchmark is reported as not provided.
+// IndianAPI sends 0 for ratios it does not have, so an exact 0 is treated as not reported.
+function peerRatios(value: unknown): PeerRatios[] | undefined {
+  const reported = (v: number | null) => (v === 0 ? null : v);
+  return Array.isArray(value)
+    ? normalizePeers(value).map((p) => ({ name: p.name, roe: reported(p.roe), netMargin: reported(p.profitMargin) }))
+    : undefined;
 }

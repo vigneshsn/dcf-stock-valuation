@@ -27,6 +27,9 @@ import {
     RedFlagId,
     RedFlagScan,
     ReverseDcfAnalysis,
+    StrengthBenchmark,
+    StrengthMetric,
+    StrengthsWeaknesses,
     SwotAnalysis,
     GuidanceClaim,
     GuidanceMetric,
@@ -88,6 +91,20 @@ const RED_FLAG_NAMES: Record<RedFlagId, string> = {
     'promoter-stake-falling': 'Promoter stake falling',
     'promoter-pledging': 'Promoter pledging',
     'negative-free-cash-flow': 'Negative free cash flow, 3 years'
+};
+
+const STRENGTH_METRIC_NAMES: Record<StrengthMetric, string> = {
+    roce: 'ROCE',
+    roe: 'ROE',
+    netMargin: 'Net margin',
+    revenueGrowth: 'Revenue growth',
+    debtToEquity: 'Debt / equity',
+    cashConversion: 'Cash conversion'
+};
+
+const BENCHMARK_NAMES: Record<StrengthBenchmark, string> = {
+    history: 'vs own history',
+    peers: 'vs Peer set'
 };
 
 type BlockId = 'overview' | 'financials' | 'management' | 'valuation' | 'decision';
@@ -179,6 +196,12 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     statementsLoading = false;
     statementsError = '';
 
+    strengths: StrengthsWeaknesses | null = null;
+    strengthsLoading = false;
+    strengthsError = '';
+    readonly strengthMetricNames = STRENGTH_METRIC_NAMES;
+    readonly benchmarkNames = BENCHMARK_NAMES;
+
     redFlags: RedFlagScan | null = null;
     redFlagsLoading = false;
     redFlagsError = '';
@@ -215,6 +238,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private quantSub?: Subscription;
     private reverseDcfSub?: Subscription;
     private statementsSub?: Subscription;
+    private strengthsSub?: Subscription;
     private redFlagsSub?: Subscription;
     private insightsSub?: Subscription;
     private qualSub?: Subscription;
@@ -239,6 +263,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.quantSub?.unsubscribe();
         this.reverseDcfSub?.unsubscribe();
         this.statementsSub?.unsubscribe();
+        this.strengthsSub?.unsubscribe();
         this.redFlagsSub?.unsubscribe();
         this.insightsSub?.unsubscribe();
         this.qualSub?.unsubscribe();
@@ -274,6 +299,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.assumptions = null;
         this.loadQuant();
         this.loadStatements();
+        this.loadStrengths();
         this.loadRedFlags();
         this.loadInsights();
     }
@@ -422,6 +448,25 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
             error: (err: HttpErrorResponse) => {
                 this.statementsLoading = false;
                 this.statementsError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+            }
+        });
+    }
+
+    // ---- Strength / Weakness findings ----------------------------------------
+
+    loadStrengths(): void {
+        this.strengthsSub?.unsubscribe();
+        this.strengths = null;
+        this.strengthsLoading = true;
+        this.strengthsError = '';
+        this.strengthsSub = this.analysis.getStrengthsWeaknesses(this.ticker).subscribe({
+            next: (s) => {
+                this.strengths = s;
+                this.strengthsLoading = false;
+            },
+            error: (err: HttpErrorResponse) => {
+                this.strengthsLoading = false;
+                this.strengthsError = err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
             }
         });
     }

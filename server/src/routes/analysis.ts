@@ -17,6 +17,7 @@ import { GuidanceDeps, GuidanceYear, collectGuidance, forgetStoredGuidance, guid
 import { Features, features } from '../features.js';
 import { redFlagScan } from '../redFlags.js';
 import { financialStatements } from '../statements.js';
+import { strengthsWeaknesses } from '../strengths.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
@@ -98,6 +99,8 @@ async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promis
         reportedCapex: reportedCapex == null ? null : Math.abs(reportedCapex),
         ebitda: metric(row.ebitda),
         totalAssets: metric(bs.totalAssets),
+        ebit: metric(row.operatingIncome),
+        currentLiabilities: metric(bs.totalCurrentLiabilities),
       };
     })
     .filter((y) => Number.isFinite(y.year) && y.revenue > 0)
@@ -305,6 +308,18 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       res.json(f.history.length
         ? { ticker, status: 'ok', message: null, ...redFlagScan(f) }
         : { ticker, status: 'unavailable', message: 'No annual financials available to scan', flags: [], skipped: [] });
+    } catch (err) {
+      sendUpstreamError(res, ticker, err);
+    }
+  });
+
+  router.get('/:ticker/strengths-weaknesses', async (req, res) => {
+    const ticker = req.params.ticker;
+    try {
+      const f = await loadQuantitativeInputs(ticker);
+      res.json(f.history.length
+        ? { ticker, status: 'ok', message: null, ...strengthsWeaknesses(f) }
+        : { ticker, status: 'unavailable', message: 'No annual financials available to compare', strengths: [], weaknesses: [], skipped: [] });
     } catch (err) {
       sendUpstreamError(res, ticker, err);
     }

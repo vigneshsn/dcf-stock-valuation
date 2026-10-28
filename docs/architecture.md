@@ -69,6 +69,7 @@ flowchart LR
 | Fundamentals (price, ratios, company context, peers) | `StockDashboardComponent`, `StockService` | `GET /api/stock/:ticker` | IndianAPI or FMP |
 | Quantitative analysis (DCF Fair value + score) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
 | Financial statements (5 fiscal years: income, balance sheet, cash flow; unscored) | `FinancialStatementsComponent`, `AnalysisService` | `GET /api/analysis/:ticker/statements` | IndianAPI or FMP (cached financials, amounts in ₹ crore) |
+| Strength / Weakness findings (ROCE, ROE, net margin, revenue growth, debt / equity, cash conversion vs own history or Peer set median; ≥20% gaps only; unscored) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/strengths-weaknesses` | IndianAPI or FMP (cached financials); peer ROE and net margin from IndianAPI only |
 | MD&A insights (key points, growth strategy, tailwinds, headwinds, risks, Moat; loads automatically) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/insights` | Latest annual report (Screener.in / upload), one LLM call |
 | Feature flags (which optional panels to show) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/features` | `ENABLE_QUALITATIVE`, `ENABLE_SWOT` |
 | Qualitative analysis (Moat + Management trustworthiness; off unless `ENABLE_QUALITATIVE`) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/qualitative` | Screener.in / uploaded PDFs, FMP peers, LLM |

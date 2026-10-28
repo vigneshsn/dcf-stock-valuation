@@ -1,4 +1,5 @@
 import type { PromoterHolding } from './redFlags.js';
+import type { PeerRatios } from './strengths.js';
 
 export interface YearFinancials {
   year: number;
@@ -15,6 +16,9 @@ export interface YearFinancials {
   reportedCapex?: number | null;
   ebitda?: number | null;
   totalAssets?: number | null;
+  // Only used by the Strength / Weakness findings (ROCE).
+  ebit?: number | null;
+  currentLiabilities?: number | null;
 }
 
 // Statement totals and share count must share a unit scale so totals / shares is a per-share price.
@@ -29,6 +33,8 @@ export interface QuantitativeInputs {
   debtToEquity?: number | null;
   // Only used by the Red-flag scan; undefined when the provider does not supply it.
   promoterHolding?: PromoterHolding[];
+  // Only used by the Strength / Weakness findings; undefined when the provider does not supply peer ratios.
+  peers?: PeerRatios[];
   history: YearFinancials[];
 }
 

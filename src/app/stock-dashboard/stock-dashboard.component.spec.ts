@@ -150,8 +150,8 @@ describe('StockDashboardComponent', () => {
 
     afterEach(() => {
         localStorage.removeItem(READING_MODE_KEY);
-        // MD&A insights, the reverse DCF, statements and red flags load automatically with every ticker; tests that don't assert on them leave them pending.
-        httpMock.match((r) => ['/insights', '/reverse-dcf', '/statements', '/red-flags'].some((end) => r.url.endsWith(end)));
+        // MD&A insights, the reverse DCF, statements, Strengths / Weaknesses and red flags load automatically with every ticker; tests that don't assert on them leave them pending.
+        httpMock.match((r) => ['/insights', '/reverse-dcf', '/statements', '/strengths-weaknesses', '/red-flags'].some((end) => r.url.endsWith(end)));
         httpMock.verify();
     });
 
@@ -306,7 +306,7 @@ describe('StockDashboardComponent', () => {
         const sections = (b: HTMLElement) => Array.from(b.querySelectorAll('article[data-testid]') as NodeListOf<HTMLElement>)
             .map((el) => el.dataset['testid']);
         expect(sections(blocks[0])).toEqual(['company', 'key-stats']);
-        expect(sections(blocks[1])).toEqual(['statements', 'red-flags', 'peers']);
+        expect(sections(blocks[1])).toEqual(['statements', 'strengths', 'red-flags', 'peers']);
         expect(sections(blocks[2])).toEqual(['insights-panel', 'guidance-panel']);
         expect(sections(blocks[3])).toEqual(['quant-panel', 'reverse-dcf']);
     });
@@ -548,6 +548,28 @@ describe('StockDashboardComponent', () => {
         const panel: HTMLElement = fixture.nativeElement.querySelector('[data-block="financials"] [data-testid="statements"]');
         expect(panel.textContent).toContain('Income statement');
         expect(panel.textContent).toContain('Cash flow');
+    });
+
+    it('lists Strengths and Weaknesses with their benchmark, and what was not compared', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
+        expectQuant('TCS').flush(quant());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/strengths-weaknesses`).flush({
+            ticker: 'TCS',
+            status: 'ok',
+            message: null,
+            strengths: [{ metric: 'roe', benchmark: 'peers', text: 'ROE 30.0% in FY26 vs 20.0% Peer set median (3 peers, trailing 12 months)', value: 30, benchmarkValue: 20, differencePct: 50 }],
+            weaknesses: [],
+            skipped: [{ metric: 'roce', benchmark: 'history', reason: 'not enough data' }]
+        });
+        fixture.detectChanges();
+
+        const panel: HTMLElement = fixture.nativeElement.querySelector('[data-block="financials"] [data-testid="strengths"]');
+        const strengths = panel.querySelector('[data-testid="sw-strengths"]') as HTMLElement;
+        expect(strengths.textContent).toContain('vs Peer set');
+        expect(strengths.textContent).toContain('ROE 30.0% in FY26 vs 20.0% Peer set median');
+        expect((panel.querySelector('[data-testid="sw-weaknesses"]') as HTMLElement).textContent).toContain('None on available data');
+        expect((panel.querySelector('[data-testid="sw-skipped"]') as HTMLElement).textContent).toContain('ROCE vs own history: not enough data');
     });
 
     it('says when no annual statements are available and retries after an error', () => {
@@ -850,6 +872,7 @@ describe('StockDashboardComponent deep link', () => {
         httpMock.expectOne(`${ANALYSIS_URL}ITC/insights`).flush(mdnaInsights({ ticker: 'ITC' }));
         httpMock.expectOne((r) => r.url === `${ANALYSIS_URL}ITC/reverse-dcf`).flush(reverseDcf({ ticker: 'ITC' }));
         httpMock.expectOne(`${ANALYSIS_URL}ITC/statements`).flush({ ticker: 'ITC', years: [] });
+        httpMock.expectOne(`${ANALYSIS_URL}ITC/strengths-weaknesses`).flush({ ticker: 'ITC', status: 'ok', message: null, strengths: [], weaknesses: [], skipped: [] });
         httpMock.expectOne(`${ANALYSIS_URL}ITC/red-flags`).flush(redFlags({ ticker: 'ITC' }));
         httpMock.verify();
     });

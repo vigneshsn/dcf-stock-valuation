@@ -226,6 +226,37 @@ test('red flags are unavailable without annual financials', async () => {
   assert.match(body.message, /No annual financials/);
 });
 
+test('strengths / weaknesses: IndianAPI history and Peer set median', async () => {
+  const base = indianApiStock('SWPEER');
+  const stock = {
+    ...base,
+    companyProfile: {
+      ...base.companyProfile,
+      peerCompanyList: [
+        { companyName: 'Peer A', marketCap: 500, returnOnAverageEquityTrailing12Month: 40, netProfitMarginPercentTrailing12Month: 10 },
+        { companyName: 'Peer B', marketCap: 400, returnOnAverageEquityTrailing12Month: 35, netProfitMarginPercentTrailing12Month: 12 },
+        // IndianAPI sends 0 for ratios it lacks; these must not drag the median down.
+        { companyName: 'Peer C', marketCap: 300, returnOnAverageEquityTrailing12Month: 0, netProfitMarginPercentTrailing12Month: 0 },
+      ],
+    },
+  };
+  const response = await requestAnalysis(indianApiRouter(stock), 'SWPEER', 'strengths-weaknesses');
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.status, 'ok');
+  // ROE is 25% (equity = 4 × net income) and net margin 20% in FY26; ROCE tracks margin, so it is in line with history.
+  assert.deepEqual(body.strengths.map((f: { text: string }) => f.text), [
+    'Net margin 20.0% in FY26 vs 11.0% Peer set median (2 peers, trailing 12 months)',
+  ]);
+  assert.deepEqual(body.weaknesses.map((f: { text: string }) => f.text), [
+    'ROE 25.0% in FY26 vs 37.5% Peer set median (2 peers, trailing 12 months)',
+  ]);
+  assert.ok(!body.skipped.some((s: { metric: string }) => s.metric === 'roce'));
+  assert.ok(body.skipped.some((s: { metric: string; reason: string }) =>
+    s.metric === 'debtToEquity' && s.reason === 'not enough data'));
+});
+
 test('statements: the latest 5 IndianAPI fiscal years, oldest first, in crores', async () => {
   const response = await requestAnalysis(indianApiRouter(indianApiStock('STMT')), 'STMT', 'statements');
   const body = await response.json();

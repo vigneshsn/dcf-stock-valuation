@@ -220,6 +220,63 @@
                                 }
                             </article>
 
+                            <!-- Strength / Weakness findings (deterministic, unscored) -->
+                            <article class="tile span-12" data-testid="strengths">
+                                <header class="tile-head">
+                                    <div>
+                                        <h3>Strengths / Weaknesses</h3>
+                                        <span class="tile-sub">Metrics at least 20% better or worse than the company's own history or its Peer set; unscored</span>
+                                    </div>
+                                </header>
+                                @if (explain) {
+                                    <p class="hint" data-explain>Each finding compares the latest fiscal year with a benchmark: the average of the company's earlier years, or the median of its Peer set. Only clear gaps of 20% or more are listed, with both numbers so you can judge them yourself. Peer figures are trailing twelve months and cover ROE and net margin only.</p>
+                                }
+                                @if (strengthsLoading) {
+                                    <span class="skeleton" style="height: 22px; width: 80%"></span>
+                                }
+                                @if (strengthsError) {
+                                    <p class="alert alert-bad" role="alert">
+                                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ strengthsError }}
+                                    </p>
+                                    <button type="button" class="btn btn-ghost btn-sm" data-testid="strengths-retry" (click)="loadStrengths()">
+                                        <span class="material-icons" aria-hidden="true">refresh</span> Try again
+                                    </button>
+                                }
+                                @if (strengths; as sw) {
+                                    @if (sw.status !== 'ok' && sw.message) {
+                                        <p class="alert alert-warn">
+                                            <span class="material-icons" aria-hidden="true">info</span> {{ sw.message }}
+                                        </p>
+                                    } @else {
+                                        <div class="swot-grid">
+                                            @for (q of [{ key: 'strengths', title: 'Strengths', tone: 'good', items: sw.strengths }, { key: 'weaknesses', title: 'Weaknesses', tone: 'bad', items: sw.weaknesses }]; track q.key) {
+                                                <section class="swot-quadrant" [attr.data-tone]="q.tone" [attr.data-testid]="'sw-' + q.key">
+                                                    <h4 class="swot-head">{{ q.title }}</h4>
+                                                    <ul class="swot-items">
+                                                        @for (f of q.items; track f.metric + f.benchmark) {
+                                                            <li data-testid="sw-finding">
+                                                                <span class="swot-badge" data-source="financials">{{ benchmarkNames[f.benchmark] }}</span>
+                                                                {{ f.text }}
+                                                            </li>
+                                                        } @empty {
+                                                            <li class="muted small">None on available data</li>
+                                                        }
+                                                    </ul>
+                                                </section>
+                                            }
+                                        </div>
+                                        @if (sw.skipped.length) {
+                                            <p class="small" data-testid="sw-skipped">
+                                                Not compared:
+                                                @for (s of sw.skipped; track s.metric + s.benchmark; let last = $last) {
+                                                    {{ strengthMetricNames[s.metric] }} {{ benchmarkNames[s.benchmark] }}: {{ s.reason }}{{ last ? '' : ';' }}
+                                                }
+                                            </p>
+                                        }
+                                    }
+                                }
+                            </article>
+
                             <!-- Red-flag scan (deterministic, unscored) -->
                             <article class="tile span-12" data-testid="red-flags">
                                 <header class="tile-head">
