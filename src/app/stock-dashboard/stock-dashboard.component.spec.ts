@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { of } from 'rxjs';
 import { StockDashboardComponent } from './stock-dashboard.component';
 import { StockMetrics } from '../models/stock-metrics';
+import { READING_MODE_KEY, ReadingModeService } from '../services/reading-mode.service';
 import { Features, MdnaInsights, QuantitativeAnalysis, RedFlagScan, ReverseDcfAnalysis } from '../models/analysis';
 
 const STOCK_URL = 'http://localhost:3000/api/stock/';
@@ -116,6 +117,7 @@ describe('StockDashboardComponent', () => {
     let httpMock: HttpTestingController;
 
     beforeEach(async () => {
+        localStorage.removeItem(READING_MODE_KEY);
         await TestBed.configureTestingModule({
             imports: [StockDashboardComponent],
             providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()]
@@ -129,6 +131,7 @@ describe('StockDashboardComponent', () => {
     });
 
     afterEach(() => {
+        localStorage.removeItem(READING_MODE_KEY);
         // MD&A insights, the reverse DCF and red flags load automatically with every ticker; tests that don't assert on them leave them pending.
         httpMock.match((r) => r.url.endsWith('/insights') || r.url.endsWith('/reverse-dcf') || r.url.endsWith('/red-flags'));
         httpMock.verify();
@@ -338,13 +341,63 @@ describe('StockDashboardComponent', () => {
 
         const target = fixture.nativeElement.querySelector('[data-block="valuation"]') as HTMLElement;
         const scroll = spyOn(target, 'scrollIntoView');
-        const links = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="contents"] button') as NodeListOf<HTMLButtonElement>);
+        const links = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="contents"] > button') as NodeListOf<HTMLButtonElement>);
         expect(links.map((l) => l.textContent?.replace(/^\s*\d+/, '').trim())).toEqual([
             'Business overview', 'Financials', 'Management & annual report', 'Valuation', 'Decision summary'
         ]);
 
         links[3].click();
         expect(scroll).toHaveBeenCalled();
+    });
+
+    describe('reading mode', () => {
+        const notes = (root: HTMLElement) => root.querySelectorAll('[data-explain]').length;
+        const modeButton = (label: string) =>
+            Array.from(fixture.nativeElement.querySelectorAll('[data-testid="reading-mode"] button') as NodeListOf<HTMLButtonElement>)
+                .find((b) => b.textContent?.trim() === label) as HTMLButtonElement;
+
+        beforeEach(() => {
+            search('ACME');
+            httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({ peRatio: 24.5 }));
+            expectQuant('ACME').flush(quant());
+            fixture.detectChanges();
+        });
+
+        it('defaults to Explain with a plain-language note on every block and Key stat', () => {
+            expect(modeButton('Explain').getAttribute('aria-pressed')).toBe('true');
+            expect(modeButton('Dense').getAttribute('aria-pressed')).toBe('false');
+
+            const blocks = Array.from(fixture.nativeElement.querySelectorAll('[data-block]') as NodeListOf<HTMLElement>);
+            for (const b of blocks) {
+                expect(b.querySelector('[data-explain="block"]')?.textContent?.trim()).withContext(b.dataset['block']!).toBeTruthy();
+            }
+            const stats = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="key-stats"] .stat') as NodeListOf<HTMLElement>);
+            expect(stats.length).toBeGreaterThan(0);
+            for (const s of stats) {
+                expect(notes(s)).withContext(s.querySelector('.label')!.textContent!).toBe(1);
+            }
+            const pe = stats.find((s) => s.querySelector('.label')?.textContent === 'P/E')!;
+            expect(pe.querySelector('[data-explain]')?.textContent).toContain('earnings');
+            for (const id of ['red-flags', 'peers', 'quant-panel', 'reverse-dcf']) {
+                expect(notes(fixture.nativeElement.querySelector(`[data-testid="${id}"]`))).withContext(id).toBeGreaterThan(0);
+            }
+        });
+
+        it('Dense drops every explanation but keeps the numbers, and is remembered', () => {
+            modeButton('Dense').click();
+            fixture.detectChanges();
+
+            expect(modeButton('Dense').getAttribute('aria-pressed')).toBe('true');
+            expect(notes(fixture.nativeElement)).toBe(0);
+            expect(fixture.nativeElement.querySelector('[data-testid="decision-summary"]').textContent).toContain('There is no verdict');
+            expect(fixture.nativeElement.querySelector('[data-testid="key-stats"]').textContent).toContain('24.5');
+            expect(fixture.nativeElement.querySelector('[data-testid="quant-panel"]').textContent).toContain('₹150');
+            expect(TestBed.inject(ReadingModeService).mode()).toBe('dense');
+
+            modeButton('Explain').click();
+            fixture.detectChanges();
+            expect(notes(fixture.nativeElement)).toBeGreaterThan(0);
+        });
     });
 
     it('shows no Analyst consensus or Recent news even when the provider sends them', () => {

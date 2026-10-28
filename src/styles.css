@@ -123,6 +123,8 @@ a:hover { text-decoration: underline; }
 
 .muted { color: var(--muted); }
 .small { font-size: 13px; color: var(--muted); }
+/* Plain-language note, shown in Explain reading mode only. */
+.hint { display: block; margin: 6px 0 10px; color: var(--faint); font-size: 0.82rem; line-height: 1.45; }
 
 /* Glass card */
 .card {

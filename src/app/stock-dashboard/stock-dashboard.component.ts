@@ -7,6 +7,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { StockService } from '../services/stock.service';
 import { AnalysisService } from '../services/analysis.service';
+import { ReadingModeService } from '../services/reading-mode.service';
 import { PeerRow, StockMetrics, marketCapCrores } from '../models/stock-metrics';
 import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.component';
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
@@ -89,13 +90,36 @@ const RED_FLAG_NAMES: Record<RedFlagId, string> = {
 
 type BlockId = 'overview' | 'financials' | 'management' | 'valuation' | 'decision';
 
-/** The Analysis reading order: facts before judgement (docs/adr/0001-evidence-without-verdict.md). */
-const BLOCKS: { id: BlockId; title: string }[] = [
-    { id: 'overview', title: 'Business overview' },
-    { id: 'financials', title: 'Financials' },
-    { id: 'management', title: 'Management & annual report' },
-    { id: 'valuation', title: 'Valuation' },
-    { id: 'decision', title: 'Decision summary' }
+/**
+ * The Analysis reading order: facts before judgement (docs/adr/0001-evidence-without-verdict.md).
+ * `explain` is the block's plain-language note, shown in Explain mode only.
+ */
+const BLOCKS: { id: BlockId; title: string; explain: string }[] = [
+    {
+        id: 'overview',
+        title: 'Business overview',
+        explain: 'What the company does and the headline numbers the market uses to size it up.'
+    },
+    {
+        id: 'financials',
+        title: 'Financials',
+        explain: 'What the reported numbers say: warnings raised by fixed rules, and how the company compares with its nearest peers.'
+    },
+    {
+        id: 'management',
+        title: 'Management & annual report',
+        explain: 'What management says in its annual report, read by a language model, and whether its past targets came true. Quotes let you check the source.'
+    },
+    {
+        id: 'valuation',
+        title: 'Valuation',
+        explain: 'Estimates of what the business is worth from the cash it may generate, set against the market price. They rest on assumptions, so read them as a range, not a fact.'
+    },
+    {
+        id: 'decision',
+        title: 'Decision summary',
+        explain: 'The evidence from the blocks above, gathered in one place so you can weigh it yourself.'
+    }
 ];
 
 const MOAT_TONES: Record<MoatRating, Tone> = { wide: 'good', narrow: 'neutral', none: 'bad' };
@@ -124,6 +148,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private readonly router = inject(Router);
     private readonly destroyRef = inject(DestroyRef);
     private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+    readonly readingMode = inject(ReadingModeService);
 
     readonly suggestions = ['TCS', 'RELIANCE', 'INFY', 'ITC', 'HDFCBANK'];
 
@@ -298,6 +323,11 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         if (!this.collapsedBlocks.delete(id)) {
             this.collapsedBlocks.add(id);
         }
+    }
+
+    /** True in Explain mode: plain-language notes are shown next to the numbers. */
+    get explain(): boolean {
+        return this.readingMode.mode() === 'explain';
     }
 
     scrollToBlock(id: BlockId): void {

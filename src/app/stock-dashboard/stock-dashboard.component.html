@@ -26,6 +26,12 @@
         @for (b of blocks; track b.id; let i = $index) {
             <button type="button" (click)="scrollToBlock(b.id)"><span class="num" aria-hidden="true">{{ i + 1 }}</span>{{ b.title }}</button>
         }
+        <div class="reading-mode" data-testid="reading-mode" role="group" aria-label="Reading mode">
+            <button type="button" [attr.aria-pressed]="explain" (click)="readingMode.set('explain')"
+                    title="Plain-language notes on every block and ratio">Explain</button>
+            <button type="button" [attr.aria-pressed]="!explain" (click)="readingMode.set('dense')"
+                    title="Numbers only, no explanations">Dense</button>
+        </div>
     </nav>
 
     @for (b of blocks; track b.id; let i = $index) {
@@ -40,6 +46,9 @@
                         (click)="toggleBlock(b.id)">{{ isCollapsed(b.id) ? 'Expand' : 'Collapse' }}</button>
             </header>
             @if (!isCollapsed(b.id)) {
+                @if (explain) {
+                    <p class="hint block-explain" data-explain="block">{{ b.explain }}</p>
+                }
                 <div class="bento" [id]="'block-body-' + b.id">
                     @switch (b.id) {
                         @case ('overview') {
@@ -118,38 +127,65 @@
                                         <div class="stat">
                                             <span class="label">Market cap</span>
                                             <span class="value">{{ metrics?.marketCap == null ? 'N/A' : '₹' + (marketCapCrores(metrics?.marketCap) | number:'1.0-0') + ' Cr' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>Share price × number of shares: what the market values the whole company at.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">P/E</span>
                                             <span class="value">{{ metrics?.peRatio ?? 'N/A' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>Price ÷ earnings per share: how many years of today’s profit you pay for.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">P/B</span>
                                             <span class="value">{{ quant?.ratios?.pb == null ? 'N/A' : (quant?.ratios?.pb | number:'1.1-1') }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>Price ÷ book value per share: what you pay for each rupee of net assets.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">Book value</span>
                                             <span class="value">{{ metrics?.bookValue ?? 'N/A' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>Net assets (what the company owns minus what it owes) per share, in ₹.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">Dividend yield</span>
                                             <span class="value">{{ metrics?.dividendYield == null ? 'N/A' : (metrics?.dividendYield | number:'1.0-2') + '%' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>Yearly dividend as a share of the price: the cash you are paid for holding.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">ROCE</span>
                                             <span class="value">{{ metrics?.roce == null ? 'N/A' : (metrics?.roce | number:'1.0-2') + '%' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>Operating profit ÷ capital employed (equity + debt): how well the business uses all its money.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">ROE</span>
                                             <span class="value">{{ metrics?.roe == null ? 'N/A' : (metrics?.roe | number:'1.0-2') + '%' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>Net profit ÷ shareholder equity: what each rupee of the owners’ money earns.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">52W high</span>
                                             <span class="value">{{ metrics?.week52High ?? 'N/A' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>The highest price in the last 52 weeks.</span>
+                                            }
                                         </div>
                                         <div class="stat">
                                             <span class="label">52W low</span>
                                             <span class="value">{{ metrics?.week52Low ?? 'N/A' }}</span>
+                                            @if (explain) {
+                                                <span class="hint" data-explain>The lowest price in the last 52 weeks.</span>
+                                            }
                                         </div>
                                     </div>
                                 }
@@ -164,6 +200,9 @@
                                         <span class="tile-sub">Earnings-quality and balance-sheet warnings from the financials; unscored</span>
                                     </div>
                                 </header>
+                                @if (explain) {
+                                    <p class="hint" data-explain>Red flags are warnings raised by fixed rules over the reported numbers, such as profit not turning into cash or debt growing faster than sales. Open a flag to see the numbers behind it. No flags does not mean no risk.</p>
+                                }
                                 @if (redFlagsLoading) {
                                     <span class="skeleton" style="height: 22px; width: 80%"></span>
                                 }
@@ -217,6 +256,9 @@
                                             <span class="tile-sub">How it stacks up against the squad</span>
                                         </div>
                                     </header>
+                                    @if (explain) {
+                                        <p class="hint" data-explain>The nearest companies in the same industry, by market cap. A gap with peers is a question to look into, not an answer.</p>
+                                    }
                                     @if (peerRows.length) {
                                         <app-peer-comparison [rows]="peerRows"></app-peer-comparison>
                                     } @else {
@@ -248,6 +290,9 @@
                                         <span class="tag tag-warn">experimental</span>
                                     </div>
                                 </header>
+                                @if (explain) {
+                                    <p class="hint" data-explain>Management’s own view of the business, summarised by a language model from the latest annual report. Open a point to read the quote it comes from. Tailwinds help the business today; Investment risks may or may not happen.</p>
+                                }
 
                                 @if (insightsLoading) {
                                     <div class="thinking">
@@ -444,6 +489,9 @@
                                         <span class="tag tag-warn">experimental</span>
                                     </div>
                                 </header>
+                                @if (explain) {
+                                    <p class="hint" data-explain>Each target management set in an annual report is checked against what the numbers later showed: met, near, missed or still pending. Judge for yourself how much to rely on what management says.</p>
+                                }
 
                                 @if (!guidance && !guidanceLoading) {
                                     <div class="qual-cta">
@@ -620,6 +668,9 @@
                                         <span class="tag" title="Served from cache">cached</span>
                                     }
                                 </header>
+                                @if (explain) {
+                                    <p class="hint" data-explain>Fair value is an estimate from a discounted cash flow (DCF) model: what the cash the business may generate in future is worth today. Small changes in the assumptions move it a lot. The Quantitative score only says how far the price sits from Fair value.</p>
+                                }
 
                                 @if (quantLoading && !quant) {
                                     <div class="score-row">
@@ -668,6 +719,9 @@
                                     <p class="explanation">{{ q.explanation }}</p>
 
                                     @if (q.scenarios) {
+                                        @if (explain) {
+                                            <p class="hint" data-explain>Scenarios: bear and bull shift growth and discount rate around the base case, so you can see how wide the plausible range is next to the price.</p>
+                                        }
                                         <app-scenario-range [scenarios]="q.scenarios" [price]="q.price"></app-scenario-range>
                                     } @else {
                                         <p class="explanation">Scenario range not applicable: the latest year is loss-making or has negative free cash flow.</p>
@@ -727,6 +781,9 @@
                                         <span class="tag" title="Served from cache">cached</span>
                                     }
                                 </header>
+                                @if (explain) {
+                                    <p class="hint" data-explain>Runs the DCF backwards: the yearly growth the current price assumes (Implied growth), set against the growth the company has actually delivered.</p>
+                                }
                                 @if (reverseDcfLoading && !reverseDcf) {
                                     <span class="skeleton" style="height: 22px; width: 80%"></span>
                                 }

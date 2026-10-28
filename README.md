@@ -138,12 +138,13 @@ The server starts on `http://localhost:3000` by default. Run it alongside `npm s
 Open `http://localhost:4200/stock` while the Angular app and backend are running. Fundamentals, the Quantitative analysis and MD&A insights (plus the Qualitative and SWOT analyses when enabled) share this one page; `?q=TICKER` deep-links a stock. Then verify:
 
 1. Search a populated NSE symbol such as `RELIANCE`; confirm five blocks appear in order (Business overview, Financials, Management & annual report, Valuation, Decision summary), each open with a Collapse button, and that the sticky contents bar scrolls to each block. Confirm the NSE quote, metrics, company context, red flags, peers, and the Quantitative score with Fair value appear, and that no analyst consensus or news is shown.
-2. Search a company with missing optional provider data; confirm available sections remain visible and missing sections/cells show empty states rather than errors.
-3. Search an unknown NSE symbol; confirm the app shows “Ticker not found”.
-4. Set `STOCK_DATA_PROVIDER=indianapi` and use an invalid IndianAPI key while an FMP key is configured; confirm the app shows an upstream error without FMP data.
-5. Set `STOCK_DATA_PROVIDER=fmp` with a valid FMP key; confirm FMP metrics appear and IndianAPI-only sections remain empty.
-6. Search `TCS`; confirm MD&A insights load automatically with the report year, a Moat rating and the five lists, and that a repeat search shows them as cached. With no LLM key or quota left, confirm the panel explains the outage and offers a retry.
-7. Confirm the Qualitative and SWOT panels are hidden by default and appear after setting `ENABLE_QUALITATIVE=true` / `ENABLE_SWOT=true` and reloading the page.
+2. On a first visit, confirm the contents bar shows **Explain** selected and that each block, Key stat and section carries a plain-language note. Switch to **Dense**; confirm the notes disappear while the numbers stay, and that Dense is still selected after a page reload.
+3. Search a company with missing optional provider data; confirm available sections remain visible and missing sections/cells show empty states rather than errors.
+4. Search an unknown NSE symbol; confirm the app shows “Ticker not found”.
+5. Set `STOCK_DATA_PROVIDER=indianapi` and use an invalid IndianAPI key while an FMP key is configured; confirm the app shows an upstream error without FMP data.
+6. Set `STOCK_DATA_PROVIDER=fmp` with a valid FMP key; confirm FMP metrics appear and IndianAPI-only sections remain empty.
+7. Search `TCS`; confirm MD&A insights load automatically with the report year, a Moat rating and the five lists, and that a repeat search shows them as cached. With no LLM key or quota left, confirm the panel explains the outage and offers a retry.
+8. Confirm the Qualitative and SWOT panels are hidden by default and appear after setting `ENABLE_QUALITATIVE=true` / `ENABLE_SWOT=true` and reloading the page.
 
 ## Notes
 - This app uses mock data for demonstration. Replace with real financial data as needed.

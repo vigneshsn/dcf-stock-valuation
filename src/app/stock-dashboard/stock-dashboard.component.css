@@ -175,6 +175,29 @@
     color: var(--violet);
 }
 
+/* ---------- Explain / Dense reading mode ---------- */
+.reading-mode {
+    display: flex;
+    flex: none;
+    margin-left: auto;
+    border-radius: 999px;
+    background: var(--surface-2);
+}
+
+.contents [aria-pressed="true"] {
+    background: var(--violet);
+    color: #111;
+}
+
+.block-explain {
+    margin-top: -4px;
+    color: var(--muted);
+}
+
+.stat .hint {
+    margin-bottom: 0;
+}
+
 /* ---------- Company tile ---------- */
 .company-top {
     display: flex;
