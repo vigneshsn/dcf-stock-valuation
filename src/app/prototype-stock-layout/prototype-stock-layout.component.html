@@ -1,0 +1,300 @@
+<!-- PROTOTYPE: throwaway. Four layouts for the stock dashboard; switch with ?variant= or ←/→. -->
+<div class="proto">
+    <div class="proto-top">
+        <span class="proto-tag">PROTOTYPE · mock data · {{ variantNames[variant()] }}</span>
+        <div class="mode" role="group" aria-label="Reading mode">
+            <button [class.on]="mode() === 'explain'" (click)="mode.set('explain')">Explain</button>
+            <button [class.on]="mode() === 'dense'" (click)="mode.set('dense')">Dense</button>
+        </div>
+    </div>
+
+    <!-- ============ Shared chapter bodies (content only; each variant owns layout) ============ -->
+    <ng-template #body let-id>
+        @switch (id) {
+            @case ('overview') {
+                @if (mode() === 'explain') {
+                    <p class="lead">{{ company.description }}</p>
+                }
+                <div class="stats">
+                    <div><span>Price</span><b>₹{{ company.price | number }}</b></div>
+                    <div><span>Market cap</span><b>₹{{ company.marketCap | number }} cr</b></div>
+                    <div><span>52w range</span><b>₹{{ company.week52Low | number }}–{{ company.week52High | number }}</b></div>
+                    <div><span>P/E</span><b>{{ company.pe }}</b></div>
+                    <div><span>P/B</span><b>{{ company.pb }}</b></div>
+                    <div><span>ROE</span><b>{{ company.roe }}%</b></div>
+                    <div><span>ROCE</span><b>{{ company.roce }}%</b></div>
+                    <div><span>Dividend yield</span><b>{{ company.dividendYield }}%</b></div>
+                </div>
+                <h4>Where revenue comes from</h4>
+                <div class="segbar">
+                    @for (s of company.segments; track s.name) {
+                        <div [style.flex]="s.share" [title]="s.name">{{ s.name }} · {{ s.share }}%</div>
+                    }
+                </div>
+                @if (mode() === 'explain') {
+                    <p class="hint">P/E = price ÷ earnings per share: how many years of today's profit you pay for. ROCE = profit ÷ capital employed: how well the business uses its money.</p>
+                }
+            }
+            @case ('statements') {
+                @for (st of statements; track st.key) {
+                    <section class="statement">
+                        <h4>{{ st.title }}</h4>
+                        @if (mode() === 'explain') {
+                            <p class="muted">{{ st.what }}</p>
+                            <p class="takeaway">{{ st.takeaway }}</p>
+                            <div class="spark-grid">
+                                @for (it of st.items; track it.label) {
+                                    <div class="spark">
+                                        <div class="spark-label">{{ it.label }}</div>
+                                        <svg viewBox="0 0 112 46" width="112" height="46">
+                                            @for (b of bars(it.values); track $index) {
+                                                <rect [attr.x]="b.x" [attr.y]="b.y" width="16" [attr.height]="b.h" [class.neg]="b.neg"/>
+                                            }
+                                        </svg>
+                                        <div class="spark-last">{{ fmt(it.values[it.values.length - 1], it.unit) }} <small>FY{{ years[years.length - 1] }}</small></div>
+                                        <div class="hint">{{ it.explain }}</div>
+                                    </div>
+                                }
+                            </div>
+                            <button class="link" (click)="toggle('raw-' + st.key)">{{ isOpen('raw-' + st.key) ? 'Hide' : 'Show' }} full table</button>
+                        }
+                        @if (mode() === 'dense' || isOpen('raw-' + st.key)) {
+                            <table class="num">
+                                <thead><tr><th></th>@for (y of years; track y) {<th>FY{{ y }}</th>}</tr></thead>
+                                <tbody>
+                                    @for (it of st.items; track it.label) {
+                                        <tr><td>{{ it.label }}</td>@for (v of it.values; track $index) {<td>{{ fmt(v, it.unit) }}</td>}</tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </section>
+                }
+            }
+            @case ('strengths') {
+                @if (mode() === 'explain') {
+                    <p class="muted">Each item compares a fact with the company's own past or with the median of its 3–5 nearest peers. Only clear differences are listed.</p>
+                }
+                <div class="sw">
+                    <div>
+                        <h4 class="good">Strengths</h4>
+                        @for (s of strengths; track s.metric) {
+                            <div class="sw-row"><b>{{ s.metric }}</b> <span>{{ s.company }}</span> <small>vs {{ s.compare }}</small></div>
+                        }
+                    </div>
+                    <div>
+                        <h4 class="bad">Weaknesses</h4>
+                        @for (s of weaknesses; track s.metric) {
+                            <div class="sw-row"><b>{{ s.metric }}</b> <span>{{ s.company }}</span> <small>vs {{ s.compare }}</small></div>
+                        }
+                    </div>
+                </div>
+            }
+            @case ('risks') {
+                @for (f of redFlags; track f.title) {
+                    <div class="flag"><b>⚑ {{ f.title }}</b><p>{{ f.detail }}</p></div>
+                }
+                @if (mode() === 'explain') {
+                    <p class="hint">Red flags are rule-based warnings over the numbers. No flags does not mean no risk.</p>
+                }
+            }
+            @case ('management') {
+                <span class="badge">experimental · AI-read annual report</span>
+                <div class="sw">
+                    <div><h4>Tailwinds</h4><ul>@for (t of mdna.tailwinds; track t) {<li>{{ t }}</li>}</ul></div>
+                    <div><h4>Headwinds</h4><ul>@for (t of mdna.headwinds; track t) {<li>{{ t }}</li>}</ul></div>
+                </div>
+                <h4>Did past guidance come true?</h4>
+                <p>{{ mdna.guidance.met }} met · {{ mdna.guidance.missed }} missed · {{ mdna.guidance.pending }} pending</p>
+                <h4>Investment risks the report names</h4>
+                <ul>@for (h of mdna.headwinds; track h) {<li>{{ h }}</li>}</ul>
+            }
+            @case ('valuation') {
+                @if (mode() === 'explain') {
+                    <p class="muted">Fair value is an estimate from a discounted cash flow model: the value today of the cash the business is expected to generate. Small changes in assumptions move it a lot, so a range is shown.</p>
+                }
+                <div class="range">
+                    <div class="track"></div>
+                    <div class="pt bear" [style.left.%]="rangePos(valuation.bear)">Bear<br>₹{{ valuation.bear | number }}</div>
+                    <div class="pt base" [style.left.%]="rangePos(valuation.fairValue)">Fair value<br>₹{{ valuation.fairValue | number }}</div>
+                    <div class="pt bull" [style.left.%]="rangePos(valuation.bull)">Bull<br>₹{{ valuation.bull | number }}</div>
+                    <div class="pt price" [style.left.%]="rangePos(company.price)">Price<br>₹{{ company.price | number }}</div>
+                </div>
+                <p>The current price implies <b>{{ valuation.impliedGrowth }}%</b> annual growth; the company delivered <b>{{ valuation.historicGrowth }}%</b> over the last 4 years.</p>
+                <p>Quantitative score: <b>{{ valuation.quantScore }}/5</b> (price 10–30% above Fair value)</p>
+            }
+            @case ('decision') {
+                @if (mode() === 'explain') {
+                    <p class="muted">The evidence from each chapter, side by side. There is no verdict: the decision is yours.</p>
+                }
+                <table class="evidence">
+                    <tbody>
+                        <tr><th>Business</th><td>Paints maker, 85% decorative, India-focused</td></tr>
+                        <tr><th>Growth</th><td>Revenue +11.8%/yr (FY21–25); −4.5% in FY25</td></tr>
+                        <tr><th>Profitability</th><td>ROCE 22.4%; net margin 10.8% (5y avg 14.9%)</td></tr>
+                        <tr><th>Financial health</th><td>Debt/equity 0.12x; borrowings rising 4 years</td></tr>
+                        <tr><th>Cash</th><td>Positive operating cash every year; FCF ₹2,500 cr FY25</td></tr>
+                        <tr><th>Strengths / Weaknesses</th><td>3 / 3</td></tr>
+                        <tr><th>Red flags</th><td>1 (rising borrowings)</td></tr>
+                        <tr><th>Valuation</th><td>Price ₹2,410 · Fair value ₹2,050 (range ₹1,620–2,710) · implies 14.2% growth</td></tr>
+                    </tbody>
+                </table>
+                <h4>Your own checklist</h4>
+                <label><input type="checkbox"> I can explain how this company makes money</label>
+                <label><input type="checkbox"> I have read the three financial statements</label>
+                <label><input type="checkbox"> I know which weaknesses would make me sell</label>
+                <label><input type="checkbox"> I am comfortable with the price vs the valuation range</label>
+            }
+        }
+    </ng-template>
+
+    <ng-template #header>
+        <header class="co">
+            <div>
+                <h2>{{ company.name }}</h2>
+                <span class="muted">{{ company.ticker }} · {{ company.industry }}</span>
+            </div>
+            <div class="price">₹{{ company.price | number }}</div>
+        </header>
+    </ng-template>
+
+    <!-- ============ A: Guided stepper ============ -->
+    @if (variant() === 'A') {
+        <ng-container [ngTemplateOutlet]="header"></ng-container>
+        <nav class="stepper">
+            @for (c of chapters; track c.id; let i = $index) {
+                <button [class.done]="i < activeIndex()" [class.on]="c.id === active()" (click)="active.set(c.id)">
+                    <span class="num">{{ i + 1 }}</span>{{ c.title }}
+                </button>
+            }
+        </nav>
+        <article class="card step">
+            <p class="eyebrow">Step {{ activeIndex() + 1 }} of {{ chapters.length }}</p>
+            <h3>{{ chapter(active()).question }}</h3>
+            <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{$implicit: active()}"></ng-container>
+            <footer class="step-nav">
+                <button class="ghost" [disabled]="activeIndex() === 0" (click)="go(-1)">← Back</button>
+                @if (activeIndex() < chapters.length - 1) {
+                    <button class="primary" (click)="go(1)">Next: {{ chapters[activeIndex() + 1].title }} →</button>
+                }
+            </footer>
+        </article>
+    }
+
+    <!-- ============ B: Tabs + sticky company sidebar ============ -->
+    @if (variant() === 'B') {
+        <div class="layout-b">
+            <aside class="side card">
+                <h2>{{ company.name }}</h2>
+                <p class="muted">{{ company.industry }}</p>
+                <div class="price">₹{{ company.price | number }}</div>
+                <dl>
+                    <dt>Market cap</dt><dd>₹{{ company.marketCap | number }} cr</dd>
+                    <dt>P/E</dt><dd>{{ company.pe }}</dd>
+                    <dt>ROCE</dt><dd>{{ company.roce }}%</dd>
+                    <dt>Debt/equity</dt><dd>0.12x</dd>
+                    <dt>Fair value</dt><dd>₹{{ valuation.fairValue | number }}</dd>
+                </dl>
+            </aside>
+            <main>
+                <nav class="tabs">
+                    @for (c of chapters; track c.id) {
+                        <button [class.on]="c.id === active()" (click)="active.set(c.id)">{{ c.title }}</button>
+                    }
+                </nav>
+                <article class="card">
+                    <h3>{{ chapter(active()).title }}</h3>
+                    <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{$implicit: active()}"></ng-container>
+                </article>
+            </main>
+        </div>
+    }
+
+    <!-- ============ C: Long-form report, sticky TOC, collapsible chapters ============ -->
+    @if (variant() === 'C') {
+        <div class="layout-c">
+            <nav class="toc">
+                <b>Contents</b>
+                @for (c of chapters; track c.id; let i = $index) {
+                    <a (click)="scrollTo(c.id)">{{ i + 1 }}. {{ c.title }}</a>
+                }
+            </nav>
+            <main>
+                <ng-container [ngTemplateOutlet]="header"></ng-container>
+                @for (c of chapters; track c.id; let i = $index) {
+                    <section class="card report" [id]="'c-' + c.id">
+                        <div class="report-head" (click)="toggle('c-' + c.id)">
+                            <div>
+                                <p class="eyebrow">{{ i + 1 }}. {{ c.title }}</p>
+                                <h3>{{ c.headline }}</h3>
+                            </div>
+                            <span class="chev">{{ isOpen('c-' + c.id) || i === 0 ? '−' : '+' }}</span>
+                        </div>
+                        @if (isOpen('c-' + c.id) || i === 0) {
+                            <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{$implicit: c.id}"></ng-container>
+                        }
+                    </section>
+                }
+            </main>
+        </div>
+    }
+
+    <!-- ============ D: Overview cockpit, chapter tiles open a drawer ============ -->
+    @if (variant() === 'D') {
+        <ng-container [ngTemplateOutlet]="header"></ng-container>
+        <article class="card">
+            <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{$implicit: 'overview'}"></ng-container>
+        </article>
+        <div class="tiles">
+            @for (c of chapters.slice(1); track c.id) {
+                <button class="tile card" (click)="drawer.set(c.id)">
+                    <span class="eyebrow">{{ c.title }}</span>
+                    <b>{{ c.headline }}</b>
+                    <span class="muted">{{ c.question }} →</span>
+                </button>
+            }
+        </div>
+        @if (drawer(); as d) {
+            <div class="scrim" (click)="drawer.set(null)"></div>
+            <aside class="drawer">
+                <button class="close" (click)="drawer.set(null)">✕</button>
+                <h3>{{ chapter(d).title }}</h3>
+                <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{$implicit: d}"></ng-container>
+            </aside>
+        }
+    }
+
+    <!-- ============ E: C merged into 5 blocks, all open, collapsible ============ -->
+    @if (variant() === 'E') {
+        <div class="layout-c">
+            <nav class="toc">
+                <b>Contents</b>
+                @for (blk of blocks; track blk.id; let i = $index) {
+                    <a (click)="scrollTo(blk.id)">{{ i + 1 }}. {{ blk.title }}</a>
+                }
+            </nav>
+            <main>
+                <ng-container [ngTemplateOutlet]="header"></ng-container>
+                @for (blk of blocks; track blk.id; let i = $index) {
+                    <section class="card report" [id]="'c-' + blk.id">
+                        <div class="report-head">
+                            <div>
+                                <p class="eyebrow">{{ i + 1 }}. {{ blk.title }}</p>
+                                <h3>{{ blk.headline }}</h3>
+                            </div>
+                            <button class="ghost" (click)="toggle('e-' + blk.id)">{{ isOpen('e-' + blk.id) ? 'Expand' : 'Collapse' }}</button>
+                        </div>
+                        @if (!isOpen('e-' + blk.id)) {
+                            @for (part of blk.parts; track part) {
+                                @if (blk.parts.length > 1) { <h4 class="sub">{{ chapter(part).title }}</h4> }
+                                <ng-container [ngTemplateOutlet]="body" [ngTemplateOutletContext]="{$implicit: part}"></ng-container>
+                            }
+                        }
+                    </section>
+                }
+            </main>
+        </div>
+    }
+
+    <app-prototype-switcher [variants]="variants" [current]="variant()" [names]="variantNames"></app-prototype-switcher>
+</div>
