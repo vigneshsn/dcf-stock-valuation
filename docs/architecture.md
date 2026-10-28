@@ -72,6 +72,7 @@ flowchart LR
 | Strength / Weakness findings (ROCE, ROE, net margin, revenue growth, debt / equity, cash conversion vs own history or Peer set median; ≥20% gaps only; unscored) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/strengths-weaknesses` | IndianAPI or FMP (cached financials); peer ROE and net margin from IndianAPI only |
 | MD&A insights ("What does management say?" and the Moat, management's own view; loads automatically) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/insights` | Latest annual report (Screener.in / upload), one LLM call |
 | Guidance scorecard ("Do they deliver?"; met / near / missed / pending counts, no trust score; see [spec](spec-guidance-scorecard.md)) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/guidance` | Up to 3 past annual reports, one cached LLM call each, IndianAPI or FMP financials |
+| Decision summary (evidence side by side, uncoloured, no verdict or Quantitative score; Self-check ticked by the user, not saved) | `DecisionSummaryComponent` | — (built in the browser from the responses above) | — |
 | Peer set (benchmark for Strength / Weakness; not yet shown) | `AnalysisService.getPeers` | `GET /api/analysis/:ticker/peers` | FMP |
 | Feedback | `FeedbackComponent` | — | Embedded Google Form |
 

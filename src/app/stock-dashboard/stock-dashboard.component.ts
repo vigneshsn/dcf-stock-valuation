@@ -14,6 +14,8 @@ import { ScoreRingComponent } from '../score-ring/score-ring.component';
 import { ScenarioRangeComponent } from '../scenario-range/scenario-range.component';
 import { ReverseDcfComponent } from '../reverse-dcf/reverse-dcf.component';
 import { FinancialStatementsComponent } from '../financial-statements/financial-statements.component';
+import { DecisionSummaryComponent } from '../decision-summary/decision-summary.component';
+import { EvidenceSources } from '../decision-summary/decision-evidence';
 import {
     DcfAssumptions,
     FinancialStatements,
@@ -21,7 +23,7 @@ import {
     MdnaInsights,
     MoatRating,
     QuantitativeAnalysis,
-    RedFlagId,
+    RED_FLAG_NAMES,
     RedFlagScan,
     ReverseDcfAnalysis,
     StrengthBenchmark,
@@ -57,18 +59,6 @@ const INSIGHT_SECTIONS: { key: InsightListKey; label: string; icon: string; tone
     { key: 'headwinds', label: 'Headwinds', icon: 'trending_down', tone: 'warn' },
     { key: 'risks', label: 'Investment risks', icon: 'warning_amber', tone: 'bad' }
 ];
-
-const RED_FLAG_NAMES: Record<RedFlagId, string> = {
-    'profit-not-backed-by-cash': 'Profit not backed by cash',
-    'cash-conversion-drop': 'Cash conversion drop',
-    'receivables-outpacing-sales': 'Receivables outpacing sales',
-    'debt-outpacing-revenue': 'Debt outpacing revenue',
-    'high-leverage': 'High leverage',
-    'shrinking-margins': 'Shrinking margins, 3 years',
-    'promoter-stake-falling': 'Promoter stake falling',
-    'promoter-pledging': 'Promoter pledging',
-    'negative-free-cash-flow': 'Negative free cash flow, 3 years'
-};
 
 const STRENGTH_METRIC_NAMES: Record<StrengthMetric, string> = {
     roce: 'ROCE',
@@ -133,7 +123,7 @@ const GUIDANCE_METRICS: Record<GuidanceMetric, string> = {
     selector: 'app-stock-dashboard',
     templateUrl: './stock-dashboard.component.html',
     styleUrls: ['./stock-dashboard.component.css'],
-    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent, ReverseDcfComponent, FinancialStatementsComponent],
+    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent, ReverseDcfComponent, FinancialStatementsComponent, DecisionSummaryComponent],
     standalone: true
 })
 export class StockDashboardComponent implements OnInit, OnDestroy {
@@ -598,6 +588,32 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         return min === max
             ? this.guidanceValue(claim.metric, min)
             : `${this.guidanceValue(claim.metric, min)} – ${this.guidanceValue(claim.metric, max)}`;
+    }
+
+    // ---- Decision summary --------------------------------------------------------
+
+    private evidence: EvidenceSources | null = null;
+
+    /** The same object until a source changes, so the Decision summary input stays stable between checks. */
+    get decisionSources(): EvidenceSources {
+        const next: EvidenceSources = {
+            metrics: this.metrics,
+            statements: this.statements?.years ?? null,
+            strengths: this.strengths,
+            redFlags: this.redFlags,
+            quant: this.quant,
+            reverseDcf: this.reverseDcf
+        };
+        const prev = this.evidence;
+        if (!prev || (Object.keys(next) as (keyof EvidenceSources)[]).some((k) => prev[k] !== next[k])) {
+            this.evidence = next;
+        }
+        return this.evidence!;
+    }
+
+    get decisionLoading(): boolean {
+        return this.stockState === 'loading' || this.quantLoading || this.reverseDcfLoading
+            || this.statementsLoading || this.strengthsLoading || this.redFlagsLoading;
     }
 
     private resetGuidance(): void {

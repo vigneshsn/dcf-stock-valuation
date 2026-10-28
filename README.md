@@ -144,7 +144,8 @@ Open `http://localhost:4200/stock` while the Angular app and backend are running
 5. Set `STOCK_DATA_PROVIDER=indianapi` and use an invalid IndianAPI key while an FMP key is configured; confirm the app shows an upstream error without FMP data.
 6. Set `STOCK_DATA_PROVIDER=fmp` with a valid FMP key; confirm FMP metrics appear and IndianAPI-only sections remain empty.
 7. Search `TCS`; confirm the Management & annual report block answers three questions once each: "What does management say?" (key points, growth strategy, Tailwinds, Headwinds, Investment risks) loads automatically with the report year, and a repeat search shows it as cached; "Do they deliver?" runs the Guidance scorecard and shows met · near · missed · pending counts with no percentage or trust score; "Moat" shows the rating labelled as management's own view. With no LLM key or quota left, confirm the panels explain the outage and offer a retry.
-8. Confirm no SWOT analysis, Qualitative score or Management trustworthiness appears anywhere on the page.
+8. In the Decision summary, confirm rows for Business, Growth, Profitability, Financial health, Cash, Strengths / Weaknesses, Red flags and Valuation (price, Fair value, Scenario range, Implied growth), with no colour, verdict or Quantitative score. Tick a Self-check item; confirm it clears after a reload or when another stock is searched.
+9. Confirm no SWOT analysis, Qualitative score or Management trustworthiness appears anywhere on the page.
 
 ## Notes
 - This app uses mock data for demonstration. Replace with real financial data as needed.

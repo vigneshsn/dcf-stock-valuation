@@ -94,6 +94,18 @@ export type RedFlagId =
     | 'promoter-pledging'
     | 'negative-free-cash-flow';
 
+export const RED_FLAG_NAMES: Record<RedFlagId, string> = {
+    'profit-not-backed-by-cash': 'Profit not backed by cash',
+    'cash-conversion-drop': 'Cash conversion drop',
+    'receivables-outpacing-sales': 'Receivables outpacing sales',
+    'debt-outpacing-revenue': 'Debt outpacing revenue',
+    'high-leverage': 'High leverage',
+    'shrinking-margins': 'Shrinking margins, 3 years',
+    'promoter-stake-falling': 'Promoter stake falling',
+    'promoter-pledging': 'Promoter pledging',
+    'negative-free-cash-flow': 'Negative free cash flow, 3 years'
+};
+
 export interface RedFlag {
     id: RedFlagId;
     severity: 'watch' | 'warning';

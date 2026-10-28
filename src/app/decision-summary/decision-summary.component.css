@@ -1,0 +1,66 @@
+:host {
+    display: block;
+}
+
+.lead {
+    margin: 0 0 10px;
+    color: var(--muted);
+}
+
+/* Deliberately uncoloured: the Decision summary marks nothing as good or bad (ADR 0001). */
+.evidence {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.evidence th,
+.evidence td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+
+.evidence th {
+    width: 200px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.evidence td.missing {
+    color: var(--faint);
+}
+
+.self-check {
+    margin: 18px 0 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.self-check legend {
+    padding: 0 6px;
+    font-family: var(--font-display);
+    font-weight: 600;
+}
+
+.self-check label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+    cursor: pointer;
+}
+
+.note {
+    margin: 8px 0 0;
+    color: var(--faint);
+    font-size: 0.82rem;
+}
+
+@media (max-width: 640px) {
+    .evidence th {
+        width: auto;
+        white-space: normal;
+    }
+}

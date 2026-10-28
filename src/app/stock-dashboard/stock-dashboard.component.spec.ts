@@ -239,7 +239,7 @@ describe('StockDashboardComponent', () => {
         expect(content).toContain('14%');
         expect(component.rangePosition).toBeCloseTo(71.5, 1);
 
-        const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+        const rows = fixture.nativeElement.querySelectorAll('[data-testid="peers"] tbody tr');
         expect(rows.length).toBe(3);
         const missingRow = rows[2] as HTMLTableRowElement;
         expect(Array.from(missingRow.cells).slice(1).map((cell) => cell.textContent?.trim() ?? '')).toEqual([
@@ -261,7 +261,7 @@ describe('StockDashboardComponent', () => {
         expectQuant('ACME').flush(quant({ ratios: { pe: 18.5, pb: 3.4, roe: 0.14 } }));
         fixture.detectChanges();
 
-        const rows = fixture.nativeElement.querySelectorAll('tbody tr') as NodeListOf<HTMLTableRowElement>;
+        const rows = fixture.nativeElement.querySelectorAll('[data-testid="peers"] tbody tr') as NodeListOf<HTMLTableRowElement>;
         expect(rows.length).toBe(2);
         expect(rows[0].classList).toContain('current');
         expect(rows[0].cells[0].textContent).toContain('Acme Industries');
@@ -437,7 +437,7 @@ describe('StockDashboardComponent', () => {
 
         const content = text();
         expect(content).toContain('No peer comparison data available.');
-        expect(fixture.nativeElement.querySelector('tbody')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="peers"] tbody')).toBeNull();
     });
 
     it('normalises market cap to crores for both providers', () => {
@@ -505,6 +505,30 @@ describe('StockDashboardComponent', () => {
         const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="reverse-dcf"]');
         expect(panel.textContent).toContain('Price implies more than 50% annual growth');
         expect(panel.textContent).not.toContain('company delivered');
+    });
+
+    it('closes with a Decision summary of the evidence from every block, without the Quantitative score', () => {
+        search('TCS');
+        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics({ currentPrice: 100, roce: 40, roe: 30 }));
+        expectQuant('TCS').flush(quant());
+        expectReverseDcf('TCS').flush(reverseDcf());
+        expectRedFlags('TCS').flush(redFlags());
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/statements`).flush({ ticker: 'TCS', years: [statementYear(2024), statementYear(2025)] });
+        httpMock.expectOne(`${ANALYSIS_URL}TCS/strengths-weaknesses`).flush({
+            ticker: 'TCS', status: 'ok', message: null, strengths: [], weaknesses: [], skipped: []
+        });
+        fixture.detectChanges();
+
+        const summary: HTMLElement = fixture.nativeElement.querySelector('[data-block="decision"] [data-testid="decision-summary"]');
+        const row = (label: string) => Array.from(summary.querySelectorAll('tr'))
+            .find((r) => r.querySelector('th')?.textContent?.trim() === label)?.querySelector('td')?.textContent?.trim();
+        expect(row('Profitability')).toBe('ROCE 40.0%; ROE 30.0%; net margin 10.0% in FY2025 (FY2024–FY2025 average 10.0%)');
+        expect(row('Strengths / Weaknesses')).toBe('0 Strengths · 0 Weaknesses');
+        expect(row('Red flags')).toBe('2: High leverage, Cash conversion drop');
+        expect(row('Valuation')).toBe('Price ₹100 · Fair value ₹150 · Scenario range ₹80–₹220 · Implied growth 14%');
+        expect(summary.textContent).not.toContain('Quantitative score');
+        expect(summary.textContent).not.toContain('/5');
+        expect(summary.querySelectorAll('[data-testid="self-check"] input[type="checkbox"]').length).toBe(4);
     });
 
     it('loads red flags automatically and shows each with its severity and evidence', () => {

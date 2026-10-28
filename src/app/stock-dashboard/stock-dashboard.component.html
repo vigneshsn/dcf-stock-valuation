@@ -693,7 +693,8 @@
                         }
                         @case ('decision') {
                             <article class="tile span-12" data-testid="decision-summary">
-                                <p class="muted">The evidence from each block, side by side, will appear here. There is no verdict: the decision is yours.</p>
+                                <app-decision-summary [ticker]="ticker" [sources]="decisionSources" [loading]="decisionLoading"
+                                                      [dense]="!explain"></app-decision-summary>
                             </article>
                         }
                     }
