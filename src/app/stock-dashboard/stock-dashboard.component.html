@@ -156,6 +156,34 @@
                             </article>
                         }
                         @case ('financials') {
+                            <!-- Curated financial statements (5-year trends) -->
+                            <article class="tile span-12" data-testid="statements">
+                                <header class="tile-head">
+                                    <div>
+                                        <h3>Financial statements</h3>
+                                        <span class="tile-sub">Up to five fiscal years from the annual accounts, ₹ crore</span>
+                                    </div>
+                                </header>
+                                @if (statementsLoading) {
+                                    <span class="skeleton" style="height: 22px; width: 80%"></span>
+                                }
+                                @if (statementsError) {
+                                    <p class="alert alert-bad" role="alert">
+                                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ statementsError }}
+                                    </p>
+                                    <button type="button" class="btn btn-ghost btn-sm" data-testid="statements-retry" (click)="loadStatements()">
+                                        <span class="material-icons" aria-hidden="true">refresh</span> Try again
+                                    </button>
+                                }
+                                @if (statements; as s) {
+                                    @if (s.years.length) {
+                                        <app-financial-statements [years]="s.years"></app-financial-statements>
+                                    } @else {
+                                        <p class="empty-state">No annual financial statements available.</p>
+                                    }
+                                }
+                            </article>
+
                             <!-- Red-flag scan (deterministic, unscored) -->
                             <article class="tile span-12" data-testid="red-flags">
                                 <header class="tile-head">

@@ -16,10 +16,13 @@ import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights, readSto
 import { GuidanceDeps, GuidanceYear, collectGuidance, forgetStoredGuidance, guidanceScorecard } from '../guidance.js';
 import { Features, features } from '../features.js';
 import { redFlagScan } from '../redFlags.js';
+import { financialStatements } from '../statements.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
 const MAX_PDF_BYTES = 100 * 1024 * 1024;
+// IndianAPI statements are already in ₹ crore; FMP reports raw rupees.
+const RUPEES_PER_CRORE = 1e7;
 
 interface FmpFinancials extends QuantitativeInputs {
   marketCap: number;
@@ -81,6 +84,7 @@ async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promis
       const year = yearOf(row);
       const cf = cashByYear.get(year) ?? {};
       const bs = balanceByYear.get(year) ?? {};
+      const reportedCapex = metric(cf.capitalExpenditure);
       return {
         year,
         revenue: Number(row.revenue ?? 0),
@@ -91,6 +95,9 @@ async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promis
         receivables: metric(bs.netReceivables),
         totalDebt: metric(bs.totalDebt),
         totalEquity: metric(bs.totalStockholdersEquity),
+        reportedCapex: reportedCapex == null ? null : Math.abs(reportedCapex),
+        ebitda: metric(row.ebitda),
+        totalAssets: metric(bs.totalAssets),
       };
     })
     .filter((y) => Number.isFinite(y.year) && y.revenue > 0)
@@ -298,6 +305,16 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       res.json(f.history.length
         ? { ticker, status: 'ok', message: null, ...redFlagScan(f) }
         : { ticker, status: 'unavailable', message: 'No annual financials available to scan', flags: [], skipped: [] });
+    } catch (err) {
+      sendUpstreamError(res, ticker, err);
+    }
+  });
+
+  router.get('/:ticker/statements', async (req, res) => {
+    const ticker = req.params.ticker;
+    try {
+      const f = await loadQuantitativeInputs(ticker);
+      res.json({ ticker, years: financialStatements(f.history, provider === 'fmp' ? RUPEES_PER_CRORE : 1) });
     } catch (err) {
       sendUpstreamError(res, ticker, err);
     }

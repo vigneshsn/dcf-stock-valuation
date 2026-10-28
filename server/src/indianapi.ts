@@ -165,6 +165,9 @@ function annualHistory(rows: JsonRecord[]): YearFinancials[] {
       const balance = statement(row, 'BAL');
       const revenue = numberValue(income.TotalRevenue, income.Revenue) ?? bankRevenue(income);
       const netIncome = numberValue(income.NetIncome);
+      const operatingIncome = numberValue(income.OperatingIncome);
+      const depreciation = numberValue(cash['Depreciation/Depletion'], income['Depreciation/Amortization']);
+      const capex = numberValue(cash.CapitalExpenditures);
       if (year == null || revenue == null || revenue <= 0 || netIncome == null) {
         return [];
       }
@@ -172,12 +175,16 @@ function annualHistory(rows: JsonRecord[]): YearFinancials[] {
         year,
         revenue,
         netIncome,
-        capex: Math.abs(numberValue(cash.CapitalExpenditures) ?? 0),
-        nonCashExpense: numberValue(cash['Depreciation/Depletion'], income['Depreciation/Amortization']) ?? 0,
+        capex: Math.abs(capex ?? 0),
+        nonCashExpense: depreciation ?? 0,
         operatingCashFlow: numberValue(cash.CashfromOperatingActivities),
         receivables: numberValue(balance.TotalReceivablesNet),
         totalDebt: numberValue(balance.TotalDebt),
         totalEquity: numberValue(balance.TotalEquity),
+        // IndianAPI has no EBITDA line, so it is operating income plus depreciation.
+        reportedCapex: capex == null ? null : Math.abs(capex),
+        ebitda: operatingIncome == null || depreciation == null ? null : operatingIncome + depreciation,
+        totalAssets: numberValue(balance.TotalAssets),
       }];
     })
     .sort((a, b) => b.year - a.year)

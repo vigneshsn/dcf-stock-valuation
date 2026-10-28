@@ -226,6 +226,41 @@ test('red flags are unavailable without annual financials', async () => {
   assert.match(body.message, /No annual financials/);
 });
 
+test('statements: the latest 5 IndianAPI fiscal years, oldest first, in crores', async () => {
+  const response = await requestAnalysis(indianApiRouter(indianApiStock('STMT')), 'STMT', 'statements');
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ticker, 'STMT');
+  assert.deepEqual(body.years.map((y: { year: number }) => y.year), [2022, 2023, 2024, 2025, 2026]);
+  // EBITDA is operating income (1.5 × net income) plus depreciation (2% of revenue).
+  assert.deepEqual(
+    { ...body.years[4] },
+    {
+      year: 2026,
+      revenue: 1300,
+      ebitda: 416,
+      netProfit: 260,
+      netMargin: 20,
+      totalAssets: 2600,
+      borrowings: null,
+      equity: 1040,
+      debtToEquity: null,
+      operatingCashFlow: null,
+      capex: 65,
+      freeCashFlow: null,
+      cashConversion: null,
+    }
+  );
+});
+
+test('statements are empty without annual financials', async () => {
+  const stock = { ...indianApiStock('STMTNONE'), financials: [] };
+  const response = await requestAnalysis(indianApiRouter(stock), 'STMTNONE', 'statements');
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).years, []);
+});
+
 test('derives bank revenue from interest and non-interest income', async () => {
   const bankPeriod = (year: number, interest: number) => ({
     FiscalYear: String(year),
@@ -348,6 +383,58 @@ test('runs the quantitative DCF on FMP data when FMP is the configured provider'
     assert.deepEqual(body.ratios, { pe: 11, pb: 2, roe: 0.2 });
     assert.ok(body.fairValue > 0);
     assert.ok(paths.some((path) => path.endsWith('/quote')));
+  } finally {
+    if (previousApiKey === undefined) {
+      delete process.env.FMP_API_KEY;
+    } else {
+      process.env.FMP_API_KEY = previousApiKey;
+    }
+  }
+});
+
+test('statements: FMP amounts are converted from rupees to crores', async () => {
+  const previousApiKey = process.env.FMP_API_KEY;
+  process.env.FMP_API_KEY = 'test-key';
+  try {
+    const router = createAnalysisRouter({
+      provider: 'fmp',
+      fetcher: async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/quote')) {
+          return new Response(JSON.stringify([{ price: 50, marketCap: 5e10 }]));
+        }
+        if (url.pathname.endsWith('/income-statement')) {
+          return new Response(JSON.stringify([{ fiscalYear: '2025', revenue: 1e10, netIncome: 1e9, ebitda: 2e9 }]));
+        }
+        if (url.pathname.endsWith('/cash-flow-statement')) {
+          return new Response(JSON.stringify([{ fiscalYear: '2025', capitalExpenditure: -5e8, operatingCashFlow: 1.5e9 }]));
+        }
+        if (url.pathname.endsWith('/balance-sheet-statement')) {
+          return new Response(JSON.stringify([{ fiscalYear: '2025', totalAssets: 3e10, totalDebt: 2e9, totalStockholdersEquity: 1e10 }]));
+        }
+        return new Response('[]');
+      },
+    });
+
+    const response = await requestAnalysis(router, 'FMPSTMT.NS', 'statements');
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(body.years, [{
+      year: 2025,
+      revenue: 1000,
+      ebitda: 200,
+      netProfit: 100,
+      netMargin: 10,
+      totalAssets: 3000,
+      borrowings: 200,
+      equity: 1000,
+      debtToEquity: 0.2,
+      operatingCashFlow: 150,
+      capex: 50,
+      freeCashFlow: 100,
+      cashConversion: 150,
+    }]);
   } finally {
     if (previousApiKey === undefined) {
       delete process.env.FMP_API_KEY;

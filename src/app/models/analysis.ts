@@ -165,6 +165,30 @@ export interface RedFlagScan {
     skipped: { id: RedFlagId; reason: string }[];
 }
 
+/** One fiscal year of the curated statements. Amounts in ₹ crore; margin and cash conversion in percent. */
+export interface StatementYear {
+    year: number;
+    revenue: number | null;
+    ebitda: number | null;
+    netProfit: number | null;
+    netMargin: number | null;
+    totalAssets: number | null;
+    borrowings: number | null;
+    equity: number | null;
+    debtToEquity: number | null;
+    operatingCashFlow: number | null;
+    capex: number | null;
+    freeCashFlow: number | null;
+    /** Cash from operations ÷ net profit, in percent. */
+    cashConversion: number | null;
+}
+
+/** Up to five fiscal years, oldest first. */
+export interface FinancialStatements {
+    ticker: string;
+    years: StatementYear[];
+}
+
 export type GuidanceMetric = 'revenueGrowth' | 'netProfitGrowth' | 'margin' | 'capex' | 'debt' | 'other';
 export type GuidanceVerdict = 'met' | 'near' | 'missed' | 'pending' | 'unscored';
 

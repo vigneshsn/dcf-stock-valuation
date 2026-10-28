@@ -11,6 +11,10 @@ export interface YearFinancials {
   receivables?: number | null;
   totalDebt?: number | null;
   totalEquity?: number | null;
+  // Only used by the Financial statements; reportedCapex is null when the year has no capex line (capex is then 0).
+  reportedCapex?: number | null;
+  ebitda?: number | null;
+  totalAssets?: number | null;
 }
 
 // Statement totals and share count must share a unit scale so totals / shares is a per-share price.
