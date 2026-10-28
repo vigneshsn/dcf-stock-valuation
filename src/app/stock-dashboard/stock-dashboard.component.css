@@ -96,9 +96,83 @@
     color: #fff;
 }
 
-/* ---------- Bento grid ---------- */
-.bento {
-    margin-top: 12px;
+/* ---------- Contents bar + blocks ---------- */
+.contents {
+    position: sticky;
+    top: 80px;
+    z-index: 10;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    margin: 12px 0 8px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.contents button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.contents button:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.contents .num,
+.block-num {
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    font-size: 0.72rem;
+}
+
+.block {
+    margin-top: 28px;
+    scroll-margin-top: 144px;
+}
+
+.block-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.block-head > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.block-head h2 {
+    margin: 0;
+}
+
+.block-num {
+    width: 26px;
+    height: 26px;
+    font-size: 0.85rem;
+    color: var(--violet);
 }
 
 /* ---------- Company tile ---------- */
@@ -500,98 +574,6 @@ blockquote {
     color: var(--neutral);
 }
 
-/* ---------- Consensus ---------- */
-.consensus-bar {
-    display: flex;
-    height: 14px;
-    border-radius: 999px;
-    overflow: hidden;
-    gap: 3px;
-    margin-bottom: 16px;
-}
-
-.seg { display: block; height: 100%; }
-.seg-strong-buy, .dot-strong-buy { background: #10b981; }
-.seg-buy, .dot-buy { background: #6ee7b7; }
-.seg-hold, .dot-hold { background: #fbbf24; }
-.seg-sell, .dot-sell { background: #fb7185; }
-.seg-strong-sell, .dot-strong-sell { background: #e11d48; }
-
-.analyst-consensus {
-    display: flex;
-    flex-direction: column;
-}
-
-.consensus-counts {
-    display: grid;
-    margin: 0;
-}
-
-.consensus-counts div {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 9px 0;
-    border-bottom: 1px dashed var(--border);
-}
-
-.consensus-counts dt {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--muted);
-    font-size: 0.9rem;
-}
-
-.consensus-counts dd {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-
-.dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.attribution {
-    margin: auto 0 0;
-    padding-top: 14px;
-}
-
-/* ---------- News ---------- */
-.news-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 8px;
-}
-
-.news-list a {
-    display: grid;
-    gap: 4px;
-    padding: 12px 14px;
-    border-radius: var(--radius);
-    background: var(--surface-2);
-    border: 1px solid transparent;
-    color: var(--text);
-    text-decoration: none;
-    transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.news-list a:hover {
-    border-color: var(--violet);
-    transform: translateX(4px);
-}
-
-.headline {
-    font-weight: 600;
-}
-
 /* ---------- Empty / error ---------- */
 .empty {
     display: grid;
@@ -601,8 +583,9 @@ blockquote {
     padding: 16px 0;
 }
 
-.empty h2 {
+.empty h3 {
     margin: 0;
+    font-size: 1.35rem;
 }
 
 /* ---------- Responsive ---------- */

@@ -66,7 +66,7 @@ flowchart LR
 | Feature | Frontend | Backend | Data source |
 | --- | --- | --- | --- |
 | Manual DCF calculator with CSV/XLSX export | `DcfCalculatorComponent`, `DcfHelperService`, `CsvService`, `XlsxService` | — (runs entirely in the browser) | User input |
-| Fundamentals (price, ratios, news, peers, consensus) | `StockDashboardComponent`, `StockService` | `GET /api/stock/:ticker` | IndianAPI or FMP |
+| Fundamentals (price, ratios, company context, peers) | `StockDashboardComponent`, `StockService` | `GET /api/stock/:ticker` | IndianAPI or FMP |
 | Quantitative analysis (DCF Fair value + score) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
 | MD&A insights (key points, growth strategy, tailwinds, headwinds, risks, Moat; loads automatically) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/insights` | Latest annual report (Screener.in / upload), one LLM call |
 | Feature flags (which optional panels to show) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/features` | `ENABLE_QUALITATIVE`, `ENABLE_SWOT` |

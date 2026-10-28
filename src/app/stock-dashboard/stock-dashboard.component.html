@@ -22,763 +22,732 @@
 </section>
 
 @if (ticker) {
-    <div class="bento">
-
-        <!-- Company -->
-        <article class="tile company span-7" data-testid="company">
-            @switch (stockState) {
-                @case ('loading') {
-                    <span class="skeleton" style="height: 18px; width: 30%"></span>
-                    <span class="skeleton" style="height: 40px; width: 70%; margin-top: 12px"></span>
-                    <span class="skeleton" style="height: 14px; width: 90%; margin-top: 18px"></span>
-                    <span class="skeleton" style="height: 14px; width: 80%; margin-top: 8px"></span>
-                }
-                @case ('error') {
-                    <div class="empty error-message">
-                        <span class="big-emoji" aria-hidden="true">{{ stockError === 'Ticker not found' ? '🫥' : '📡' }}</span>
-                        <h2>{{ stockError }}</h2>
-                        <p class="muted">Double-check the NSE symbol (e.g. <strong>TCS</strong>, <strong>RELIANCE</strong>) and try again.</p>
-                        <button type="button" class="btn btn-ghost" (click)="loadStock()">
-                            <span class="material-icons" aria-hidden="true">refresh</span> Retry
-                        </button>
-                    </div>
-                }
-                @case ('data') {
-                    <div class="company-top">
-                        <div class="company-id">
-                            <div class="pills">
-                                <span class="pill pill-ticker">{{ ticker }}</span>
-                                @if (metrics?.companyIntroduction?.industry; as industry) {
-                                    <span class="pill industry">{{ industry }}</span>
-                                }
-                            </div>
-                            <h2 class="company-name">{{ companyName }}</h2>
-                        </div>
-                        <div class="price-block">
-                            <span class="price">{{ price == null ? 'N/A' : '₹' + (price | number:'1.0-2') }}</span>
-                            <span class="label">Current price</span>
-                        </div>
-                    </div>
-
-                    @if (rangePosition !== null) {
-                        <div class="range" aria-label="52-week range">
-                            <div class="range-track">
-                                <span class="range-marker" [style.left.%]="rangePosition"></span>
-                            </div>
-                            <div class="range-labels">
-                                <span>52W low ₹{{ metrics?.week52Low | number:'1.0-2' }}</span>
-                                <span>52W high ₹{{ metrics?.week52High | number:'1.0-2' }}</span>
-                            </div>
-                        </div>
-                    }
-
-                    @if (metrics?.companyIntroduction?.description; as description) {
-                        <p class="description" [class.clamped]="!showFullDescription">{{ description }}</p>
-                        <button type="button" class="link-btn" (click)="showFullDescription = !showFullDescription">
-                            {{ showFullDescription ? 'Show less' : 'Read more' }}
-                        </button>
-                    }
-                }
-            }
-        </article>
-
-        <!-- Key stats -->
-        <article class="tile stats span-5" data-testid="key-stats">
-            <header class="tile-head">
-                <h3>Key stats</h3>
-                <span class="tile-sub">The numbers that matter</span>
-            </header>
-            @if (stockState === 'loading') {
-                <div class="stat-grid">
-                    @for (i of [1, 2, 3, 4, 5, 6, 7, 8, 9]; track i) {
-                        <span class="skeleton" style="height: 58px"></span>
-                    }
-                </div>
-            } @else {
-                <div class="stat-grid">
-                    <div class="stat">
-                        <span class="label">Market cap</span>
-                        <span class="value">{{ metrics?.marketCap == null ? 'N/A' : '₹' + (marketCapCrores(metrics?.marketCap) | number:'1.0-0') + ' Cr' }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">P/E</span>
-                        <span class="value">{{ metrics?.peRatio ?? 'N/A' }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">P/B</span>
-                        <span class="value">{{ quant?.ratios?.pb == null ? 'N/A' : (quant?.ratios?.pb | number:'1.1-1') }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">Book value</span>
-                        <span class="value">{{ metrics?.bookValue ?? 'N/A' }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">Dividend yield</span>
-                        <span class="value">{{ metrics?.dividendYield == null ? 'N/A' : (metrics?.dividendYield | number:'1.0-2') + '%' }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">ROCE</span>
-                        <span class="value">{{ metrics?.roce == null ? 'N/A' : (metrics?.roce | number:'1.0-2') + '%' }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">ROE</span>
-                        <span class="value">{{ metrics?.roe == null ? 'N/A' : (metrics?.roe | number:'1.0-2') + '%' }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">52W high</span>
-                        <span class="value">{{ metrics?.week52High ?? 'N/A' }}</span>
-                    </div>
-                    <div class="stat">
-                        <span class="label">52W low</span>
-                        <span class="value">{{ metrics?.week52Low ?? 'N/A' }}</span>
-                    </div>
-                </div>
-            }
-        </article>
-
-        <!-- Quantitative analysis -->
-        <article class="tile score-tile span-6" data-testid="quant-panel">
-            <header class="tile-head">
-                <div>
-                    <h3>Quantitative analysis</h3>
-                    <span class="tile-sub">DCF fair value vs market price</span>
-                </div>
-                @if (quant?.cached) {
-                    <span class="tag" title="Served from cache">cached</span>
-                }
-            </header>
-
-            @if (quantLoading && !quant) {
-                <div class="score-row">
-                    <span class="skeleton ring-skeleton"></span>
-                    <div class="score-meta">
-                        <span class="skeleton" style="height: 28px; width: 60%"></span>
-                        <span class="skeleton" style="height: 14px; width: 90%; margin-top: 12px"></span>
-                        <span class="skeleton" style="height: 14px; width: 75%; margin-top: 8px"></span>
-                    </div>
-                </div>
-            }
-
-            @if (quantError) {
-                <p class="alert alert-bad" role="alert">
-                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ quantError }}
-                </p>
-            }
-
-            @if (quant; as q) {
-                <div class="score-row" [class.refreshing]="quantLoading">
-                    <app-score-ring [score]="q.score" [tone]="quantVerdict(q.score).tone" testId="quant-score"></app-score-ring>
-                    <div class="score-meta">
-                        <span class="verdict" [attr.data-tone]="quantVerdict(q.score).tone">
-                            {{ quantVerdict(q.score).emoji }} {{ quantVerdict(q.score).label }}
-                        </span>
-                        <div class="fv-grid">
-                            <div>
-                                <span class="label">Fair value</span>
-                                <span class="fv">₹{{ q.fairValue | number:'1.0-2' }}</span>
-                            </div>
-                            <div>
-                                <span class="label">Price</span>
-                                <span class="fv">₹{{ q.price | number:'1.0-2' }}</span>
-                            </div>
-                            @if (upside !== null) {
-                                <div>
-                                    <span class="label">{{ upside >= 0 ? 'Upside' : 'Downside' }}</span>
-                                    <span class="fv" [class.pos]="upside >= 0" [class.neg]="upside < 0">
-                                        {{ upside >= 0 ? '+' : '' }}{{ upside | number:'1.0-1' }}%
-                                    </span>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-                <p class="explanation">{{ q.explanation }}</p>
-
-                @if (q.scenarios) {
-                    <app-scenario-range [scenarios]="q.scenarios" [price]="q.price"></app-scenario-range>
-                } @else {
-                    <p class="explanation">Scenario range not applicable: the latest year is loss-making or has negative free cash flow.</p>
-                }
-
-                <button type="button" class="disclosure" (click)="showAssumptions = !showAssumptions"
-                        [attr.aria-expanded]="showAssumptions">
-                    <span class="material-icons" aria-hidden="true">tune</span>
-                    Tweak the DCF assumptions
-                    @if (q.overridden) {
-                        <span class="tag tag-accent">custom</span>
-                    }
-                    <span class="material-icons chevron" [class.open]="showAssumptions" aria-hidden="true">expand_more</span>
-                </button>
-
-                @if (showAssumptions && assumptions) {
-                    <div class="sliders">
-                        <label class="slider-field">
-                            <span class="slider-head">Growth <strong>{{ assumptions.growthRate | number:'1.0-2' }}%</strong>
-                                <small>default {{ q.defaults.growthRate | number:'1.0-2' }}%</small></span>
-                            <input type="range" name="growth" min="-10" [max]="sliderMax(q.defaults.growthRate, 40)" step="0.1"
-                                   [(ngModel)]="assumptions.growthRate" (change)="recalculate()"/>
-                        </label>
-                        <label class="slider-field">
-                            <span class="slider-head">Discount <strong>{{ assumptions.discountRate | number:'1.0-2' }}%</strong>
-                                <small>default {{ q.defaults.discountRate | number:'1.0-2' }}%</small></span>
-                            <input type="range" name="discount" min="5" [max]="sliderMax(q.defaults.discountRate, 25)" step="0.1"
-                                   [(ngModel)]="assumptions.discountRate" (change)="recalculate()"/>
-                        </label>
-                        <label class="slider-field">
-                            <span class="slider-head">Terminal growth <strong>{{ assumptions.terminalGrowthRate | number:'1.0-2' }}%</strong>
-                                <small>default {{ q.defaults.terminalGrowthRate | number:'1.0-2' }}%</small></span>
-                            <input type="range" name="terminal" min="0" [max]="sliderMax(q.defaults.terminalGrowthRate, 10)" step="0.1"
-                                   [(ngModel)]="assumptions.terminalGrowthRate" (change)="recalculate()"/>
-                        </label>
-                        <div class="slider-actions">
-                            <button type="button" class="btn btn-ghost btn-sm" (click)="resetAssumptions()">
-                                <span class="material-icons" aria-hidden="true">restart_alt</span> Reset to defaults
-                            </button>
-                            @if (quantLoading) {
-                                <span class="spinner" aria-label="Recalculating"></span>
-                            }
-                        </div>
-                    </div>
-                }
-            }
-        </article>
-
-        <!-- Reverse DCF -->
-        <article class="tile span-6" data-testid="reverse-dcf">
-            <header class="tile-head">
-                <div>
-                    <h3>What the price implies</h3>
-                    <span class="tile-sub">Reverse DCF: Implied growth vs history</span>
-                </div>
-                @if (reverseDcf?.cached) {
-                    <span class="tag" title="Served from cache">cached</span>
-                }
-            </header>
-            @if (reverseDcfLoading && !reverseDcf) {
-                <span class="skeleton" style="height: 22px; width: 80%"></span>
-            }
-            @if (reverseDcfError) {
-                <p class="alert alert-bad" role="alert">
-                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ reverseDcfError }}
-                </p>
-            }
-            @if (reverseDcf) {
-                <app-reverse-dcf [analysis]="reverseDcf" [class.refreshing]="reverseDcfLoading"></app-reverse-dcf>
-            }
-        </article>
-
-        <!-- MD&A insights (Latest annual report) -->
-        <article class="tile span-6" data-testid="insights-panel">
-            <header class="tile-head">
-                <div>
-                    <h3>MD&amp;A insights</h3>
-                    <span class="tile-sub">Latest annual report's management discussion, read by a language model</span>
-                </div>
-                <div class="pills">
-                    @if (insightsReportLabel) {
-                        <span class="pill" data-testid="insights-report">{{ insightsReportLabel }}</span>
-                    }
-                    @if (insights?.cached) {
-                        <span class="tag">cached</span>
-                    }
-                    @if (insightsTimeLabel && !insightsLoading) {
-                        <span class="pill" data-testid="insights-time" title="Time taken to load these insights">
-                            <span class="material-icons" aria-hidden="true">timer</span> {{ insightsTimeLabel }}
-                        </span>
-                    }
-                    <span class="tag tag-warn">experimental</span>
-                </div>
-            </header>
-
-            @if (insightsLoading) {
-                <div class="thinking">
-                    <div class="orb" aria-hidden="true"></div>
-                    <p>Reading the latest annual report's MD&amp;A...</p>
-                </div>
-            }
-
-            @if (insightsError) {
-                <p class="alert alert-bad" role="alert">
-                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ insightsError }}
-                </p>
-                @if (!insightsNeedsUpload) {
-                    <button type="button" class="btn btn-ghost btn-sm" (click)="loadInsights()">
-                        <span class="material-icons" aria-hidden="true">refresh</span> Try again
-                    </button>
-                }
-            }
-
-            @if (insightsNeedsUpload) {
-                <div class="upload" data-testid="insights-upload">
-                    <label>Year <input type="number" name="insightsUploadYear" [(ngModel)]="uploadYear"/></label>
-                    <label class="file-drop">
-                        <span class="material-icons" aria-hidden="true">upload_file</span>
-                        Upload annual report PDF
-                        <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
-                    </label>
-                </div>
-            }
-
-            @if (insights && !insightsLoading) {
-                @if (insights.status !== 'ok' && insights.message) {
-                    <p class="alert alert-warn" data-testid="insights-status">
-                        <span class="material-icons" aria-hidden="true">info</span> {{ insights.message }}
-                    </p>
-                }
-                @if (insights.insights; as found) {
-                    <div class="pills">
-                        <span class="pill" [attr.data-tone]="moatTone(found.moat.rating)" data-testid="insights-moat">Moat: {{ found.moat.rating }}</span>
-                    </div>
-                    @if (found.moat.reasoning) {
-                        <p class="explanation">{{ found.moat.reasoning }}</p>
-                    }
-                    @for (section of insightSections; track section.key) {
-                        <section class="insight-section" [attr.data-tone]="section.tone" [attr.data-testid]="'insights-' + section.key">
-                            <h4 class="swot-head">
-                                <span class="material-icons" aria-hidden="true">{{ section.icon }}</span> {{ section.label }}
-                            </h4>
-                            <ul class="swot-items">
-                                @for (item of found[section.key]; track $index) {
-                                    <li>
-                                        @if (item.quote) {
-                                            <details>
-                                                <summary>{{ item.point }}</summary>
-                                                <blockquote>“{{ item.quote }}”</blockquote>
-                                            </details>
-                                        } @else {
-                                            {{ item.point }}
-                                        }
-                                    </li>
-                                } @empty {
-                                    <li class="muted small">Nothing identified.</li>
-                                }
-                            </ul>
-                        </section>
-                    }
-                }
-            }
-        </article>
-
-        <!-- Red-flag scan (deterministic, unscored) -->
-        <article class="tile span-6" data-testid="red-flags">
-            <header class="tile-head">
-                <div>
-                    <h3>Red flags</h3>
-                    <span class="tile-sub">Earnings-quality and balance-sheet warnings from the financials; unscored</span>
-                </div>
-            </header>
-            @if (redFlagsLoading) {
-                <span class="skeleton" style="height: 22px; width: 80%"></span>
-            }
-            @if (redFlagsError) {
-                <p class="alert alert-bad" role="alert">
-                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ redFlagsError }}
-                </p>
-                <button type="button" class="btn btn-ghost btn-sm" (click)="loadRedFlags()">
-                    <span class="material-icons" aria-hidden="true">refresh</span> Try again
-                </button>
-            }
-            @if (redFlags; as r) {
-                @if (r.status !== 'ok' && r.message) {
-                    <p class="alert alert-warn">
-                        <span class="material-icons" aria-hidden="true">info</span> {{ r.message }}
-                    </p>
-                } @else {
-                    <ul class="swot-items">
-                        @for (flag of r.flags; track flag.id) {
-                            <li data-testid="red-flag">
-                                <details>
-                                    <summary>
-                                        <span class="tag" [class.tag-bad]="flag.severity === 'warning'" [class.tag-warn]="flag.severity === 'watch'">{{ flag.severity }}</span>
-                                        {{ flag.text }}
-                                    </summary>
-                                    <p class="small">{{ flag.evidence }}</p>
-                                </details>
-                            </li>
-                        } @empty {
-                            <li class="muted small">No red flags detected on available data</li>
-                        }
-                    </ul>
-                    @if (r.skipped.length) {
-                        <p class="small">
-                            Not checked:
-                            @for (s of r.skipped; track s.id; let last = $last) {
-                                {{ redFlagNames[s.id] }}: {{ s.reason }}{{ last ? '' : ';' }}
-                            }
-                        </p>
-                    }
-                }
-            }
-        </article>
-
-        <!-- Qualitative analysis (needs 3 annual reports; off unless the server enables it) -->
-        @if (features.qualitative) {
-            <article class="tile score-tile span-6" data-testid="qual-panel">
-                <header class="tile-head">
-                    <div>
-                        <h3>Qualitative analysis</h3>
-                        <span class="tile-sub">Moat + management, read from annual reports</span>
-                    </div>
-                    <span class="tag tag-warn">experimental</span>
-                </header>
-
-                @if (!qual && !qualLoading) {
-                    <div class="qual-cta">
-                        <p class="muted">A language model reads the last 3 annual reports' MD&amp;A, judges the
-                            <strong>Moat</strong> against peers and checks whether management delivered on its guidance.
-                            Takes a few minutes ☕</p>
-                        <details class="peer-override">
-                            <summary>Custom peer set (optional)</summary>
-                            <input type="text" name="peers" [(ngModel)]="peersText" placeholder="e.g. INFY, WIPRO, HCLTECH"/>
-                        </details>
-                        <button type="button" class="btn" (click)="runQualitative()">
-                            <span class="material-icons" aria-hidden="true">auto_awesome</span> Run qualitative analysis
-                        </button>
-                    </div>
-                }
-
-                @if (qualLoading) {
-                    <div class="thinking">
-                        <div class="orb" aria-hidden="true"></div>
-                        <p>Reading annual reports and asking the language model. This can take a few minutes...</p>
-                    </div>
-                }
-
-                @if (qualError) {
-                    <p class="alert alert-bad" role="alert">
-                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ qualError }}
-                    </p>
-                }
-
-                @if (needsUpload) {
-                    <div class="upload">
-                        <label>Year <input type="number" name="uploadYear" [(ngModel)]="uploadYear"/></label>
-                        <label class="file-drop">
-                            <span class="material-icons" aria-hidden="true">upload_file</span>
-                            Upload annual report PDF
-                            <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
-                        </label>
-                        @if (uploadMessage) {
-                            <p class="small">{{ uploadMessage }}</p>
-                        }
-                    </div>
-                }
-
-                @if (qual && !qualLoading) {
-                    <div class="score-row">
-                        <app-score-ring [score]="qual.score" [tone]="qualVerdict(qual.score).tone" testId="qual-score"></app-score-ring>
-                        <div class="score-meta">
-                            <span class="verdict" [attr.data-tone]="qualVerdict(qual.score).tone">
-                                {{ qualVerdict(qual.score).emoji }} {{ qualVerdict(qual.score).label }}
-                            </span>
-                            <div class="pills">
-                                <span class="pill" [attr.data-tone]="moatTone(qual.moat.rating)">Moat: {{ qual.moat.rating }}</span>
-                                @for (y of qual.yearsAnalysed; track y) {
-                                    <span class="pill">FY{{ y }}</span>
-                                }
-                                @if (qual.cached) {
-                                    <span class="tag">cached</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (qual.management.lowerConfidence) {
-                        <p class="alert alert-warn">
-                            <span class="material-icons" aria-hidden="true">info</span> Lower confidence: fewer than 3 years of reports.
-                        </p>
-                    }
-                    <p class="explanation">{{ qual.explanation }}</p>
-
-                    @if (qual.management.comparisons.length) {
-                        <h4 class="mini-head">Did management deliver?</h4>
-                        <ul class="timeline">
-                            @for (c of qual.management.comparisons; track c.guidanceYear) {
-                                <li>
-                                    <span class="pill" [attr.data-tone]="outcomeTone(c.outcome)">{{ c.outcome }}</span>
-                                    <span class="small">FY{{ c.guidanceYear }} guidance → FY{{ c.actualsYear }} actuals</span>
-                                </li>
-                            }
-                        </ul>
-                    }
-
-                    @for (quote of qual.quotes; track $index) {
-                        <blockquote>“{{ quote }}”</blockquote>
-                    }
-
-                    <p class="small">Peers{{ qual.peersOverridden ? ' (overridden)' : '' }}:
-                        @for (p of qual.peers; track p.symbol; let last = $last) {
-                            {{ p.name }}{{ last ? '' : ', ' }}
-                        } @empty {
-                            none
-                        }
-                    </p>
-                    <button type="button" class="btn btn-ghost btn-sm" (click)="runQualitative()">
-                        <span class="material-icons" aria-hidden="true">refresh</span> Run again
-                    </button>
-                }
-            </article>
+    <nav class="contents" data-testid="contents" aria-label="Contents">
+        @for (b of blocks; track b.id; let i = $index) {
+            <button type="button" (click)="scrollToBlock(b.id)"><span class="num" aria-hidden="true">{{ i + 1 }}</span>{{ b.title }}</button>
         }
+    </nav>
 
-        <!-- Guidance scorecard: evidence behind Management trustworthiness, unscored -->
-        <article class="tile span-12" data-testid="guidance-panel">
-            <header class="tile-head">
+    @for (b of blocks; track b.id; let i = $index) {
+        <section class="block" [attr.data-block]="b.id" [attr.aria-labelledby]="'block-title-' + b.id">
+            <header class="block-head">
                 <div>
-                    <h3>Guidance scorecard</h3>
-                    <span class="tile-sub">What management guided to in each annual report vs what the financials showed · unscored</span>
+                    <span class="block-num" aria-hidden="true">{{ i + 1 }}</span>
+                    <h2 [id]="'block-title-' + b.id">{{ b.title }}</h2>
                 </div>
-                <div class="pills">
-                    @if (guidance && guidance.hitRate !== null) {
-                        <span class="pill" data-testid="guidance-hit-rate">{{ guidance.hitRate | percent: '1.0-0' }} met</span>
-                    }
-                    @if (guidance?.lowerConfidence) {
-                        <span class="tag tag-warn" data-testid="guidance-low-confidence">lower confidence</span>
-                    }
-                    <span class="tag tag-warn">experimental</span>
-                </div>
+                <button type="button" class="btn btn-ghost btn-sm" data-testid="block-toggle"
+                        [attr.aria-expanded]="!isCollapsed(b.id)" [attr.aria-controls]="'block-body-' + b.id"
+                        (click)="toggleBlock(b.id)">{{ isCollapsed(b.id) ? 'Expand' : 'Collapse' }}</button>
             </header>
+            @if (!isCollapsed(b.id)) {
+                <div class="bento" [id]="'block-body-' + b.id">
+                    @switch (b.id) {
+                        @case ('overview') {
+                            <!-- Company -->
+                            <article class="tile company span-7" data-testid="company">
+                                @switch (stockState) {
+                                    @case ('loading') {
+                                        <span class="skeleton" style="height: 18px; width: 30%"></span>
+                                        <span class="skeleton" style="height: 40px; width: 70%; margin-top: 12px"></span>
+                                        <span class="skeleton" style="height: 14px; width: 90%; margin-top: 18px"></span>
+                                        <span class="skeleton" style="height: 14px; width: 80%; margin-top: 8px"></span>
+                                    }
+                                    @case ('error') {
+                                        <div class="empty error-message">
+                                            <span class="big-emoji" aria-hidden="true">{{ stockError === 'Ticker not found' ? '🫥' : '📡' }}</span>
+                                            <h3>{{ stockError }}</h3>
+                                            <p class="muted">Double-check the NSE symbol (e.g. <strong>TCS</strong>, <strong>RELIANCE</strong>) and try again.</p>
+                                            <button type="button" class="btn btn-ghost" (click)="loadStock()">
+                                                <span class="material-icons" aria-hidden="true">refresh</span> Retry
+                                            </button>
+                                        </div>
+                                    }
+                                    @case ('data') {
+                                        <div class="company-top">
+                                            <div class="company-id">
+                                                <div class="pills">
+                                                    <span class="pill pill-ticker">{{ ticker }}</span>
+                                                    @if (metrics?.companyIntroduction?.industry; as industry) {
+                                                        <span class="pill industry">{{ industry }}</span>
+                                                    }
+                                                </div>
+                                                <h3 class="company-name">{{ companyName }}</h3>
+                                            </div>
+                                            <div class="price-block">
+                                                <span class="price">{{ price == null ? 'N/A' : '₹' + (price | number:'1.0-2') }}</span>
+                                                <span class="label">Current price</span>
+                                            </div>
+                                        </div>
 
-            @if (!guidance && !guidanceLoading) {
-                <div class="qual-cta">
-                    <p class="muted">Extracts the forward-looking targets from each of the last 3 annual reports and checks them against
-                        the actuals. One language-model call per report, stored for good ☕</p>
-                    <button type="button" class="btn" (click)="runGuidance()">
-                        <span class="material-icons" aria-hidden="true">fact_check</span> Run guidance scorecard
-                    </button>
-                </div>
-            }
+                                        @if (rangePosition !== null) {
+                                            <div class="range" aria-label="52-week range">
+                                                <div class="range-track">
+                                                    <span class="range-marker" [style.left.%]="rangePosition"></span>
+                                                </div>
+                                                <div class="range-labels">
+                                                    <span>52W low ₹{{ metrics?.week52Low | number:'1.0-2' }}</span>
+                                                    <span>52W high ₹{{ metrics?.week52High | number:'1.0-2' }}</span>
+                                                </div>
+                                            </div>
+                                        }
 
-            @if (guidanceLoading) {
-                <div class="thinking">
-                    <div class="orb" aria-hidden="true"></div>
-                    <p>Reading the annual reports' outlook sections...</p>
-                </div>
-            }
+                                        @if (metrics?.companyIntroduction?.description; as description) {
+                                            <p class="description" [class.clamped]="!showFullDescription">{{ description }}</p>
+                                            <button type="button" class="link-btn" (click)="showFullDescription = !showFullDescription">
+                                                {{ showFullDescription ? 'Show less' : 'Read more' }}
+                                            </button>
+                                        }
+                                    }
+                                }
+                            </article>
 
-            @if (guidanceError) {
-                <p class="alert alert-bad" role="alert">
-                    <span class="material-icons" aria-hidden="true">error_outline</span> {{ guidanceError }}
-                </p>
-            }
-
-            @if (guidance && !guidanceLoading) {
-                @for (y of guidance.years; track y.year) {
-                    <section class="guidance-year" [attr.data-testid]="'guidance-year-' + y.year">
-                        <h4>FY{{ y.year }} report @if (y.cached) { <span class="tag">cached</span> }</h4>
-                        @switch (y.status) {
-                            @case ('no-report') { <p class="muted small">The report could not be fetched. Upload it as a PDF.</p> }
-                            @case ('no-guidance') { <p class="muted small">No forward-looking targets found.</p> }
-                            @case ('llm-unavailable') { <p class="alert alert-warn small">The language model is unavailable; retry later.</p> }
-                            @case ('failed') { <p class="alert alert-warn small">This report could not be analysed.</p> }
+                            <!-- Key stats -->
+                            <article class="tile stats span-5" data-testid="key-stats">
+                                <header class="tile-head">
+                                    <h3>Key stats</h3>
+                                    <span class="tile-sub">The numbers that matter</span>
+                                </header>
+                                @if (stockState === 'loading') {
+                                    <div class="stat-grid">
+                                        @for (i of [1, 2, 3, 4, 5, 6, 7, 8, 9]; track i) {
+                                            <span class="skeleton" style="height: 58px"></span>
+                                        }
+                                    </div>
+                                } @else {
+                                    <div class="stat-grid">
+                                        <div class="stat">
+                                            <span class="label">Market cap</span>
+                                            <span class="value">{{ metrics?.marketCap == null ? 'N/A' : '₹' + (marketCapCrores(metrics?.marketCap) | number:'1.0-0') + ' Cr' }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">P/E</span>
+                                            <span class="value">{{ metrics?.peRatio ?? 'N/A' }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">P/B</span>
+                                            <span class="value">{{ quant?.ratios?.pb == null ? 'N/A' : (quant?.ratios?.pb | number:'1.1-1') }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">Book value</span>
+                                            <span class="value">{{ metrics?.bookValue ?? 'N/A' }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">Dividend yield</span>
+                                            <span class="value">{{ metrics?.dividendYield == null ? 'N/A' : (metrics?.dividendYield | number:'1.0-2') + '%' }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">ROCE</span>
+                                            <span class="value">{{ metrics?.roce == null ? 'N/A' : (metrics?.roce | number:'1.0-2') + '%' }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">ROE</span>
+                                            <span class="value">{{ metrics?.roe == null ? 'N/A' : (metrics?.roe | number:'1.0-2') + '%' }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">52W high</span>
+                                            <span class="value">{{ metrics?.week52High ?? 'N/A' }}</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="label">52W low</span>
+                                            <span class="value">{{ metrics?.week52Low ?? 'N/A' }}</span>
+                                        </div>
+                                    </div>
+                                }
+                            </article>
                         }
-                        @if (y.claims.length) {
-                            <ul class="timeline">
-                                @for (c of y.claims; track $index) {
-                                    <li>
-                                        <span class="pill" [attr.data-tone]="verdictTone(c.verdict)">{{ c.verdict }}</span>
-                                        <span class="small">
-                                            @if (c.metric !== 'other') {
-                                                {{ guidanceMetricLabel(c.metric) }} · target {{ guidanceTarget(c) }}
-                                                @if (c.horizon) { for FY{{ c.horizon }} }
-                                                @if (c.actual !== null) { · actual {{ guidanceValue(c.metric, c.actual) }} }
+                        @case ('financials') {
+                            <!-- Red-flag scan (deterministic, unscored) -->
+                            <article class="tile span-12" data-testid="red-flags">
+                                <header class="tile-head">
+                                    <div>
+                                        <h3>Red flags</h3>
+                                        <span class="tile-sub">Earnings-quality and balance-sheet warnings from the financials; unscored</span>
+                                    </div>
+                                </header>
+                                @if (redFlagsLoading) {
+                                    <span class="skeleton" style="height: 22px; width: 80%"></span>
+                                }
+                                @if (redFlagsError) {
+                                    <p class="alert alert-bad" role="alert">
+                                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ redFlagsError }}
+                                    </p>
+                                    <button type="button" class="btn btn-ghost btn-sm" (click)="loadRedFlags()">
+                                        <span class="material-icons" aria-hidden="true">refresh</span> Try again
+                                    </button>
+                                }
+                                @if (redFlags; as r) {
+                                    @if (r.status !== 'ok' && r.message) {
+                                        <p class="alert alert-warn">
+                                            <span class="material-icons" aria-hidden="true">info</span> {{ r.message }}
+                                        </p>
+                                    } @else {
+                                        <ul class="swot-items">
+                                            @for (flag of r.flags; track flag.id) {
+                                                <li data-testid="red-flag">
+                                                    <details>
+                                                        <summary>
+                                                            <span class="tag" [class.tag-bad]="flag.severity === 'warning'" [class.tag-warn]="flag.severity === 'watch'">{{ flag.severity }}</span>
+                                                            {{ flag.text }}
+                                                        </summary>
+                                                        <p class="small">{{ flag.evidence }}</p>
+                                                    </details>
+                                                </li>
+                                            } @empty {
+                                                <li class="muted small">No red flags detected on available data</li>
                                             }
-                                            <em>“{{ c.quote }}”</em>
-                                        </span>
-                                    </li>
-                                }
-                            </ul>
-                        }
-                    </section>
-                }
-            }
-        </article>
-
-        <!-- SWOT analysis (off unless the server enables it) -->
-        @if (features.swot) {
-            <article class="tile span-12" data-testid="swot-panel">
-                <header class="tile-head">
-                    <div>
-                        <h3>SWOT analysis</h3>
-                        <span class="tile-sub">Latest annual report + last fiscal year's financials · unscored</span>
-                    </div>
-                    <div class="pills">
-                        @if (swotReportLabel) {
-                            <span class="pill" data-testid="swot-report">{{ swotReportLabel }}</span>
-                        }
-                        @if (swot?.report?.cached) {
-                            <span class="tag">cached</span>
-                        }
-                        <span class="tag tag-warn">experimental</span>
-                    </div>
-                </header>
-
-                @if (!swot && !swotLoading) {
-                    <div class="qual-cta">
-                        <p class="muted">Reads the latest annual report's <strong>Opportunities and Threats</strong> and
-                            <strong>Risks and Concerns</strong> sections plus its MD&amp;A, and checks last year's financials for
-                            strengths and weaknesses. Takes a minute or two ☕</p>
-                        <button type="button" class="btn" (click)="runSwot()">
-                            <span class="material-icons" aria-hidden="true">grid_view</span> Run SWOT analysis
-                        </button>
-                    </div>
-                }
-
-                @if (swotLoading) {
-                    <div class="thinking">
-                        <div class="orb" aria-hidden="true"></div>
-                        <p>Reading the latest annual report and last year's numbers...</p>
-                    </div>
-                }
-
-                @if (swotError) {
-                    <p class="alert alert-bad" role="alert">
-                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ swotError }}
-                    </p>
-                }
-
-                @if (swot && !swotLoading) {
-                    @if (swot.report.status !== 'ok' && swot.report.message) {
-                        <p class="alert alert-warn" data-testid="swot-report-status">
-                            <span class="material-icons" aria-hidden="true">info</span> {{ swot.report.message }}
-                            Showing financials-based items only.
-                        </p>
-                    }
-                    @if (swot.report.status === 'no-reports') {
-                        <div class="upload">
-                            <label>Year <input type="number" name="swotUploadYear" [(ngModel)]="uploadYear"/></label>
-                            <label class="file-drop">
-                                <span class="material-icons" aria-hidden="true">upload_file</span>
-                                Upload annual report PDF
-                                <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
-                            </label>
-                            @if (uploadMessage) {
-                                <p class="small">{{ uploadMessage }}</p>
-                            }
-                        </div>
-                    }
-                    @if (swot.financials.status !== 'ok' && swot.financials.message) {
-                        <p class="alert alert-warn">
-                            <span class="material-icons" aria-hidden="true">info</span> {{ swot.financials.message }}
-                        </p>
-                    }
-
-                    <div class="swot-grid">
-                        @for (q of swotQuadrants; track q.key) {
-                            <section class="swot-quadrant" [attr.data-tone]="q.tone" [attr.data-testid]="'swot-' + q.key">
-                                <h4 class="swot-head">
-                                    <span class="material-icons" aria-hidden="true">{{ q.icon }}</span> {{ q.label }}
-                                    @if (swot[q.key].lowerConfidence) {
-                                        <span class="tag tag-warn" title="No dedicated section found in the report; extracted from the whole MD&A">lower confidence</span>
-                                    }
-                                </h4>
-                                <ul class="swot-items">
-                                    @for (item of swot[q.key].items; track $index) {
-                                        <li>
-                                            <details>
-                                                <summary>
-                                                    <span class="swot-badge" [attr.data-source]="item.source">{{ item.source }}</span>
-                                                    {{ item.text }}
-                                                </summary>
-                                                @if (item.source === 'report') {
-                                                    <blockquote>“{{ item.evidence }}”</blockquote>
-                                                } @else {
-                                                    <p class="small">{{ item.evidence }}</p>
+                                        </ul>
+                                        @if (r.skipped.length) {
+                                            <p class="small">
+                                                Not checked:
+                                                @for (s of r.skipped; track s.id; let last = $last) {
+                                                    {{ redFlagNames[s.id] }}: {{ s.reason }}{{ last ? '' : ';' }}
                                                 }
-                                            </details>
-                                        </li>
-                                    } @empty {
-                                        <li class="muted small">Nothing identified.</li>
-                                    }
-                                </ul>
-                            </section>
-                        }
-                    </div>
-
-                    <button type="button" class="btn btn-ghost btn-sm" (click)="runSwot()">
-                        <span class="material-icons" aria-hidden="true">refresh</span> Run again
-                    </button>
-                }
-            </article>
-        }
-
-        @if (stockState === 'data') {
-            <!-- Peers -->
-            <article class="tile span-12" data-testid="peers">
-                <header class="tile-head">
-                    <div>
-                        <h3>Peer comparison</h3>
-                        <span class="tile-sub">How it stacks up against the squad</span>
-                    </div>
-                </header>
-                @if (peerRows.length) {
-                    <app-peer-comparison [rows]="peerRows"></app-peer-comparison>
-                } @else {
-                    <p class="empty-state">No peer comparison data available.</p>
-                }
-            </article>
-
-            <!-- Analyst consensus -->
-            @if (metrics?.analystConsensus; as consensus) {
-                <article class="tile span-5 analyst-consensus" data-testid="consensus">
-                    <header class="tile-head">
-                        <div>
-                            <h3>Analyst consensus</h3>
-                            <span class="tile-sub">What the street is saying 📣</span>
-                        </div>
-                        @if (consensus.recommendation) {
-                            <span class="pill pill-reco">{{ consensus.recommendation }}</span>
-                        }
-                    </header>
-                    @if (analystTotal > 0) {
-                        <div class="consensus-bar" role="img" [attr.aria-label]="analystTotal + ' analyst ratings'">
-                            @for (s of consensusSegments; track s.key) {
-                                @if (s.pct > 0) {
-                                    <span [class]="'seg seg-' + s.key" [style.width.%]="s.pct"></span>
-                                }
-                            }
-                        </div>
-                    }
-                    <dl class="consensus-counts">
-                        @for (s of consensusSegments; track s.key) {
-                            <div>
-                                <dt><span [class]="'dot dot-' + s.key" aria-hidden="true"></span>{{ s.label }}</dt>
-                                <dd>{{ s.count }}</dd>
-                            </div>
-                        }
-                    </dl>
-                    <p class="attribution small">Source: {{ consensus.source }}</p>
-                </article>
-            }
-
-            <!-- News -->
-            <article class="tile news" [class.span-7]="metrics?.analystConsensus" [class.span-12]="!metrics?.analystConsensus"
-                     data-testid="news">
-                <header class="tile-head">
-                    <div>
-                        <h3>Recent news</h3>
-                        <span class="tile-sub">The latest tea ☕</span>
-                    </div>
-                </header>
-                @if (metrics?.news?.length) {
-                    <ul class="news-list">
-                        @for (item of metrics?.news; track item.url) {
-                            <li>
-                                <a [href]="item.url" target="_blank" rel="noopener noreferrer">
-                                    <span class="headline">{{ item.headline }}</span>
-                                    <span class="news-meta small">
-                                        {{ item.publishedAt | date:'mediumDate' }}
-                                        @if (item.source) {
-                                            <span> · {{ item.source }}</span>
+                                            </p>
                                         }
-                                    </span>
-                                </a>
-                            </li>
+                                    }
+                                }
+                            </article>
+
+                            @if (stockState === 'data') {
+                                <!-- Peers -->
+                                <article class="tile span-12" data-testid="peers">
+                                    <header class="tile-head">
+                                        <div>
+                                            <h3>Peer comparison</h3>
+                                            <span class="tile-sub">How it stacks up against the squad</span>
+                                        </div>
+                                    </header>
+                                    @if (peerRows.length) {
+                                        <app-peer-comparison [rows]="peerRows"></app-peer-comparison>
+                                    } @else {
+                                        <p class="empty-state">No peer comparison data available.</p>
+                                    }
+                                </article>
+                            }
                         }
-                    </ul>
-                } @else {
-                    <p class="empty-state">No recent news available.</p>
-                }
-            </article>
-        }
-    </div>
+                        @case ('management') {
+                            <!-- MD&A insights (Latest annual report) -->
+                            <article class="tile span-12" data-testid="insights-panel">
+                                <header class="tile-head">
+                                    <div>
+                                        <h3>MD&amp;A insights</h3>
+                                        <span class="tile-sub">Latest annual report's management discussion, read by a language model</span>
+                                    </div>
+                                    <div class="pills">
+                                        @if (insightsReportLabel) {
+                                            <span class="pill" data-testid="insights-report">{{ insightsReportLabel }}</span>
+                                        }
+                                        @if (insights?.cached) {
+                                            <span class="tag">cached</span>
+                                        }
+                                        @if (insightsTimeLabel && !insightsLoading) {
+                                            <span class="pill" data-testid="insights-time" title="Time taken to load these insights">
+                                                <span class="material-icons" aria-hidden="true">timer</span> {{ insightsTimeLabel }}
+                                            </span>
+                                        }
+                                        <span class="tag tag-warn">experimental</span>
+                                    </div>
+                                </header>
+
+                                @if (insightsLoading) {
+                                    <div class="thinking">
+                                        <div class="orb" aria-hidden="true"></div>
+                                        <p>Reading the latest annual report's MD&amp;A...</p>
+                                    </div>
+                                }
+
+                                @if (insightsError) {
+                                    <p class="alert alert-bad" role="alert">
+                                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ insightsError }}
+                                    </p>
+                                    @if (!insightsNeedsUpload) {
+                                        <button type="button" class="btn btn-ghost btn-sm" (click)="loadInsights()">
+                                            <span class="material-icons" aria-hidden="true">refresh</span> Try again
+                                        </button>
+                                    }
+                                }
+
+                                @if (insightsNeedsUpload) {
+                                    <div class="upload" data-testid="insights-upload">
+                                        <label>Year <input type="number" name="insightsUploadYear" [(ngModel)]="uploadYear"/></label>
+                                        <label class="file-drop">
+                                            <span class="material-icons" aria-hidden="true">upload_file</span>
+                                            Upload annual report PDF
+                                            <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
+                                        </label>
+                                    </div>
+                                }
+
+                                @if (insights && !insightsLoading) {
+                                    @if (insights.status !== 'ok' && insights.message) {
+                                        <p class="alert alert-warn" data-testid="insights-status">
+                                            <span class="material-icons" aria-hidden="true">info</span> {{ insights.message }}
+                                        </p>
+                                    }
+                                    @if (insights.insights; as found) {
+                                        <div class="pills">
+                                            <span class="pill" [attr.data-tone]="moatTone(found.moat.rating)" data-testid="insights-moat">Moat: {{ found.moat.rating }}</span>
+                                        </div>
+                                        @if (found.moat.reasoning) {
+                                            <p class="explanation">{{ found.moat.reasoning }}</p>
+                                        }
+                                        @for (section of insightSections; track section.key) {
+                                            <section class="insight-section" [attr.data-tone]="section.tone" [attr.data-testid]="'insights-' + section.key">
+                                                <h4 class="swot-head">
+                                                    <span class="material-icons" aria-hidden="true">{{ section.icon }}</span> {{ section.label }}
+                                                </h4>
+                                                <ul class="swot-items">
+                                                    @for (item of found[section.key]; track $index) {
+                                                        <li>
+                                                            @if (item.quote) {
+                                                                <details>
+                                                                    <summary>{{ item.point }}</summary>
+                                                                    <blockquote>“{{ item.quote }}”</blockquote>
+                                                                </details>
+                                                            } @else {
+                                                                {{ item.point }}
+                                                            }
+                                                        </li>
+                                                    } @empty {
+                                                        <li class="muted small">Nothing identified.</li>
+                                                    }
+                                                </ul>
+                                            </section>
+                                        }
+                                    }
+                                }
+                            </article>
+
+                            <!-- Qualitative analysis (needs 3 annual reports; off unless the server enables it) -->
+                            @if (features.qualitative) {
+                                <article class="tile score-tile span-12" data-testid="qual-panel">
+                                    <header class="tile-head">
+                                        <div>
+                                            <h3>Qualitative analysis</h3>
+                                            <span class="tile-sub">Moat + management, read from annual reports</span>
+                                        </div>
+                                        <span class="tag tag-warn">experimental</span>
+                                    </header>
+
+                                    @if (!qual && !qualLoading) {
+                                        <div class="qual-cta">
+                                            <p class="muted">A language model reads the last 3 annual reports' MD&amp;A, judges the
+                                                <strong>Moat</strong> against peers and checks whether management delivered on its guidance.
+                                                Takes a few minutes ☕</p>
+                                            <details class="peer-override">
+                                                <summary>Custom peer set (optional)</summary>
+                                                <input type="text" name="peers" [(ngModel)]="peersText" placeholder="e.g. INFY, WIPRO, HCLTECH"/>
+                                            </details>
+                                            <button type="button" class="btn" (click)="runQualitative()">
+                                                <span class="material-icons" aria-hidden="true">auto_awesome</span> Run qualitative analysis
+                                            </button>
+                                        </div>
+                                    }
+
+                                    @if (qualLoading) {
+                                        <div class="thinking">
+                                            <div class="orb" aria-hidden="true"></div>
+                                            <p>Reading annual reports and asking the language model. This can take a few minutes...</p>
+                                        </div>
+                                    }
+
+                                    @if (qualError) {
+                                        <p class="alert alert-bad" role="alert">
+                                            <span class="material-icons" aria-hidden="true">error_outline</span> {{ qualError }}
+                                        </p>
+                                    }
+
+                                    @if (needsUpload) {
+                                        <div class="upload">
+                                            <label>Year <input type="number" name="uploadYear" [(ngModel)]="uploadYear"/></label>
+                                            <label class="file-drop">
+                                                <span class="material-icons" aria-hidden="true">upload_file</span>
+                                                Upload annual report PDF
+                                                <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
+                                            </label>
+                                            @if (uploadMessage) {
+                                                <p class="small">{{ uploadMessage }}</p>
+                                            }
+                                        </div>
+                                    }
+
+                                    @if (qual && !qualLoading) {
+                                        <div class="score-row">
+                                            <app-score-ring [score]="qual.score" [tone]="qualVerdict(qual.score).tone" testId="qual-score"></app-score-ring>
+                                            <div class="score-meta">
+                                                <span class="verdict" [attr.data-tone]="qualVerdict(qual.score).tone">
+                                                    {{ qualVerdict(qual.score).emoji }} {{ qualVerdict(qual.score).label }}
+                                                </span>
+                                                <div class="pills">
+                                                    <span class="pill" [attr.data-tone]="moatTone(qual.moat.rating)">Moat: {{ qual.moat.rating }}</span>
+                                                    @for (y of qual.yearsAnalysed; track y) {
+                                                        <span class="pill">FY{{ y }}</span>
+                                                    }
+                                                    @if (qual.cached) {
+                                                        <span class="tag">cached</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        @if (qual.management.lowerConfidence) {
+                                            <p class="alert alert-warn">
+                                                <span class="material-icons" aria-hidden="true">info</span> Lower confidence: fewer than 3 years of reports.
+                                            </p>
+                                        }
+                                        <p class="explanation">{{ qual.explanation }}</p>
+
+                                        @if (qual.management.comparisons.length) {
+                                            <h4 class="mini-head">Did management deliver?</h4>
+                                            <ul class="timeline">
+                                                @for (c of qual.management.comparisons; track c.guidanceYear) {
+                                                    <li>
+                                                        <span class="pill" [attr.data-tone]="outcomeTone(c.outcome)">{{ c.outcome }}</span>
+                                                        <span class="small">FY{{ c.guidanceYear }} guidance → FY{{ c.actualsYear }} actuals</span>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+
+                                        @for (quote of qual.quotes; track $index) {
+                                            <blockquote>“{{ quote }}”</blockquote>
+                                        }
+
+                                        <p class="small">Peers{{ qual.peersOverridden ? ' (overridden)' : '' }}:
+                                            @for (p of qual.peers; track p.symbol; let last = $last) {
+                                                {{ p.name }}{{ last ? '' : ', ' }}
+                                            } @empty {
+                                                none
+                                            }
+                                        </p>
+                                        <button type="button" class="btn btn-ghost btn-sm" (click)="runQualitative()">
+                                            <span class="material-icons" aria-hidden="true">refresh</span> Run again
+                                        </button>
+                                    }
+                                </article>
+                            }
+
+                            <!-- Guidance scorecard: evidence behind Management trustworthiness, unscored -->
+                            <article class="tile span-12" data-testid="guidance-panel">
+                                <header class="tile-head">
+                                    <div>
+                                        <h3>Guidance scorecard</h3>
+                                        <span class="tile-sub">What management guided to in each annual report vs what the financials showed · unscored</span>
+                                    </div>
+                                    <div class="pills">
+                                        @if (guidance && guidance.hitRate !== null) {
+                                            <span class="pill" data-testid="guidance-hit-rate">{{ guidance.hitRate | percent: '1.0-0' }} met</span>
+                                        }
+                                        @if (guidance?.lowerConfidence) {
+                                            <span class="tag tag-warn" data-testid="guidance-low-confidence">lower confidence</span>
+                                        }
+                                        <span class="tag tag-warn">experimental</span>
+                                    </div>
+                                </header>
+
+                                @if (!guidance && !guidanceLoading) {
+                                    <div class="qual-cta">
+                                        <p class="muted">Extracts the forward-looking targets from each of the last 3 annual reports and checks them against
+                                            the actuals. One language-model call per report, stored for good ☕</p>
+                                        <button type="button" class="btn" (click)="runGuidance()">
+                                            <span class="material-icons" aria-hidden="true">fact_check</span> Run guidance scorecard
+                                        </button>
+                                    </div>
+                                }
+
+                                @if (guidanceLoading) {
+                                    <div class="thinking">
+                                        <div class="orb" aria-hidden="true"></div>
+                                        <p>Reading the annual reports' outlook sections...</p>
+                                    </div>
+                                }
+
+                                @if (guidanceError) {
+                                    <p class="alert alert-bad" role="alert">
+                                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ guidanceError }}
+                                    </p>
+                                }
+
+                                @if (guidance && !guidanceLoading) {
+                                    @for (y of guidance.years; track y.year) {
+                                        <section class="guidance-year" [attr.data-testid]="'guidance-year-' + y.year">
+                                            <h4>FY{{ y.year }} report @if (y.cached) { <span class="tag">cached</span> }</h4>
+                                            @switch (y.status) {
+                                                @case ('no-report') { <p class="muted small">The report could not be fetched. Upload it as a PDF.</p> }
+                                                @case ('no-guidance') { <p class="muted small">No forward-looking targets found.</p> }
+                                                @case ('llm-unavailable') { <p class="alert alert-warn small">The language model is unavailable; retry later.</p> }
+                                                @case ('failed') { <p class="alert alert-warn small">This report could not be analysed.</p> }
+                                            }
+                                            @if (y.claims.length) {
+                                                <ul class="timeline">
+                                                    @for (c of y.claims; track $index) {
+                                                        <li>
+                                                            <span class="pill" [attr.data-tone]="verdictTone(c.verdict)">{{ c.verdict }}</span>
+                                                            <span class="small">
+                                                                @if (c.metric !== 'other') {
+                                                                    {{ guidanceMetricLabel(c.metric) }} · target {{ guidanceTarget(c) }}
+                                                                    @if (c.horizon) { for FY{{ c.horizon }} }
+                                                                    @if (c.actual !== null) { · actual {{ guidanceValue(c.metric, c.actual) }} }
+                                                                }
+                                                                <em>“{{ c.quote }}”</em>
+                                                            </span>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            }
+                                        </section>
+                                    }
+                                }
+                            </article>
+
+                            <!-- SWOT analysis (off unless the server enables it) -->
+                            @if (features.swot) {
+                                <article class="tile span-12" data-testid="swot-panel">
+                                    <header class="tile-head">
+                                        <div>
+                                            <h3>SWOT analysis</h3>
+                                            <span class="tile-sub">Latest annual report + last fiscal year's financials · unscored</span>
+                                        </div>
+                                        <div class="pills">
+                                            @if (swotReportLabel) {
+                                                <span class="pill" data-testid="swot-report">{{ swotReportLabel }}</span>
+                                            }
+                                            @if (swot?.report?.cached) {
+                                                <span class="tag">cached</span>
+                                            }
+                                            <span class="tag tag-warn">experimental</span>
+                                        </div>
+                                    </header>
+
+                                    @if (!swot && !swotLoading) {
+                                        <div class="qual-cta">
+                                            <p class="muted">Reads the latest annual report's <strong>Opportunities and Threats</strong> and
+                                                <strong>Risks and Concerns</strong> sections plus its MD&amp;A, and checks last year's financials for
+                                                strengths and weaknesses. Takes a minute or two ☕</p>
+                                            <button type="button" class="btn" (click)="runSwot()">
+                                                <span class="material-icons" aria-hidden="true">grid_view</span> Run SWOT analysis
+                                            </button>
+                                        </div>
+                                    }
+
+                                    @if (swotLoading) {
+                                        <div class="thinking">
+                                            <div class="orb" aria-hidden="true"></div>
+                                            <p>Reading the latest annual report and last year's numbers...</p>
+                                        </div>
+                                    }
+
+                                    @if (swotError) {
+                                        <p class="alert alert-bad" role="alert">
+                                            <span class="material-icons" aria-hidden="true">error_outline</span> {{ swotError }}
+                                        </p>
+                                    }
+
+                                    @if (swot && !swotLoading) {
+                                        @if (swot.report.status !== 'ok' && swot.report.message) {
+                                            <p class="alert alert-warn" data-testid="swot-report-status">
+                                                <span class="material-icons" aria-hidden="true">info</span> {{ swot.report.message }}
+                                                Showing financials-based items only.
+                                            </p>
+                                        }
+                                        @if (swot.report.status === 'no-reports') {
+                                            <div class="upload">
+                                                <label>Year <input type="number" name="swotUploadYear" [(ngModel)]="uploadYear"/></label>
+                                                <label class="file-drop">
+                                                    <span class="material-icons" aria-hidden="true">upload_file</span>
+                                                    Upload annual report PDF
+                                                    <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
+                                                </label>
+                                                @if (uploadMessage) {
+                                                    <p class="small">{{ uploadMessage }}</p>
+                                                }
+                                            </div>
+                                        }
+                                        @if (swot.financials.status !== 'ok' && swot.financials.message) {
+                                            <p class="alert alert-warn">
+                                                <span class="material-icons" aria-hidden="true">info</span> {{ swot.financials.message }}
+                                            </p>
+                                        }
+
+                                        <div class="swot-grid">
+                                            @for (q of swotQuadrants; track q.key) {
+                                                <section class="swot-quadrant" [attr.data-tone]="q.tone" [attr.data-testid]="'swot-' + q.key">
+                                                    <h4 class="swot-head">
+                                                        <span class="material-icons" aria-hidden="true">{{ q.icon }}</span> {{ q.label }}
+                                                        @if (swot[q.key].lowerConfidence) {
+                                                            <span class="tag tag-warn" title="No dedicated section found in the report; extracted from the whole MD&A">lower confidence</span>
+                                                        }
+                                                    </h4>
+                                                    <ul class="swot-items">
+                                                        @for (item of swot[q.key].items; track $index) {
+                                                            <li>
+                                                                <details>
+                                                                    <summary>
+                                                                        <span class="swot-badge" [attr.data-source]="item.source">{{ item.source }}</span>
+                                                                        {{ item.text }}
+                                                                    </summary>
+                                                                    @if (item.source === 'report') {
+                                                                        <blockquote>“{{ item.evidence }}”</blockquote>
+                                                                    } @else {
+                                                                        <p class="small">{{ item.evidence }}</p>
+                                                                    }
+                                                                </details>
+                                                            </li>
+                                                        } @empty {
+                                                            <li class="muted small">Nothing identified.</li>
+                                                        }
+                                                    </ul>
+                                                </section>
+                                            }
+                                        </div>
+
+                                        <button type="button" class="btn btn-ghost btn-sm" (click)="runSwot()">
+                                            <span class="material-icons" aria-hidden="true">refresh</span> Run again
+                                        </button>
+                                    }
+                                </article>
+                            }
+                        }
+                        @case ('valuation') {
+                            <!-- Quantitative analysis -->
+                            <article class="tile score-tile span-6" data-testid="quant-panel">
+                                <header class="tile-head">
+                                    <div>
+                                        <h3>Quantitative analysis</h3>
+                                        <span class="tile-sub">DCF fair value vs market price</span>
+                                    </div>
+                                    @if (quant?.cached) {
+                                        <span class="tag" title="Served from cache">cached</span>
+                                    }
+                                </header>
+
+                                @if (quantLoading && !quant) {
+                                    <div class="score-row">
+                                        <span class="skeleton ring-skeleton"></span>
+                                        <div class="score-meta">
+                                            <span class="skeleton" style="height: 28px; width: 60%"></span>
+                                            <span class="skeleton" style="height: 14px; width: 90%; margin-top: 12px"></span>
+                                            <span class="skeleton" style="height: 14px; width: 75%; margin-top: 8px"></span>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (quantError) {
+                                    <p class="alert alert-bad" role="alert">
+                                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ quantError }}
+                                    </p>
+                                }
+
+                                @if (quant; as q) {
+                                    <div class="score-row" [class.refreshing]="quantLoading">
+                                        <app-score-ring [score]="q.score" [tone]="quantVerdict(q.score).tone" testId="quant-score"></app-score-ring>
+                                        <div class="score-meta">
+                                            <span class="verdict" [attr.data-tone]="quantVerdict(q.score).tone">
+                                                {{ quantVerdict(q.score).emoji }} {{ quantVerdict(q.score).label }}
+                                            </span>
+                                            <div class="fv-grid">
+                                                <div>
+                                                    <span class="label">Fair value</span>
+                                                    <span class="fv">₹{{ q.fairValue | number:'1.0-2' }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="label">Price</span>
+                                                    <span class="fv">₹{{ q.price | number:'1.0-2' }}</span>
+                                                </div>
+                                                @if (upside !== null) {
+                                                    <div>
+                                                        <span class="label">{{ upside >= 0 ? 'Upside' : 'Downside' }}</span>
+                                                        <span class="fv" [class.pos]="upside >= 0" [class.neg]="upside < 0">
+                                                            {{ upside >= 0 ? '+' : '' }}{{ upside | number:'1.0-1' }}%
+                                                        </span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="explanation">{{ q.explanation }}</p>
+
+                                    @if (q.scenarios) {
+                                        <app-scenario-range [scenarios]="q.scenarios" [price]="q.price"></app-scenario-range>
+                                    } @else {
+                                        <p class="explanation">Scenario range not applicable: the latest year is loss-making or has negative free cash flow.</p>
+                                    }
+
+                                    <button type="button" class="disclosure" (click)="showAssumptions = !showAssumptions"
+                                            [attr.aria-expanded]="showAssumptions">
+                                        <span class="material-icons" aria-hidden="true">tune</span>
+                                        Tweak the DCF assumptions
+                                        @if (q.overridden) {
+                                            <span class="tag tag-accent">custom</span>
+                                        }
+                                        <span class="material-icons chevron" [class.open]="showAssumptions" aria-hidden="true">expand_more</span>
+                                    </button>
+
+                                    @if (showAssumptions && assumptions) {
+                                        <div class="sliders">
+                                            <label class="slider-field">
+                                                <span class="slider-head">Growth <strong>{{ assumptions.growthRate | number:'1.0-2' }}%</strong>
+                                                    <small>default {{ q.defaults.growthRate | number:'1.0-2' }}%</small></span>
+                                                <input type="range" name="growth" min="-10" [max]="sliderMax(q.defaults.growthRate, 40)" step="0.1"
+                                                       [(ngModel)]="assumptions.growthRate" (change)="recalculate()"/>
+                                            </label>
+                                            <label class="slider-field">
+                                                <span class="slider-head">Discount <strong>{{ assumptions.discountRate | number:'1.0-2' }}%</strong>
+                                                    <small>default {{ q.defaults.discountRate | number:'1.0-2' }}%</small></span>
+                                                <input type="range" name="discount" min="5" [max]="sliderMax(q.defaults.discountRate, 25)" step="0.1"
+                                                       [(ngModel)]="assumptions.discountRate" (change)="recalculate()"/>
+                                            </label>
+                                            <label class="slider-field">
+                                                <span class="slider-head">Terminal growth <strong>{{ assumptions.terminalGrowthRate | number:'1.0-2' }}%</strong>
+                                                    <small>default {{ q.defaults.terminalGrowthRate | number:'1.0-2' }}%</small></span>
+                                                <input type="range" name="terminal" min="0" [max]="sliderMax(q.defaults.terminalGrowthRate, 10)" step="0.1"
+                                                       [(ngModel)]="assumptions.terminalGrowthRate" (change)="recalculate()"/>
+                                            </label>
+                                            <div class="slider-actions">
+                                                <button type="button" class="btn btn-ghost btn-sm" (click)="resetAssumptions()">
+                                                    <span class="material-icons" aria-hidden="true">restart_alt</span> Reset to defaults
+                                                </button>
+                                                @if (quantLoading) {
+                                                    <span class="spinner" aria-label="Recalculating"></span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </article>
+
+                            <!-- Reverse DCF -->
+                            <article class="tile span-6" data-testid="reverse-dcf">
+                                <header class="tile-head">
+                                    <div>
+                                        <h3>What the price implies</h3>
+                                        <span class="tile-sub">Reverse DCF: Implied growth vs history</span>
+                                    </div>
+                                    @if (reverseDcf?.cached) {
+                                        <span class="tag" title="Served from cache">cached</span>
+                                    }
+                                </header>
+                                @if (reverseDcfLoading && !reverseDcf) {
+                                    <span class="skeleton" style="height: 22px; width: 80%"></span>
+                                }
+                                @if (reverseDcfError) {
+                                    <p class="alert alert-bad" role="alert">
+                                        <span class="material-icons" aria-hidden="true">error_outline</span> {{ reverseDcfError }}
+                                    </p>
+                                }
+                                @if (reverseDcf) {
+                                    <app-reverse-dcf [analysis]="reverseDcf" [class.refreshing]="reverseDcfLoading"></app-reverse-dcf>
+                                }
+                            </article>
+                        }
+                        @case ('decision') {
+                            <article class="tile span-12" data-testid="decision-summary">
+                                <p class="muted">The evidence from each block, side by side, will appear here. There is no verdict: the decision is yours.</p>
+                            </article>
+                        }
+                    }
+                </div>
+            }
+        </section>
+    }
 }

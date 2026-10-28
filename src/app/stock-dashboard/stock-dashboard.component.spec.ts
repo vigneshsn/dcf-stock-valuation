@@ -195,7 +195,7 @@ describe('StockDashboardComponent', () => {
         expect(content).toContain('14%');
     });
 
-    it('renders company context, returns, news, peers and analyst consensus', () => {
+    it('renders company context, returns and peers', () => {
         search('ACME');
         httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({
             marketCap: 125000000,
@@ -205,26 +205,20 @@ describe('StockDashboardComponent', () => {
             roce: 20,
             roe: 14,
             companyIntroduction: { name: 'Acme Industries', industry: 'Manufacturing', description: 'Makes useful things.' },
-            news: [{ headline: 'Acme expands production', publishedAt: '2026-10-20T10:00:00Z', source: null, url: 'https://www.livemint.com/news/acme' }],
             peers: [
                 { name: 'Peer Corp', price: 200, marketCap: 50000, peRatio: 12, pbRatio: 2, roe: 15, debtToEquity: 0.3, profitMargin: 9.5, dividendYield: 1.1 },
                 { name: 'Peer with missing metrics', price: null, marketCap: null, peRatio: null, pbRatio: null, roe: null, debtToEquity: null, profitMargin: null, dividendYield: null }
-            ],
-            analystConsensus: { source: 'IndianAPI', recommendation: 'Buy', counts: { strongBuy: 2, buy: 4, hold: 1, sell: 0, strongSell: 0 } }
+            ]
         }));
         expectQuant('ACME').flush(quant());
 
         const content = text();
         expect(content).toContain('Acme Industries');
         expect(content).toContain('Makes useful things.');
-        expect(content).toContain('Acme expands production');
         expect(content).toContain('Peer Corp');
-        expect(content).toContain('Analyst consensus');
-        expect(content).toContain('Source: IndianAPI');
         expect(content).toContain('20%');
         expect(content).toContain('14%');
         expect(component.rangePosition).toBeCloseTo(71.5, 1);
-        expect(component.analystTotal).toBe(7);
 
         const rows = fixture.nativeElement.querySelectorAll('tbody tr');
         expect(rows.length).toBe(3);
@@ -277,17 +271,94 @@ describe('StockDashboardComponent', () => {
         expect(rows[1].name).toBe('Peer Corp');
     });
 
-    it('shows peer comparison before analyst consensus and recent news', () => {
+    it('reads in five blocks, each holding its sections in order', () => {
         search('ACME');
-        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({
-            analystConsensus: { source: 'IndianAPI', recommendation: 'Buy', counts: { strongBuy: 1, buy: 0, hold: 0, sell: 0, strongSell: 0 } }
-        }));
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics());
         expectQuant('ACME').flush(quant());
         fixture.detectChanges();
 
-        const order = Array.from(fixture.nativeElement.querySelectorAll('article[data-testid]') as NodeListOf<HTMLElement>)
+        const blocks = Array.from(fixture.nativeElement.querySelectorAll('[data-block]') as NodeListOf<HTMLElement>);
+        expect(blocks.map((b) => b.dataset['block'])).toEqual(['overview', 'financials', 'management', 'valuation', 'decision']);
+        expect(blocks.map((b) => b.querySelector('h2')?.textContent?.trim())).toEqual([
+            'Business overview', 'Financials', 'Management & annual report', 'Valuation', 'Decision summary'
+        ]);
+        const sections = (b: HTMLElement) => Array.from(b.querySelectorAll('article[data-testid]') as NodeListOf<HTMLElement>)
             .map((el) => el.dataset['testid']);
-        expect(order.slice(-3)).toEqual(['peers', 'consensus', 'news']);
+        expect(sections(blocks[0])).toEqual(['company', 'key-stats']);
+        expect(sections(blocks[1])).toEqual(['red-flags', 'peers']);
+        expect(sections(blocks[2])).toEqual(['insights-panel', 'guidance-panel']);
+        expect(sections(blocks[3])).toEqual(['quant-panel', 'reverse-dcf']);
+    });
+
+    it('opens every block by default and collapses or expands one at a time', () => {
+        search('ACME');
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics());
+        expectQuant('ACME').flush(quant());
+        fixture.detectChanges();
+
+        const block = (id: string) => fixture.nativeElement.querySelector(`[data-block="${id}"]`) as HTMLElement;
+        const toggle = (id: string) => block(id).querySelector('[data-testid="block-toggle"]') as HTMLButtonElement;
+        for (const id of ['overview', 'financials', 'management', 'valuation', 'decision']) {
+            expect(toggle(id).textContent?.trim()).toBe('Collapse');
+            expect(toggle(id).getAttribute('aria-expanded')).toBe('true');
+        }
+
+        toggle('valuation').click();
+        fixture.detectChanges();
+        expect(toggle('valuation').textContent?.trim()).toBe('Expand');
+        expect(toggle('valuation').getAttribute('aria-expanded')).toBe('false');
+        expect(block('valuation').querySelector('[data-testid="quant-panel"]')).toBeNull();
+        expect(block('financials').querySelector('[data-testid="red-flags"]')).not.toBeNull();
+
+        toggle('valuation').click();
+        fixture.detectChanges();
+        expect(block('valuation').querySelector('[data-testid="quant-panel"]')).not.toBeNull();
+    });
+
+    it('opens every block again when another ticker is searched', () => {
+        search('ACME');
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics());
+        expectQuant('ACME').flush(quant());
+        fixture.detectChanges();
+        (fixture.nativeElement.querySelector('[data-block="overview"] [data-testid="block-toggle"]') as HTMLButtonElement).click();
+
+        search('BADTICKER');
+        httpMock.expectOne(`${STOCK_URL}BADTICKER`).flush('Not found', { status: 404, statusText: 'Not Found' });
+        expectQuant('BADTICKER').flush({ error: 'Ticker not found' }, { status: 404, statusText: 'Not Found' });
+
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('[data-testid="company"]')?.textContent).toContain('Ticker not found');
+    });
+
+    it('scrolls to a block from the contents bar', () => {
+        search('ACME');
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics());
+        expectQuant('ACME').flush(quant());
+        fixture.detectChanges();
+
+        const target = fixture.nativeElement.querySelector('[data-block="valuation"]') as HTMLElement;
+        const scroll = spyOn(target, 'scrollIntoView');
+        const links = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="contents"] button') as NodeListOf<HTMLButtonElement>);
+        expect(links.map((l) => l.textContent?.replace(/^\s*\d+/, '').trim())).toEqual([
+            'Business overview', 'Financials', 'Management & annual report', 'Valuation', 'Decision summary'
+        ]);
+
+        links[3].click();
+        expect(scroll).toHaveBeenCalled();
+    });
+
+    it('shows no Analyst consensus or Recent news even when the provider sends them', () => {
+        search('ACME');
+        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({
+            news: [{ headline: 'Acme expands production', publishedAt: '2026-10-20T10:00:00Z', source: null, url: 'https://www.livemint.com/news/acme' }],
+            analystConsensus: { source: 'IndianAPI', recommendation: 'Buy', counts: { strongBuy: 1, buy: 0, hold: 0, sell: 0, strongSell: 0 } }
+        }));
+        expectQuant('ACME').flush(quant());
+
+        const content = text();
+        expect(content).not.toContain('Analyst consensus');
+        expect(content).not.toContain('Recent news');
+        expect(content).not.toContain('Acme expands production');
     });
 
     it('keeps optional sections empty when the provider has no supplemental data', () => {
@@ -296,9 +367,7 @@ describe('StockDashboardComponent', () => {
         expectQuant('ACME').flush(quant());
 
         const content = text();
-        expect(content).toContain('No recent news available.');
         expect(content).toContain('No peer comparison data available.');
-        expect(content).not.toContain('Analyst consensus');
         expect(fixture.nativeElement.querySelector('tbody')).toBeNull();
     });
 

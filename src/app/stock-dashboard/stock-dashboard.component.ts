@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -87,6 +87,17 @@ const RED_FLAG_NAMES: Record<RedFlagId, string> = {
     'negative-free-cash-flow': 'Negative free cash flow, 3 years'
 };
 
+type BlockId = 'overview' | 'financials' | 'management' | 'valuation' | 'decision';
+
+/** The Analysis reading order: facts before judgement (docs/adr/0001-evidence-without-verdict.md). */
+const BLOCKS: { id: BlockId; title: string }[] = [
+    { id: 'overview', title: 'Business overview' },
+    { id: 'financials', title: 'Financials' },
+    { id: 'management', title: 'Management & annual report' },
+    { id: 'valuation', title: 'Valuation' },
+    { id: 'decision', title: 'Decision summary' }
+];
+
 const MOAT_TONES: Record<MoatRating, Tone> = { wide: 'good', narrow: 'neutral', none: 'bad' };
 const VERDICT_TONES: Record<GuidanceVerdict, Tone> = { met: 'good', near: 'warn', missed: 'bad', pending: 'neutral', unscored: 'neutral' };
 const GUIDANCE_METRICS: Record<GuidanceMetric, string> = {
@@ -112,11 +123,15 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly destroyRef = inject(DestroyRef);
+    private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
     readonly suggestions = ['TCS', 'RELIANCE', 'INFY', 'ITC', 'HDFCBANK'];
 
     query = '';
     ticker = '';
+
+    readonly blocks = BLOCKS;
+    private readonly collapsedBlocks = new Set<BlockId>();
 
     stockState: LoadState = 'idle';
     stockError = '';
@@ -216,6 +231,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.ticker = ticker;
         this.query = ticker;
         this.showFullDescription = false;
+        this.collapsedBlocks.clear();
         this.resetQualitative();
         this.resetSwot();
         this.resetGuidance();
@@ -272,24 +288,20 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     readonly marketCapCrores = marketCapCrores;
 
-    get consensusSegments(): { key: string; label: string; count: number; pct: number }[] {
-        const counts = this.metrics?.analystConsensus?.counts;
-        if (!counts) {
-            return [];
-        }
-        const rows = [
-            { key: 'strong-buy', label: 'Strong buy', count: counts.strongBuy ?? 0 },
-            { key: 'buy', label: 'Buy', count: counts.buy ?? 0 },
-            { key: 'hold', label: 'Hold', count: counts.hold ?? 0 },
-            { key: 'sell', label: 'Sell', count: counts.sell ?? 0 },
-            { key: 'strong-sell', label: 'Strong sell', count: counts.strongSell ?? 0 }
-        ];
-        const total = rows.reduce((sum, r) => sum + r.count, 0);
-        return rows.map((r) => ({ ...r, pct: total ? (r.count / total) * 100 : 0 }));
+    // ---- Blocks -----------------------------------------------------------------
+
+    isCollapsed(id: BlockId): boolean {
+        return this.collapsedBlocks.has(id);
     }
 
-    get analystTotal(): number {
-        return this.consensusSegments.reduce((sum, s) => sum + s.count, 0);
+    toggleBlock(id: BlockId): void {
+        if (!this.collapsedBlocks.delete(id)) {
+            this.collapsedBlocks.add(id);
+        }
+    }
+
+    scrollToBlock(id: BlockId): void {
+        this.host.nativeElement.querySelector(`[data-block="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     /**
