@@ -74,7 +74,7 @@ jobs:
           cp index.html 404.html
           echo "www.valuestock360.com" > CNAME
           touch .nojekyll
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist/dcf-stock-valuation
 
