@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { DcfCalculatorComponent } from './dcf-calculator.component';
 import { CsvService } from '../services/csv.service';
-import { XlsxService } from '../services/xlsx.service';
 
 describe('DcfCalculatorComponent', () => {
     let component: DcfCalculatorComponent;
@@ -11,7 +10,7 @@ describe('DcfCalculatorComponent', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             imports: [DcfCalculatorComponent, FormsModule],
-            providers: [CsvService, XlsxService]
+            providers: [CsvService]
         }).compileComponents();
 
         fixture = TestBed.createComponent(DcfCalculatorComponent);

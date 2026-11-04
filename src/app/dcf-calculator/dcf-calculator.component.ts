@@ -1,7 +1,6 @@
 import {Component, OnInit} from '@angular/core';
 import {CsvService} from '../services/csv.service';
 import {FormsModule} from '@angular/forms';
-import {XlsxService} from '../services/xlsx.service';
 import {DcfHelperService} from '../services/dcf-helper.service';
 import {Tooltip} from "../tooltip/tooltip";
 import {Projections} from "../models/projections";
@@ -49,7 +48,6 @@ export class DcfCalculatorComponent implements OnInit {
 
     constructor(
         private csv: CsvService,
-        private xlsx: XlsxService,
         private helper: DcfHelperService
     ) {}
 

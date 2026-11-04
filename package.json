@@ -26,7 +26,6 @@
     "@angular/router": "~20.3.35",
     "rxjs": "~7.8.1",
     "tslib": "^2.6.2",
-    "xlsx": "^0.18.5",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {

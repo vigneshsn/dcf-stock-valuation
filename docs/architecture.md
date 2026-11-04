@@ -15,7 +15,7 @@ flowchart LR
         dash["StockDashboardComponent<br/>route: /stock?q=TICKER<br/>(/fundamentals, /analysis redirect here)"]
         fb["FeedbackComponent<br/>route: /feedback"]
         helper["DcfHelperService"]
-        export["CsvService / XlsxService"]
+        export["CsvService"]
         stockSvc["StockService"]
         analysisSvc["AnalysisService"]
 
@@ -65,7 +65,7 @@ flowchart LR
 
 | Feature | Frontend | Backend | Data source |
 | --- | --- | --- | --- |
-| Manual DCF calculator with CSV/XLSX export | `DcfCalculatorComponent`, `DcfHelperService`, `CsvService`, `XlsxService` | — (runs entirely in the browser) | User input |
+| Manual DCF calculator with CSV export | `DcfCalculatorComponent`, `DcfHelperService`, `CsvService` | — (runs entirely in the browser) | User input |
 | Fundamentals (price, ratios, company context, peers) | `StockDashboardComponent`, `StockService` | `GET /api/stock/:ticker` | IndianAPI or FMP |
 | Quantitative analysis (DCF Fair value + score) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
 | Financial statements (5 fiscal years: income, balance sheet, cash flow; unscored) | `FinancialStatementsComponent`, `AnalysisService` | `GET /api/analysis/:ticker/statements` | IndianAPI or FMP (cached financials, amounts in ₹ crore) |

@@ -28,9 +28,8 @@ jobs:
       - name: Unit tests and coverage (thresholds in karma.conf.js)
         run: npm run test:ci
       - run: npx ng build
-      # xlsx has no fixed release; both advisories are allowlisted until it is replaced.
       - name: Audit production dependencies
-        run: npx --yes audit-ci@^7 --omit dev --high --allowlist GHSA-4r6h-8v6p-xvw6 GHSA-5pgg-2g8v-p4x9
+        run: npm audit --omit=dev --audit-level=high
       - uses: actions/upload-artifact@v4
         if: always()
         with:
