@@ -83,8 +83,8 @@ jobs:
     needs: [build-frontend, deploy-backend]
     runs-on: ubuntu-latest
     environment:
-      name: production
-      url: https://www.valuestock360.com
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
       id-token: write

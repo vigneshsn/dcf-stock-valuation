@@ -159,6 +159,7 @@ Open `http://localhost:4200/stock` while the Angular app and backend are running
 One-time setup:
 - Repo Settings > Pages: set Source to **GitHub Actions**.
 - Create a `production` environment with a required reviewer, the secret `RENDER_DEPLOY_HOOK_URL` and the variable `API_URL` (the Render service URL, no trailing slash).
+- Environment `github-pages` (created by Pages): under Deployment branches and tags, remove the `gh-pages` rule and add a tag rule `v*.*.*` (or allow all branches and tags). Releases run from tags, so the old branch-only policy rejects them.
 - Render service: root `server`, build `npm ci && npm run build`, start `npm start`, health check `/health`, **auto-deploy off**, plus the Market edition env vars.
 - Branch protection on `master`: require the `Frontend`, `Backend`, `Secret scan`, `Dependency review` and `Analyze (JS/TS)` checks.
 
