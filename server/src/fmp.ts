@@ -27,3 +27,9 @@ export async function fmpGet<T>(
   }
   return (await response.json()) as T;
 }
+
+/** The company's own fiscal-year label (FMP fiscalYear), e.g. 2025 for Apple's year ending September 2025. */
+export function fmpFiscalYear(row: { fiscalYear?: string | number; calendarYear?: string | number; date?: string }): number | null {
+  const year = Number(row.fiscalYear ?? row.calendarYear ?? row.date?.slice(0, 4));
+  return Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : null;
+}

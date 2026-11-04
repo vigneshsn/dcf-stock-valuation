@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { get, set, CACHE_TTL_MS } from '../cache.js';
-import { fmpGet, FmpError } from '../fmp.js';
+import { fmpGet, fmpFiscalYear, FmpError } from '../fmp.js';
 import {
   fetchIndianApiStock,
   IndianApiError,
@@ -56,18 +56,12 @@ function numberOrNull(value: number | null | undefined): number | null {
   return value != null && Number.isFinite(value) ? value : null;
 }
 
-function fmpYear(row: { fiscalYear?: string | number; calendarYear?: string | number; date?: string }): number | null {
-  const value = row.fiscalYear ?? row.calendarYear ?? row.date?.slice(0, 4);
-  const year = Number(value);
-  return Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : null;
-}
-
 function alignedFmpReturns(
   incomeStatements: FmpIncomeStatement[],
   balanceSheets: FmpBalanceSheet[]
 ): { roce: number | null; roe: number | null } {
   const annualYear = (statement: FmpIncomeStatement | FmpBalanceSheet): number | null =>
-    /^Q[1-4]$/i.test(statement.period ?? '') ? null : fmpYear(statement);
+    /^Q[1-4]$/i.test(statement.period ?? '') ? null : fmpFiscalYear(statement);
   const annualIncome = mapAnnualStatements(incomeStatements, annualYear, (statement) => ({
     ebit: numberOrNull(statement.ebit ?? statement.operatingIncome),
     netIncome: numberOrNull(statement.netIncome),
