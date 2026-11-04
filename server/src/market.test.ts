@@ -21,6 +21,8 @@ test('indianapi provider serves the India edition in rupees and crore', () => {
     unitSuffix: ' cr',
     marketCapNotation: 'standard',
     marketCapSuffix: ' Cr',
+    tickerLabel: 'NSE',
+    exampleTickers: ['TCS', 'RELIANCE', 'INFY', 'ITC', 'HDFCBANK'],
   });
 });
 
@@ -34,6 +36,8 @@ test('fmp provider serves the US edition in dollars and millions', () => {
     unitSuffix: 'M',
     marketCapNotation: 'compact',
     marketCapSuffix: '',
+    tickerLabel: 'US',
+    exampleTickers: ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN'],
   });
 });
 
