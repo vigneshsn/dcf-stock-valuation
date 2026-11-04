@@ -10,6 +10,7 @@ The app serves either the India or the US market, chosen by `STOCK_DATA_PROVIDER
 ## Consequences
 
 - Analyst consensus and news are removed in both editions (consistent with ADR 0001; FMP news is also plan-restricted).
-- Currency, locale, unit scale, ticker rules and the report-section locator live behind one market descriptor served by the backend; components must not hard-code ₹, crore or `en-IN`.
+- Currency, locale, unit scale and ticker rules live behind one market descriptor served by the backend; components must not hard-code ₹, crore or `en-IN`.
+- The annual report source and section locator are server-only and live behind one `ReportProfile` per edition (`server/src/reportProfiles.ts`); callers receive the profile and never branch on the edition.
 - US edition needs `SEC_USER_AGENT` (required) and throttled, cached EDGAR requests; Peer set is limited to the edition's own market.
 - Fiscal years are matched on the company's own fiscal-year label.

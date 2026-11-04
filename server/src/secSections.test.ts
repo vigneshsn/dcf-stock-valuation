@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { extractMdna, reportToText } from './mdna.js';
+import { INDIA_REPORTS, US_REPORTS } from './reportProfiles.js';
 import { insightsInput } from './insights.js';
 import { guidanceInput } from './guidance.js';
 import { extractTenKSections, htmlToText } from './secSections.js';
@@ -17,7 +18,7 @@ const TEN_K = [
   'Item 7A. Quantitative and Qualitative Disclosures About Market Risk 28',
   'Item 8. Financial Statements and Supplementary Data 29',
   'Item 1. Business',
-  'The Company designs smartphones.',
+  `The Company designs smartphones. ${filler('hardware', 25)}`,
   'Item 1A. Risk Factors',
   `Competition risk: ${filler('services', 25)}`,
   'Item 1B. Unresolved Staff Comments',
@@ -40,17 +41,35 @@ test('US locator finds Item 7 and Item 1A, skipping table-of-contents entries', 
   assert.doesNotMatch(risks!, /Unresolved Staff|Our company outlook/);
 });
 
-test('edition selects the locator', () => {
-  assert.match(extractMdna(TEN_K, 'us')!, /Our company outlook/);
-  assert.ok(extractMdna(TEN_K, 'india')!.startsWith('Management’s Discussion'), 'India heuristics start at the heading text, not the SEC item');
-  assert.strictEqual(extractMdna('no sections here', 'us'), null);
+test('the edition profile selects the locator', () => {
+  assert.match(US_REPORTS.locate(TEN_K).mdna!, /Our company outlook/);
+  assert.ok(INDIA_REPORTS.locate(TEN_K).mdna!.startsWith('Management’s Discussion'), 'India heuristics start at the heading text, not the SEC item');
+  assert.strictEqual(US_REPORTS.locate('no sections here').mdna, null);
+  assert.strictEqual(extractMdna('no sections here'), null);
 });
 
-test('US insights and guidance inputs carry the MD&A and the risk factors', () => {
-  const insights = insightsInput(TEN_K, 20_000, 'us')!;
+test('US insights and guidance inputs carry the business, MD&A and risk factors', () => {
+  const insights = insightsInput(TEN_K, 20_000, US_REPORTS)!;
+  assert.match(insights, /BUSINESS AND COMPETITION[^]*The Company designs smartphones/);
   assert.match(insights, /MANAGEMENT DISCUSSION AND ANALYSIS/);
-  assert.match(insights, /OPPORTUNITIES, THREATS AND RISKS:\nItem 1A|OPPORTUNITIES, THREATS AND RISKS:\n.*Competition risk/s);
-  assert.match(guidanceInput(TEN_K, 20_000, 'us')!, /We expect iPhone revenue/);
+  assert.match(insights, /OPPORTUNITIES, THREATS AND RISKS:\nItem 1A/);
+  assert.match(guidanceInput(TEN_K, 20_000, US_REPORTS)!, /We expect iPhone revenue/);
+});
+
+test('US locator copes with item numbers and titles on separate lines and ignores body cross-references', () => {
+  const split = [
+    'Item 1A.', 'Risk Factors', filler('risk', 25), 'Item 1B.', 'Unresolved Staff Comments', 'None.',
+    'Item 7.', 'Management’s Discussion and Analysis of Financial Condition and Results of Operations', filler('growth', 30),
+    'Item 7A.', 'Quantitative and Qualitative Disclosures About Market Risk', 'x',
+  ].join('\n');
+  const { mdna, risks } = extractTenKSections(split);
+  assert.match(mdna!, /expect growth revenue/);
+  assert.doesNotMatch(mdna!, /Quantitative and Qualitative/);
+  assert.match(risks!, /expect risk revenue/);
+  assert.doesNotMatch(risks!, /Unresolved Staff/);
+
+  const crossRef = `Item 1A. Risk Factors\n${filler('risk', 25)}\nItem 7. Management’s Discussion and Analysis is discussed in ${'a very long sentence '.repeat(15)} below.\n${filler('late', 40)}\nItem 1B. Unresolved Staff Comments\nNone.`;
+  assert.strictEqual(extractTenKSections(crossRef).mdna, null, 'a long body line that starts with Item 7 is not a heading');
 });
 
 test('htmlToText turns an EDGAR HTML filing into lines, dropping hidden XBRL and decoding entities', () => {

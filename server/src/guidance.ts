@@ -2,9 +2,9 @@ import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/pro
 import path from 'node:path';
 import { YearFinancials } from './dcf.js';
 import { LlmError, generateJson } from './llm.js';
-import { extractMdna, filterRelevant, reportToText } from './mdna.js';
-import { EdgarConfigError } from './edgar.js';
-import type { MarketDescriptor } from './market.js';
+import { filterRelevant, reportToText } from './mdna.js';
+import { setupErrorOr } from './edgar.js';
+import { INDIA_REPORTS, ReportProfile } from './reportProfiles.js';
 import { verifiedQuote } from './quotes.js';
 import { AnnualReportRef } from './reports.js';
 
@@ -65,9 +65,9 @@ const PERCENT_METRICS: readonly ClaimMetric[] = ['revenueGrowth', 'netProfitGrow
 export function guidanceInput(
   reportText: string,
   maxChars = MAX_GUIDANCE_INPUT_CHARS,
-  edition: MarketDescriptor['edition'] = 'india'
+  profile: ReportProfile = INDIA_REPORTS
 ): string | null {
-  const mdna = extractMdna(reportText, edition);
+  const { mdna } = profile.locate(reportText);
   return mdna ? filterRelevant(mdna, maxChars) : null;
 }
 
@@ -273,7 +273,7 @@ export async function forgetStoredGuidance(ticker: string, year: number): Promis
 // ---- Reports → claims --------------------------------------------------------
 
 export interface GuidanceDeps {
-  edition?: MarketDescriptor['edition'];
+  profile?: ReportProfile;
   listReports: (ticker: string, count: number) => Promise<AnnualReportRef[]>;
   textOf?: (pdf: Buffer) => Promise<string>;
   extract?: GuidanceExtractor;
@@ -314,7 +314,7 @@ function yearGuidance(ticker: string, model: string, ref: AnnualReportRef, isLat
     }
     try {
       const started = Date.now();
-      const input = guidanceInput(await (deps.textOf ?? reportToText)(pdf), MAX_GUIDANCE_INPUT_CHARS, deps.edition);
+      const input = guidanceInput(await (deps.textOf ?? reportToText)(pdf), MAX_GUIDANCE_INPUT_CHARS, deps.profile);
       const claims = input ? await (deps.extract ?? extractGuidance)(ref.year, input) : [];
       console.log(`[guidance cache MISS] ${key}: ${claims.length} claim(s) in ${Date.now() - started}ms`);
       await writeStoredGuidance(ticker, model, { year: ref.year, source: ref.source, found: !!input, claims, createdAt: Date.now() });
@@ -331,17 +331,11 @@ function yearGuidance(ticker: string, model: string, ref: AnnualReportRef, isLat
 // Guidance for up to `count` reports, newest first. Years run in parallel; one LLM call per report, ever.
 // Stored years keep the result available when the report listing or the LLM is down.
 export async function collectGuidance(ticker: string, model: string, count: number, deps: GuidanceDeps): Promise<GuidanceYear[]> {
-  const refs = await deps.listReports(ticker, count).catch((err) => {
-    // A missing SEC_USER_AGENT is a setup problem to report, not a reason to fall back to stored years.
-    if (err instanceof EdgarConfigError) {
-      throw err;
-    }
-    return [] as AnnualReportRef[];
-  });
+  const refs = await deps.listReports(ticker, count).catch((err) => setupErrorOr(err, [] as AnnualReportRef[]));
   const known = new Set(refs.map((r) => r.year));
   const storedOnly: AnnualReportRef[] = (await storedGuidanceYears(ticker, model))
     .filter((y) => !known.has(y))
-    .map((year) => ({ year, source: 'screener' as const, load: async () => null }));
+    .map((year) => ({ year, source: (deps.profile ?? INDIA_REPORTS).source, load: async () => null }));
   const plan = [...refs, ...storedOnly].sort((a, b) => b.year - a.year).slice(0, count);
   return Promise.all(plan.map((ref, i) => yearGuidance(ticker, model, ref, i === 0, deps)));
 }

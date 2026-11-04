@@ -1,19 +1,19 @@
 import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { extractMdna, filterRelevant, reportToText } from './mdna.js';
-import type { MarketDescriptor } from './market.js';
-import { extractTenKSections } from './secSections.js';
+import { filterRelevant, reportToText } from './mdna.js';
+import { INDIA_REPORTS, ReportProfile } from './reportProfiles.js';
 import { generateJson } from './llm.js';
 import { verifiedQuote } from './quotes.js';
 import { AnnualReportRef } from './reports.js';
 import { GUIDANCE_SCHEMA_PROMPT, GuidanceClaim, parseGuidanceClaims } from './guidance.js';
-import { extractOutlookSections, outlookPassages } from './reportSections.js';
+import { outlookPassages } from './reportSections.js';
 
 // Bump when input selection or the prompt changes so stored insights are recomputed.
 export const INSIGHTS_VERSION = 3;
 // ~5k tokens, so the single request fits free-tier per-minute token limits (Groq ≈ 8k TPM) with room for the answer.
 export const MAX_INSIGHTS_INPUT_CHARS = 20_000;
 const MAX_OUTLOOK_CHARS = 8_000;
+const MAX_BUSINESS_CHARS = 4_000;
 export const MAX_INSIGHT_ITEMS = 4;
 const INSIGHTS_MAX_TOKENS = 2200;
 
@@ -54,18 +54,17 @@ export interface ReportInsights {
 export function insightsInput(
   reportText: string,
   maxChars = MAX_INSIGHTS_INPUT_CHARS,
-  edition: MarketDescriptor['edition'] = 'india'
+  profile: ReportProfile = INDIA_REPORTS
 ): string | null {
-  const mdna = extractMdna(reportText, edition);
-  // A 10-K keeps its risks in Item 1A, outside the MD&A.
-  const sections = edition === 'us' ? { opportunitiesAndThreats: null, risks: extractTenKSections(reportText).risks } : extractOutlookSections(mdna ?? reportText);
-  const dedicated = [sections.opportunitiesAndThreats, sections.risks].filter((s): s is string => !!s).join('\n\n');
+  const { mdna, business, outlook: dedicated } = profile.locate(reportText);
   const outlook = (dedicated || (mdna ? outlookPassages(mdna, MAX_OUTLOOK_CHARS) : '')).slice(0, MAX_OUTLOOK_CHARS);
-  const discussion = mdna ? filterRelevant(mdna, maxChars - outlook.length) : '';
+  const company = business ? filterRelevant(business, MAX_BUSINESS_CHARS) : '';
+  const discussion = mdna ? filterRelevant(mdna, maxChars - outlook.length - company.length) : '';
   if (!discussion && !outlook) {
     return null;
   }
   return [
+    company && `BUSINESS AND COMPETITION (excerpts):\n${company}`,
     discussion && `MANAGEMENT DISCUSSION AND ANALYSIS (excerpts):\n${discussion}`,
     outlook && `OPPORTUNITIES, THREATS AND RISKS:\n${outlook}`,
   ]
@@ -137,9 +136,9 @@ export async function insightsFromReportText(
   year: number,
   reportText: string,
   judge: InsightsJudge = judgeInsights,
-  edition: MarketDescriptor['edition'] = 'india'
+  profile: ReportProfile = INDIA_REPORTS
 ): Promise<{ found: boolean; insights: Insights | null }> {
-  const input = insightsInput(reportText, MAX_INSIGHTS_INPUT_CHARS, edition);
+  const input = insightsInput(reportText, MAX_INSIGHTS_INPUT_CHARS, profile);
   return input ? { found: true, insights: await judge(year, input) } : { found: false, insights: null };
 }
 
@@ -205,7 +204,7 @@ export async function forgetStoredInsights(ticker: string, year: number): Promis
 // ---- Latest annual report → insights --------------------------------------
 
 export interface ReportInsightsDeps {
-  edition?: MarketDescriptor['edition'];
+  profile?: ReportProfile;
   listReports: (ticker: string, count: number) => Promise<AnnualReportRef[]>;
   textOf?: (pdf: Buffer) => Promise<string>;
   judge?: InsightsJudge;
@@ -245,7 +244,7 @@ export async function latestReportInsights(ticker: string, model: string, deps: 
       return { entry: null, cached: false };
     }
     const text = await (deps.textOf ?? reportToText)(pdf);
-    const { found, insights } = await insightsFromReportText(listed.year, text, deps.judge, deps.edition);
+    const { found, insights } = await insightsFromReportText(listed.year, text, deps.judge, deps.profile);
     const entry: ReportInsights = { year: listed.year, source: listed.source, found, insights, createdAt: Date.now() };
     console.log(`[insights cache MISS] ${key}: computed in ${Date.now() - started}ms`);
     await writeStoredInsights(ticker, model, entry);

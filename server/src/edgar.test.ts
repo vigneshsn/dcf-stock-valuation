@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { listReports, saveUpload } from './reports.js';
-import { EdgarConfigError, resetEdgarCache } from './edgar.js';
+import { US_REPORTS } from './reportProfiles.js';
+import { EdgarConfigError, EdgarRejectedError, resetEdgarCache } from './edgar.js';
 
 const TICKERS = { '0': { cik_str: 320193, ticker: 'AAPL', title: 'Apple Inc.' }, '1': { cik_str: 1067983, ticker: 'BRK-B', title: 'Berkshire' } };
 const SUBMISSIONS = {
@@ -54,7 +55,7 @@ async function withUserAgent<T>(value: string | undefined, fn: () => Promise<T>)
 test('US edition lists the last 3 10-Ks from EDGAR, newest first, downloading only on load()', async () => {
   await withUserAgent('DCF Tester test@example.com', async () => {
     const requests: Array<{ url: string; ua: string | null }> = [];
-    const refs = await listReports('AAPL', 3, edgarFetcher(requests), 'us');
+    const refs = await listReports('AAPL', 3, edgarFetcher(requests), US_REPORTS);
 
     assert.deepStrictEqual(refs.map((r) => [r.year, r.source]), [[2025, 'edgar'], [2024, 'edgar'], [2023, 'edgar']]);
     assert.ok(requests.every((r) => r.ua === 'DCF Tester test@example.com'));
@@ -69,7 +70,7 @@ test('US edition lists the last 3 10-Ks from EDGAR, newest first, downloading on
 test('US edition fails with an explicit error when SEC_USER_AGENT is missing, without calling EDGAR', async () => {
   await withUserAgent(undefined, async () => {
     const requests: Array<{ url: string; ua: string | null }> = [];
-    await assert.rejects(listReports('AAPL', 3, edgarFetcher(requests), 'us'), (err: unknown) => {
+    await assert.rejects(listReports('AAPL', 3, edgarFetcher(requests), US_REPORTS), (err: unknown) => {
       assert.ok(err instanceof EdgarConfigError);
       assert.match((err as Error).message, /SEC_USER_AGENT/);
       return true;
@@ -87,10 +88,10 @@ test('EDGAR lookups are cached and throttled to at most 10 requests per second',
       return base(input, init);
     }) as typeof fetch;
 
-    const refs = await listReports('AAPL', 3, fetcher, 'us');
+    const refs = await listReports('AAPL', 3, fetcher, US_REPORTS);
     await Promise.all(refs.map((r) => r.load()));
     const first = stamps.length;
-    await listReports('AAPL', 3, fetcher, 'us');
+    await listReports('AAPL', 3, fetcher, US_REPORTS);
     await refs[0].load();
 
     assert.strictEqual(first, 5);
@@ -103,7 +104,54 @@ test('EDGAR lookups are cached and throttled to at most 10 requests per second',
 
 test('US edition returns no reports for an unknown ticker', async () => {
   await withUserAgent('DCF Tester test@example.com', async () => {
-    assert.deepStrictEqual(await listReports('NOSUCH', 3, edgarFetcher(), 'us'), []);
+    assert.deepStrictEqual(await listReports('NOSUCH', 3, edgarFetcher(), US_REPORTS), []);
+  });
+});
+
+test('EDGAR refusing us (403/429) is an explicit error, not an empty listing', async () => {
+  await withUserAgent('DCF Tester test@example.com', async () => {
+    const refusing = (async () => new Response('slow down', { status: 429 })) as typeof fetch;
+    await assert.rejects(listReports('AAPL', 3, refusing, US_REPORTS), EdgarRejectedError);
+  });
+});
+
+test('older 10-Ks come from the additional submission files when the recent list is short', async () => {
+  await withUserAgent('DCF Tester test@example.com', async () => {
+    const base = edgarFetcher();
+    const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url === 'https://data.sec.gov/submissions/CIK0000320193.json') {
+        const recent = { form: ['10-K'], accessionNumber: ['0000320193-25-000079'], primaryDocument: ['new.htm'], reportDate: ['2025-09-27'] };
+        return new Response(JSON.stringify({ filings: { recent, files: [{ name: 'CIK0000320193-submissions-001.json' }] } }));
+      }
+      if (url.endsWith('CIK0000320193-submissions-001.json')) {
+        return new Response(JSON.stringify({ form: ['10-K', '10-K'], accessionNumber: ['0000320193-24-000123', '0000320193-23-000106'], primaryDocument: ['b.htm', 'c.htm'], reportDate: ['2024-09-28', '2023-09-30'] }));
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    assert.deepStrictEqual((await listReports('AAPL', 3, fetcher, US_REPORTS)).map((r) => r.year), [2025, 2024, 2023]);
+  });
+});
+
+test('a slow filing download does not hold up other EDGAR requests, and concurrent downloads share one request', async () => {
+  await withUserAgent('DCF Tester test@example.com', async () => {
+    const base = edgarFetcher();
+    let downloads = 0;
+    const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes('/Archives/')) {
+        downloads++;
+        if (!String(input).endsWith('aapl-20250927.htm')) return base(input, init);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    const refs = await listReports('AAPL', 3, fetcher, US_REPORTS);
+    const slow = Promise.all([refs[0].load(), refs[0].load()]);
+    const started = Date.now();
+    await refs[1].load().catch(() => null);
+    assert.ok(Date.now() - started < 600, 'second filing is not queued behind the first download');
+    await slow;
+    assert.strictEqual(downloads, 2, 'two loads of one filing, plus one other filing');
   });
 });
 
@@ -111,7 +159,7 @@ test('US edition returns no reports for an unknown ticker', async () => {
 test('US edition lets an uploaded 10-K take precedence over EDGAR for the same year', async () => {
   await withUserAgent('DCF Tester test@example.com', async () => {
     saveUpload('AAPL', 2024, Buffer.from('%PDF-1.7 uploaded'));
-    const refs = await listReports('AAPL', 3, edgarFetcher(), 'us');
+    const refs = await listReports('AAPL', 3, edgarFetcher(), US_REPORTS);
     assert.deepStrictEqual(refs.map((r) => [r.year, r.source]), [[2025, 'edgar'], [2024, 'upload'], [2023, 'edgar']]);
   });
 });

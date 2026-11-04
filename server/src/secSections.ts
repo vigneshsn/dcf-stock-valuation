@@ -2,12 +2,19 @@
 
 const MAX_MDNA_CHARS = 120_000;
 const MAX_RISK_CHARS = 60_000;
+const MAX_BUSINESS_CHARS = 60_000;
 const MIN_SECTION_CHARS = 1500;
+// Real headings are short; longer lines are body text that happens to start with "Item 7".
+const MAX_HEADING_CHARS = 200;
 
+const ITEM_1 = /^item\s*1\s*[.:\-–—]?\s*business/i;
+const ITEM_1_END = /^item\s*1a\s*[.:\-–—]?\s*\S/i;
 const ITEM_7 = /^item\s*7\s*[.:\-–—]?\s*management/i;
 const ITEM_7_END = /^item\s*(?:7a|8)\s*[.:\-–—]?\s*\S/i;
 const ITEM_1A = /^item\s*1a\s*[.:\-–—]?\s*risk\s+factors/i;
 const ITEM_1A_END = /^item\s*(?:1b|1c|2)\s*[.:\-–—]?\s*\S/i;
+// Filings laid out in table cells or separate blocks put the item number and its title on consecutive lines.
+const BARE_ITEM = /^item\s*\d+[a-c]?\s*[.:\-–—]?$/i;
 
 const ENTITIES: Record<string, string> = { nbsp: ' ', amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', ndash: '–', mdash: '—' };
 
@@ -30,20 +37,28 @@ export function htmlToText(html: string): string {
 // The table of contents lists the same headings, so the longest candidate wins.
 function section(text: string, start: RegExp, end: RegExp, maxChars: number): string | null {
   const lines = text.split('\n');
-  let best: string | null = null;
+  const offsets: number[] = [];
   let offset = 0;
-  const offsets = lines.map((l) => {
-    const at = offset;
-    offset += l.length + 1;
-    return at;
-  });
+  for (const line of lines) {
+    offsets.push(offset);
+    offset += line.length + 1;
+  }
+  const headingAt = (i: number): string => {
+    const line = lines[i].trim();
+    return BARE_ITEM.test(line) && lines[i + 1] ? `${line} ${lines[i + 1].trim()}` : line;
+  };
+  const matches = (i: number, re: RegExp) => {
+    const heading = headingAt(i);
+    return heading.length <= MAX_HEADING_CHARS && re.test(heading);
+  };
+  let best: string | null = null;
   for (let i = 0; i < lines.length; i++) {
-    if (!start.test(lines[i].trim())) {
+    if (!matches(i, start)) {
       continue;
     }
     let stop = Math.min(text.length, offsets[i] + maxChars);
     for (let j = i + 1; j < lines.length && offsets[j] < stop; j++) {
-      if (end.test(lines[j].trim())) {
+      if (matches(j, end)) {
         stop = offsets[j];
         break;
       }
@@ -56,9 +71,16 @@ function section(text: string, start: RegExp, end: RegExp, maxChars: number): st
   return best;
 }
 
-export function extractTenKSections(text: string): { mdna: string | null; risks: string | null } {
+export interface TenKSections {
+  business: string | null;
+  risks: string | null;
+  mdna: string | null;
+}
+
+export function extractTenKSections(text: string): TenKSections {
   return {
-    mdna: section(text, ITEM_7, ITEM_7_END, MAX_MDNA_CHARS),
+    business: section(text, ITEM_1, ITEM_1_END, MAX_BUSINESS_CHARS),
     risks: section(text, ITEM_1A, ITEM_1A_END, MAX_RISK_CHARS),
+    mdna: section(text, ITEM_7, ITEM_7_END, MAX_MDNA_CHARS),
   };
 }
