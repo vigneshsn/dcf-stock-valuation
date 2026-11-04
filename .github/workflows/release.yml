@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  verify-tag:
+    name: Tag is on main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require tagged commit to be reachable from main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+  ci:
+    name: CI gate
+    needs: verify-tag
+    uses: ./.github/workflows/ci.yml
+
+  deploy-backend:
+    name: Deploy backend (Render)
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Trigger Render deploy of the tagged commit
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "${RENDER_DEPLOY_HOOK_URL}&ref=${GITHUB_SHA}"
+      - name: Wait for the tagged commit to serve /health
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          for i in $(seq 1 60); do
+            body=$(curl -fsS "$API_URL/health" || true)
+            echo "attempt $i: $body"
+            if echo "$body" | grep -q "\"commit\":\"$GITHUB_SHA\""; then exit 0; fi
+            sleep 15
+          done
+          echo "Backend did not report commit $GITHUB_SHA in time" >&2
+          exit 1
+
+  build-frontend:
+    name: Build frontend
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Inject API URL
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: sed -i "s#__API_URL__#${API_URL%/}#" src/environments/environment.prod.ts
+      - run: npx ng build --base-href /
+      - name: Prepare Pages artifact
+        run: |
+          cd dist/dcf-stock-valuation
+          cp index.html 404.html
+          echo "www.valuestock360.com" > CNAME
+          touch .nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/dcf-stock-valuation
+
+  deploy-frontend:
+    name: Deploy frontend (GitHub Pages)
+    needs: [build-frontend, deploy-backend]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://www.valuestock360.com
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Smoke check frontend
+        run: curl -fsS --retry 10 --retry-delay 10 --retry-all-errors -o /dev/null https://www.valuestock360.com/
+
+  github-release:
+    name: GitHub Release
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag

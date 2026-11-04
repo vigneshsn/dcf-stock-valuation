@@ -9,7 +9,7 @@ const app = express();
 app.use(cors());
 
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ status: 'ok', commit: process.env.RENDER_GIT_COMMIT ?? null });
 });
 
 app.use('/api/stock', stockRouter);

@@ -6,7 +6,10 @@
     "dev": "node --watch-path=src --watch-path=.env --watch-preserve-output --import tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx --test src/*.test.ts"
+    "test": "tsx --test src/*.test.ts",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test:coverage": "tsx --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=80 src/*.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -15,10 +18,13 @@
     "pdf-parse": "^2.4.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.0",
+    "eslint": "^9.39.5",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.72.1"
   }
 }

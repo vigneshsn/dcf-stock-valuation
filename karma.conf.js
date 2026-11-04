@@ -16,10 +16,16 @@ module.exports = function (config) {
     coverageReporter: {
       dir: require('path').join(__dirname, './coverage/dcf-stock-valuation'),
       subdir: '.',
-      reporters: [{ type: 'html' }, { type: 'text-summary' }]
+      reporters: [{ type: 'html' }, { type: 'text-summary' }, { type: 'lcovonly' }],
+      check: {
+        global: { statements: 85, branches: 68, functions: 85, lines: 85 }
+      }
     },
     reporters: ['progress', 'kjhtml'],
     browsers: ['ChromeHeadless'],
+    customLaunchers: {
+      ChromeHeadlessCI: { base: 'ChromeHeadless', flags: ['--no-sandbox'] }
+    },
     restartOnFileChange: true
   });
 };

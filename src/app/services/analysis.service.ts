@@ -1,3 +1,4 @@
+import { environment } from '../../environments/environment';
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -5,7 +6,7 @@ import { FinancialStatements, GuidanceScorecard, MdnaInsights, Peer, Quantitativ
 
 @Injectable({ providedIn: 'root' })
 export class AnalysisService {
-    private readonly baseUrl = 'http://localhost:3000/api/analysis';
+    private readonly baseUrl = `${environment.apiUrl}/api/analysis`;
 
     constructor(private http: HttpClient) {}
 

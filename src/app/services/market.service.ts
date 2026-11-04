@@ -1,3 +1,4 @@
+import { environment } from '../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -6,7 +7,7 @@ import { MarketDescriptor, MarketFormat } from '../models/market';
 /** Holds the deployment's Market edition. There is no default: an edition that failed to load must not render as another market. */
 @Injectable({ providedIn: 'root' })
 export class MarketService {
-    private readonly baseUrl = 'http://localhost:3000/api/market';
+    private readonly baseUrl = `${environment.apiUrl}/api/market`;
     private current: { descriptor: MarketDescriptor; format: MarketFormat } | null = null;
 
     get descriptor(): MarketDescriptor {

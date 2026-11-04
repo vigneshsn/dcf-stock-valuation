@@ -91,3 +91,7 @@ _Avoid_: Note, watch reason
 **Thesis checkpoint**:
 One measurable condition of a Thesis (metric, operator, target, optional year) with a status of intact, weakening, broken or pending.
 _Avoid_: Milestone, alert
+
+**Release**:
+A `vX.Y.Z` tag on `main` that ships the frontend and backend together, after approval, to the single production deployment (one Market edition). There are no separate frontend or backend versions.
+_Avoid_: Version, build
