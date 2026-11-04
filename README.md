@@ -162,8 +162,6 @@ One-time setup:
 - Render service: root `server`, build `npm ci && npm run build`, start `npm start`, health check `/health`, **auto-deploy off**, plus the Market edition env vars.
 - Branch protection on `main`: require the `Frontend`, `Backend`, `Secret scan`, `Dependency review` and `Analyze (JS/TS)` checks.
 
-## Notes
-- This app uses mock data for demonstration. Replace with real financial data as needed.
 
 
 ## Contributions
