@@ -1,8 +1,12 @@
 # Stock Analysis
 
-Fundamental analysis of listed stocks (Indian market first) from live financial data and annual reports, producing scores and a fair value shown on a dashboard.
+Fundamental analysis of listed stocks from live financial data and annual reports, producing scores and a fair value shown on a dashboard. Runs as one Market edition per deployment (India or US).
 
 ## Language
+
+**Market edition**:
+The market the app is serving in a given deployment, India or US, chosen by the stock-data provider setting (IndianAPI = India, FMP = US). It fixes the data sources, ticker rules, currency, number formatting and unit scale for the whole app; there is no in-app switch and no mixing of editions.
+_Avoid_: Region, locale, mode
 
 **Analysis**:
 The complete fundamental assessment of one stock, read in order: business overview, financials (statements, Strengths / Weaknesses, Red flags, peers), MD&A insights with the Guidance scorecard, Quantitative analysis, and the Decision summary. Facts come before judgement; there is no blended overall score and no verdict.
@@ -37,11 +41,11 @@ A company's durable competitive advantage as rated in MD&A insights from the Lat
 _Avoid_: Edge, USP
 
 **Peer set**:
-The companies from the same industry used as the benchmark for Strength / Weakness findings and peer comparison. Defined as the stock's industry classification from the data source, limited to the 3-5 nearest companies by market cap; the user can override the list.
+The companies from the same industry used as the benchmark for Strength / Weakness findings and peer comparison. Defined as the stock's industry classification from the data source, limited to the 3-5 nearest companies by market cap and to companies listed in the Market edition's own market; the user can override the list.
 _Avoid_: Competitors, comparables
 
 **Latest annual report**:
-The most recent annual report available for the stock (uploaded or fetched), covering the latest completed fiscal year. Not trailing-twelve-month data.
+The most recent annual report available for the stock (uploaded or fetched; the 10-K in the US edition), covering the latest completed fiscal year. Not trailing-twelve-month data.
 _Avoid_: Last year's report, current report
 
 **Implied growth**:
@@ -57,7 +61,7 @@ The per-claim comparison of Guidance claims with the later actuals, giving each 
 _Avoid_: Management report card, Management trustworthiness, Qualitative score
 
 **Financial statements**:
-The curated income statement, balance sheet and cash flow for up to five fiscal years at the top of the Financials block, each with a plain-language note on what it tells you, a factual one-line takeaway, small trend charts and the full table. Amounts in ₹ crore. Unscored.
+The curated income statement, balance sheet and cash flow for up to five fiscal years at the top of the Financials block, each with a plain-language note on what it tells you, a factual one-line takeaway, small trend charts and the full table. Amounts in the Market edition's reporting unit (₹ crore in India, $ millions in US). Unscored.
 _Avoid_: Financial analysis, P&L summary
 
 **Strength / Weakness**:
