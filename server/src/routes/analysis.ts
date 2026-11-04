@@ -8,7 +8,7 @@ import { marketDescriptor } from '../market.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
 import { saveUpload, listReports } from '../reports.js';
 import { LlmError, llmConfig } from '../llm.js';
-import { Peer, selectPeers } from '../peers.js';
+import { Peer, listedInMarket, selectPeers } from '../peers.js';
 import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights, readStoredInsights } from '../insights.js';
 import { GuidanceDeps, GuidanceYear, collectGuidance, forgetStoredGuidance, guidanceScorecard } from '../guidance.js';
 import { redFlagScan } from '../redFlags.js';
@@ -329,11 +329,13 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     // Peer selection stays on FMP regardless of the configured stock-data provider.
     const f = await loadFmpFinancials(ticker, options.fetcher);
     const raw = await fmpGet<any[]>('/stock-peers', ticker, {}, options.fetcher);
-    const candidates: Peer[] = (raw ?? []).map((p) => ({
-      symbol: p.symbol,
-      name: p.companyName ?? p.symbol,
-      marketCap: p.mktCap ?? p.marketCap ?? null,
-    }));
+    const candidates: Peer[] = (raw ?? [])
+      .map((p) => ({
+        symbol: p.symbol,
+        name: p.companyName ?? p.symbol,
+        marketCap: p.mktCap ?? p.marketCap ?? null,
+      }))
+      .filter((p) => listedInMarket(market.edition, p.symbol));
     return selectPeers({ symbol: ticker, name: ticker, marketCap: f.marketCap }, candidates);
   }
 

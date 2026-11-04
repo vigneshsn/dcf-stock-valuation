@@ -4,6 +4,12 @@ export interface Peer {
   marketCap: number | null;
 }
 
+// Share classes (BRK.B) are US listings; any other dotted suffix is a foreign exchange (.KS, .HK, .NS).
+export function listedInMarket(edition: 'india' | 'us', symbol: string): boolean {
+  const suffix = symbol.includes('.') ? symbol.split('.').pop()!.toUpperCase() : '';
+  return edition === 'india' ? suffix === 'NS' : suffix === '' || suffix.length === 1;
+}
+
 // The Peer set: the 3-5 companies closest in market cap to the target.
 export function selectPeers(target: Peer, candidates: Peer[]): Peer[] {
   const seen = new Set<string>([target.symbol]);
