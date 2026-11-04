@@ -13,16 +13,16 @@ concurrency:
 
 jobs:
   verify-tag:
-    name: Tag is on main
+    name: Tag is on master
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Require tagged commit to be reachable from main
+      - name: Require tagged commit to be reachable from master
         run: |
-          git fetch origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          git fetch origin master
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master
 
   ci:
     name: CI gate

@@ -152,15 +152,15 @@ Open `http://localhost:4200/stock` while the Angular app and backend are running
 
 ## CI/CD
 
-**CI** (`.github/workflows/ci.yml`, `codeql.yml`) runs on every PR and on pushes to `main`: lint, unit tests with coverage thresholds (`karma.conf.js` for the frontend, `server/package.json` `test:coverage` for the backend), build, `npm audit`, gitleaks, CodeQL and dependency review (PRs). The known `xlsx` advisories are allowlisted in `ci.yml` until it is replaced. Playwright e2e is not run in CI.
+**CI** (`.github/workflows/ci.yml`, `codeql.yml`) runs on every PR and on pushes to `master`: lint, unit tests with coverage thresholds (`karma.conf.js` for the frontend, `server/package.json` `test:coverage` for the backend), build, `npm audit`, gitleaks, CodeQL and dependency review (PRs). The known `xlsx` advisories are allowlisted in `ci.yml` until it is replaced. Playwright e2e is not run in CI.
 
-**CD** (`.github/workflows/release.yml`) runs on a `vX.Y.Z` tag, see [ADR 0003](docs/adr/0003-tag-triggered-releases.md): checks the tag is on `main`, re-runs CI, waits for approval of the `production` environment, deploys the backend to Render and the frontend to GitHub Pages, then publishes a GitHub Release.
+**CD** (`.github/workflows/release.yml`) runs on a `vX.Y.Z` tag, see [ADR 0003](docs/adr/0003-tag-triggered-releases.md): checks the tag is on `master`, re-runs CI, waits for approval of the `production` environment, deploys the backend to Render and the frontend to GitHub Pages, then publishes a GitHub Release.
 
 One-time setup:
 - Repo Settings > Pages: set Source to **GitHub Actions**.
 - Create a `production` environment with a required reviewer, the secret `RENDER_DEPLOY_HOOK_URL` and the variable `API_URL` (the Render service URL, no trailing slash).
 - Render service: root `server`, build `npm ci && npm run build`, start `npm start`, health check `/health`, **auto-deploy off**, plus the Market edition env vars.
-- Branch protection on `main`: require the `Frontend`, `Backend`, `Secret scan`, `Dependency review` and `Analyze (JS/TS)` checks.
+- Branch protection on `master`: require the `Frontend`, `Backend`, `Secret scan`, `Dependency review` and `Analyze (JS/TS)` checks.
 
 
 
