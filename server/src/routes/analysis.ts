@@ -7,6 +7,7 @@ import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indiana
 import { marketDescriptor } from '../market.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
 import { saveUpload, listReports } from '../reports.js';
+import { EdgarConfigError } from '../edgar.js';
 import { LlmError, llmConfig } from '../llm.js';
 import { Peer, listedInMarket, selectPeers } from '../peers.js';
 import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights, readStoredInsights } from '../insights.js';
@@ -143,6 +144,9 @@ async function loadIndianApiFinancials(ticker: string, options: AnalysisRouterOp
 
 function sendUpstreamError(res: express.Response, ticker: string, err: any) {
   console.error(`[analysis error] ${ticker}: ${err?.message || err}`);
+  if (err instanceof EdgarConfigError) {
+    return res.status(503).json({ error: 'sec-user-agent-missing', message: err.message });
+  }
   if (err instanceof StockNotFoundError) {
     return res.status(404).json({ error: 'Ticker not found' });
   }
@@ -375,7 +379,8 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     }
     try {
       const { entry, cached } = await latestReportInsights(ticker, model, {
-        listReports: options.insights?.listReports ?? ((t, n) => listReports(t, n, options.fetcher)),
+        listReports: options.insights?.listReports ?? ((t, n) => listReports(t, n, options.fetcher, market.edition)),
+        edition: market.edition,
         textOf: options.insights?.textOf,
         judge: options.insights?.judge,
       });
@@ -399,6 +404,9 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       res.json({ ...body, cached, cachedAt: Date.now() });
     } catch (err: any) {
       console.error(`[insights error] ${ticker}: ${err?.message || err}`);
+      if (err instanceof EdgarConfigError) {
+        return res.status(503).json({ error: 'sec-user-agent-missing', message: err.message });
+      }
       if (err instanceof LlmError) {
         return res.status(503).json({ error: 'llm-unavailable', message: `The language model is unavailable: ${err.message}` });
       }
@@ -416,7 +424,8 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       let years = cacheGet<GuidanceYear[]>(key)?.value;
       if (!years) {
         years = await collectGuidance(ticker, model, 3, {
-          listReports: options.guidance?.listReports ?? ((t, n) => listReports(t, n, options.fetcher)),
+          listReports: options.guidance?.listReports ?? ((t, n) => listReports(t, n, options.fetcher, market.edition)),
+          edition: market.edition,
           textOf: options.guidance?.textOf,
           extract: options.guidance?.extract,
           sharedClaims:

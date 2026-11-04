@@ -609,3 +609,70 @@ test('guidance: scores cached claims against actuals, extracts once per report, 
   assert.equal(extractions, 2);
   assert.equal(second.years.length, 2);
 });
+
+const tenKHtml = `<html><body>
+<p>Item 1A. Risk Factors</p><p>${'Competition could hurt our margins. '.repeat(60)}</p>
+<p>Item 1B. Unresolved Staff Comments</p><p>None.</p>
+<p>Item 7. Management&#8217;s Discussion and Analysis of Financial Condition and Results of Operations</p>
+<p>${'We expect our services revenue to grow in the coming year. '.repeat(60)}</p>
+<p>Item 7A. Quantitative and Qualitative Disclosures About Market Risk</p></body></html>`;
+
+function edgarFixture(): typeof fetch {
+  return (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.endsWith('company_tickers.json')) return new Response(JSON.stringify({ 0: { cik_str: 111, ticker: 'USCO' } }));
+    if (url.includes('/submissions/')) {
+      return new Response(JSON.stringify({ filings: { recent: { form: ['10-K'], accessionNumber: ['0-25-1'], primaryDocument: ['usco.htm'], reportDate: ['2025-09-27'] } } }));
+    }
+    return new Response(tenKHtml);
+  }) as typeof fetch;
+}
+
+async function withSecUserAgent<T>(value: string | undefined, fn: () => Promise<T>): Promise<T> {
+  const previous = process.env.SEC_USER_AGENT;
+  if (value === undefined) delete process.env.SEC_USER_AGENT;
+  else process.env.SEC_USER_AGENT = value;
+  try {
+    return await fn();
+  } finally {
+    if (previous === undefined) delete process.env.SEC_USER_AGENT;
+    else process.env.SEC_USER_AGENT = previous;
+  }
+}
+
+test('US edition: insights are generated from the EDGAR 10-K via the Item 7 and Item 1A locator', async () => {
+  process.env.INSIGHTS_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'insights-us-'));
+  await withSecUserAgent('DCF Tester test@example.com', async () => {
+    const seen: string[] = [];
+    const base = await serve(createAnalysisRouter({
+      provider: 'fmp',
+      fetcher: edgarFixture(),
+      insights: { judge: async (_year, input) => (seen.push(input), sampleInsights) },
+    }));
+    const body = await (await fetch(`${base}/USCO/insights`)).json();
+
+    assert.equal(body.status, 'ok');
+    assert.equal(body.source, 'edgar');
+    assert.equal(body.year, 2025);
+    assert.match(seen[0], /services revenue to grow/);
+    assert.match(seen[0], /Competition could hurt/);
+    assert.doesNotMatch(seen[0], /Unresolved Staff/);
+  });
+});
+
+test('US edition: insights and guidance fail explicitly when SEC_USER_AGENT is missing', async () => {
+  process.env.INSIGHTS_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'insights-us-'));
+  process.env.GUIDANCE_CACHE_DIR = await mkdtemp(path.join(tmpdir(), 'guidance-us-'));
+  await withSecUserAgent(undefined, async () => {
+    const base = await serve(createAnalysisRouter({ provider: 'fmp', fetcher: edgarFixture() }));
+    const insights = await fetch(`${base}/NOUA/insights`);
+    assert.equal(insights.status, 503);
+    const body = await insights.json();
+    assert.equal(body.error, 'sec-user-agent-missing');
+    assert.match(body.message, /SEC_USER_AGENT/);
+
+    const guidance = await fetch(`${base}/NOUA/guidance`, { method: 'POST' });
+    assert.equal(guidance.status, 503);
+    assert.equal((await guidance.json()).error, 'sec-user-agent-missing');
+  });
+});

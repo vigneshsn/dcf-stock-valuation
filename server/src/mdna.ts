@@ -1,4 +1,6 @@
 import { PDFParse } from 'pdf-parse';
+import type { MarketDescriptor } from './market.js';
+import { extractTenKSections, htmlToText } from './secSections.js';
 
 const START = /management(?:['’]s)?\s+discussion\s+(?:and|&)\s+analysis/gi;
 const END = /(?:directors['’]?\s+report|report\s+on\s+corporate\s+governance|corporate\s+governance\s+report|business\s+responsibility|independent\s+auditor['’]?s?\s+report|notice\s+of\s+(?:the\s+)?annual\s+general)/gi;
@@ -15,8 +17,18 @@ export async function pdfToText(data: Buffer): Promise<string> {
   }
 }
 
+// EDGAR 10-Ks are HTML; uploads and Screener reports are PDFs.
+export async function reportToText(data: Buffer): Promise<string> {
+  return data.subarray(0, 5).toString() === '%PDF-' ? pdfToText(data) : htmlToText(data.toString('utf8'));
+}
+
+// US: Item 7. India: the annual report's MD&A heading heuristics.
+export function extractMdna(text: string, edition: MarketDescriptor['edition'] = 'india'): string | null {
+  return edition === 'us' ? extractTenKSections(text).mdna : extractIndianMdna(text);
+}
+
 // Table-of-contents hits are short, so the longest candidate section wins.
-export function extractMdna(text: string): string | null {
+function extractIndianMdna(text: string): string | null {
   let best: string | null = null;
   for (const m of text.matchAll(START)) {
     const from = m.index ?? 0;
@@ -72,7 +84,7 @@ export function passages(section: string): string[] {
     .replace(/-\n(?=[a-z])/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  const sentences = flat.split(/(?<=[.!?])\s+(?=["“‘(]?[A-Z0-9₹])/);
+  const sentences = flat.split(/(?<=[.!?])\s+(?=["“‘(]?[A-Z0-9₹$])/);
   const out: string[] = [];
   let current = '';
   for (const s of sentences) {

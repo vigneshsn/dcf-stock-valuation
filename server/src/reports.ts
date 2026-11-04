@@ -1,6 +1,8 @@
+import { downloadEdgarFiling, listEdgarFilings } from './edgar.js';
+
 export interface AnnualReportPdf {
   year: number;
-  source: 'screener' | 'upload';
+  source: 'screener' | 'edgar' | 'upload';
   data: Buffer;
 }
 
@@ -86,15 +88,24 @@ export interface AnnualReportRef {
 }
 
 // Uploads take precedence over fetched reports for the same year.
-export async function listReports(ticker: string, count = 3, fetcher: typeof fetch = fetch): Promise<AnnualReportRef[]> {
+export async function listReports(
+  ticker: string,
+  count = 3,
+  fetcher: typeof fetch = fetch,
+  edition: 'india' | 'us' = 'india'
+): Promise<AnnualReportRef[]> {
   const byYear = new Map<number, AnnualReportRef>();
   for (const r of getUploads(ticker)) {
     byYear.set(r.year, { year: r.year, source: 'upload', load: async () => r.data });
   }
   if (byYear.size < count) {
-    for (const link of await listScreenerReports(ticker, count, fetcher)) {
-      if (!byYear.has(link.year)) {
-        byYear.set(link.year, { year: link.year, source: 'screener', load: () => downloadReportPdf(link.url, fetcher) });
+    const fetched =
+      edition === 'us'
+        ? (await listEdgarFilings(ticker, count, fetcher)).map((f) => ({ ...f, source: 'edgar' as const, load: () => downloadEdgarFiling(f.url, fetcher) }))
+        : (await listScreenerReports(ticker, count, fetcher)).map((l) => ({ ...l, source: 'screener' as const, load: () => downloadReportPdf(l.url, fetcher) }));
+    for (const f of fetched) {
+      if (!byYear.has(f.year)) {
+        byYear.set(f.year, { year: f.year, source: f.source, load: f.load });
       }
     }
   }

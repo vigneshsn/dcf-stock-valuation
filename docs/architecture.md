@@ -208,6 +208,7 @@ Server environment variables are loaded from `server/.env` via `dotenv`.
 | `INDIANAPI_API_KEY` | — | IndianAPI key |
 | `INDIANAPI_BASE_URL` | `https://stock.indianapi.in` | IndianAPI base URL |
 | `FMP_API_KEY` | — | FMP key (also required for the Peer set) |
+| `SEC_USER_AGENT` | — | Required in the US edition: `Your Name your@email.com`, sent to SEC EDGAR for 10-K downloads |
 | `FINANCIALS_TTL_MS` | `3600000` (1 h) | Cache TTL for raw financials |
 | `ANALYSIS_TTL_MS` | `21600000` (6 h) | Cache TTL for computed analyses |
 | `LLM_PROVIDERS` | keyed cloud providers, then `ollama` | Comma-separated order of `gemini`, `groq`, `ollama`; the next is tried when one fails |
