@@ -32,9 +32,7 @@ describe('StockService', () => {
             roce: 12,
             roe: 14,
             companyIntroduction: null,
-            news: [],
-            peers: [],
-            analystConsensus: null
+            peers: []
         };
 
         service.getStock('RELIANCE').subscribe((res) => {

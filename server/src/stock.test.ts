@@ -72,7 +72,6 @@ test('normalizes an NSE ticker and returns IndianAPI stock data with only its NS
         pPerEBasicExcludingExtraordinaryItemsTTM: '18.5',
         currentDividendYieldCommonStockPrimaryIssueLTM: '1.2',
       },
-      recentNews: [],
       peerCompanyList: [],
     }));
   };
@@ -104,9 +103,7 @@ test('normalizes an NSE ticker and returns IndianAPI stock data with only its NS
       industry: 'Manufacturing',
       description: 'Makes useful things.',
     },
-    news: [],
     peers: [],
-    analystConsensus: null,
   });
 
   const cachedResponse = await requestStock(router, 'acme');
@@ -256,17 +253,17 @@ test('reports missing NSE price and provider failure as explicit upstream errors
       requests += 1;
       const url = new URL(String(input));
       if (url.pathname === '/industry_search') {
-        return new Response(JSON.stringify([{ exchangeCodeNsi: 'NOPRICE', commonName: 'No Price Ltd' }]));
+        return new Response(JSON.stringify([{ exchangeCodeNsi: 'NOPR', commonName: 'No Price Ltd' }]));
       }
       return new Response(JSON.stringify({
         companyName: 'No Price Ltd',
-        companyProfile: { exchangeCodeNse: 'NOPRICE' },
+        companyProfile: { exchangeCodeNse: 'NOPR' },
         currentPrice: { BSE: 150 },
       }));
     },
   });
 
-  const missingPriceResponse = await requestStock(router, 'NOPRICE');
+  const missingPriceResponse = await requestStock(router, 'NOPR');
   assert.equal(missingPriceResponse.status, 502);
   assert.deepEqual(await missingPriceResponse.json(), { error: 'Upstream fetch failed' });
   assert.equal(requests, 2);
@@ -286,7 +283,7 @@ test('reports missing NSE price and provider failure as explicit upstream errors
   assert.deepEqual(await failedResponse.json(), { error: 'Upstream fetch failed' });
 });
 
-test('normalizes recent news, ranked peers and aligned annual returns into the stock response', async () => {
+test('normalizes ranked peers and aligned annual returns into the stock response', async () => {
   const longDescription = 'a'.repeat(600);
   const router = createStockRouter({
     provider: 'indianapi',
@@ -395,23 +392,14 @@ test('normalizes recent news, ranked peers and aligned annual returns into the s
   assert.equal(body.roce, 20);
   assert.equal(body.roe, 20);
   assert.equal(body.companyIntroduction.description.length, 500);
-  assert.equal(body.news.length, 5);
-  assert.deepEqual(body.news.map((article: { headline: string }) => article.headline), [
-    'Newest', 'Second newest', 'Third newest', 'Fourth newest', 'Fifth newest',
-  ]);
-  assert.equal(body.news[0].url, 'https://www.livemint.com/news/newest');
-  assert.equal(body.news[0].source, null);
+  assert.equal(body.news, undefined);
+  assert.equal(body.analystConsensus, undefined);
   assert.deepEqual(body.peers.map((peer: { name: string }) => peer.name), [
     'Largest', 'Second Largest', 'Middle', 'Small', 'No Cap First',
   ]);
   assert.equal(body.peers[0].roe, 12.5);
   assert.equal(body.peers[0].profitMargin, null);
   assert.equal(body.peers[0].dividendYield, 1.75);
-  assert.deepEqual(body.analystConsensus, {
-    source: 'IndianAPI',
-    recommendation: 'Buy',
-    counts: { strongBuy: 6, buy: 13, hold: 13, sell: 2, strongSell: 0 },
-  });
 });
 
 test('calculates ROCE when the aligned annual data lacks the separate ROE inputs', async () => {
@@ -447,7 +435,7 @@ test('calculates ROCE when the aligned annual data lacks the separate ROE inputs
   assert.equal(body.roe, null);
 });
 
-test('uses FMP only when explicitly selected and leaves IndianAPI sections empty', async () => {
+test('US edition serves FMP quote, ratios, returns and profile for a bare US ticker', async () => {
   const previousApiKey = process.env.FMP_API_KEY;
   process.env.FMP_API_KEY = 'test-key';
   const fmpRequests: URL[] = [];
@@ -459,25 +447,21 @@ test('uses FMP only when explicitly selected and leaves IndianAPI sections empty
         fmpRequests.push(url);
         if (url.pathname.endsWith('/quote')) {
           return new Response(JSON.stringify([{
-            symbol: 'ACME.NS',
-            price: 100,
-            marketCap: 500,
-            yearHigh: 120,
-            yearLow: 80,
-            pe: 9,
+            symbol: 'AAPL', price: 100, marketCap: 500, yearHigh: 120, yearLow: 80, pe: 9,
           }]));
         }
         if (url.pathname.endsWith('/ratios-ttm')) {
           return new Response(JSON.stringify([{
-            priceToEarningsRatioTTM: 8,
-            bookValuePerShareTTM: 12,
-            dividendYieldTTM: 2,
+            priceToEarningsRatioTTM: 8, bookValuePerShareTTM: 12, dividendYieldTTM: 2,
           }]));
         }
         if (url.pathname.endsWith('/income-statement')) {
-          return new Response(JSON.stringify([
-            { calendarYear: '2024', ebit: 150, netIncome: 100 },
-          ]));
+          return new Response(JSON.stringify([{ calendarYear: '2024', ebit: 150, netIncome: 100 }]));
+        }
+        if (url.pathname.endsWith('/profile')) {
+          return new Response(JSON.stringify([{
+            companyName: 'Apple Inc.', industry: 'Consumer Electronics', description: 'd'.repeat(600),
+          }]));
         }
         return new Response(JSON.stringify([
           { calendarYear: '2024', totalAssets: 1000, totalCurrentLiabilities: 250, totalStockholdersEquity: 500 },
@@ -485,19 +469,50 @@ test('uses FMP only when explicitly selected and leaves IndianAPI sections empty
       },
     });
 
-    const response = await requestStock(router, 'ACME');
+    const response = await requestStock(router, 'aapl');
     const body = await response.json();
 
     assert.equal(response.status, 200);
     assert.equal(body.currentPrice, 100);
+    assert.equal(body.peRatio, 8);
     assert.equal(body.roce, 20);
     assert.equal(body.roe, 20);
+    assert.equal(body.companyIntroduction.name, 'Apple Inc.');
+    assert.equal(body.companyIntroduction.industry, 'Consumer Electronics');
+    assert.equal(body.companyIntroduction.description.length, 500);
+    assert.equal(body.news, undefined);
+    assert.equal(body.analystConsensus, undefined);
+    assert.equal(fmpRequests.length, 5);
+    assert.ok(fmpRequests.every((url) => url.searchParams.get('symbol') === 'AAPL'));
+  } finally {
+    if (previousApiKey === undefined) {
+      delete process.env.FMP_API_KEY;
+    } else {
+      process.env.FMP_API_KEY = previousApiKey;
+    }
+  }
+});
+
+test('US edition keeps stock data when the FMP profile is unavailable and accepts class-share tickers', async () => {
+  const previousApiKey = process.env.FMP_API_KEY;
+  process.env.FMP_API_KEY = 'test-key';
+  try {
+    const router = createStockRouter({
+      provider: 'fmp',
+      fetcher: async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/quote')) {
+          return new Response(JSON.stringify([{ symbol: 'BRK-B', price: 450, marketCap: 1000 }]));
+        }
+        return new Response('{}', { status: 500 });
+      },
+    });
+    const response = await requestStock(router, 'BRK-B');
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.currentPrice, 450);
     assert.equal(body.companyIntroduction, null);
-    assert.deepEqual(body.news, []);
-    assert.deepEqual(body.peers, []);
-    assert.equal(body.analystConsensus, null);
-    assert.equal(fmpRequests.length, 4);
-    assert.ok(fmpRequests.every((url) => url.searchParams.get('symbol') === 'ACME.NS'));
+    assert.equal(body.dividendYield, null);
   } finally {
     if (previousApiKey === undefined) {
       delete process.env.FMP_API_KEY;
@@ -517,14 +532,14 @@ test('returns an upstream error when the explicitly selected FMP quote has no cu
       fetcher: async () => {
         requests += 1;
         return new Response(JSON.stringify([{
-          symbol: 'NOPRICE.NS',
+          symbol: 'NOPR',
           price: null,
           marketCap: 200,
         }]));
       },
     });
 
-    const response = await requestStock(router, 'NOPRICE');
+    const response = await requestStock(router, 'NOPR');
 
     assert.equal(response.status, 502);
     assert.deepEqual(await response.json(), { error: 'Upstream fetch failed' });
@@ -538,7 +553,7 @@ test('returns an upstream error when the explicitly selected FMP quote has no cu
   }
 });
 
-test('does not query FMP with a non-NSE exchange suffix', async () => {
+test('US edition rejects foreign exchange suffixes without querying FMP', async () => {
   const previousApiKey = process.env.FMP_API_KEY;
   process.env.FMP_API_KEY = 'test-key';
   let requests = 0;
@@ -551,10 +566,11 @@ test('does not query FMP with a non-NSE exchange suffix', async () => {
       },
     });
 
-    const response = await requestStock(router, 'ACME.BO');
-
-    assert.equal(response.status, 404);
-    assert.deepEqual(await response.json(), { error: 'Ticker not found' });
+    for (const ticker of ['RELIANCE.NS', 'ACME.BO', 'ACME.L']) {
+      const response = await requestStock(router, ticker);
+      assert.equal(response.status, 404);
+      assert.deepEqual(await response.json(), { error: 'Ticker not found' });
+    }
     assert.equal(requests, 0);
   } finally {
     if (previousApiKey === undefined) {
@@ -565,7 +581,7 @@ test('does not query FMP with a non-NSE exchange suffix', async () => {
   }
 });
 
-test('rejects zero and negative prices as unusable NSE quotes', async () => {
+test('rejects zero and negative prices as unusable quotes', async () => {
   const indianRouter = createStockRouter({
     provider: 'indianapi',
     indianApiKey: 'test-key',
@@ -589,12 +605,12 @@ test('rejects zero and negative prices as unusable NSE quotes', async () => {
     const fmpRouter = createStockRouter({
       provider: 'fmp',
       fetcher: async () => new Response(JSON.stringify([{
-        symbol: 'NEGATIVE.NS',
+        symbol: 'NEG',
         price: -1,
         marketCap: 100,
       }])),
     });
-    const fmpResponse = await requestStock(fmpRouter, 'NEGATIVE');
+    const fmpResponse = await requestStock(fmpRouter, 'NEG');
     assert.equal(fmpResponse.status, 502);
   } finally {
     if (previousApiKey === undefined) {

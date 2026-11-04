@@ -85,15 +85,20 @@ function isUnknownFmpSymbol(err: unknown): boolean {
     ((err.status === 404) || (err.status === 402 && /symbol.*not available|invalid.*symbol/i.test(err.message)));
 }
 
-function fmpTicker(ticker: string): string {
-  return ticker.endsWith('.NS') ? ticker : `${ticker}.NS`;
+// Bare US tickers only (AAPL, BRK-B); exchange suffixes such as .NS are foreign listings.
+const US_TICKER = /^[A-Z][A-Z0-9]{0,5}(-[A-Z]{1,2})?$/;
+
+interface FmpProfile {
+  companyName?: string | null;
+  industry?: string | null;
+  description?: string | null;
 }
 
 async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<StockData> {
-  if (ticker.includes('.') && !ticker.endsWith('.NS')) {
-    throw new StockNotFoundError('Only NSE tickers are supported');
+  if (!US_TICKER.test(ticker)) {
+    throw new StockNotFoundError('Only US tickers are supported');
   }
-  const symbol = fmpTicker(ticker);
+  const symbol = ticker;
   const quotes = await fmpGet<FmpQuote[]>('/quote', symbol, {}, fetcher);
   const quote = quotes?.[0];
   if (!quote || (quote.marketCap == null && quote.price == null)) {
@@ -104,7 +109,7 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
   }
   const currentPrice = numberOrNull(quote.price);
   if (currentPrice == null || currentPrice <= 0) {
-    throw new FmpError('FMP returned no usable NSE current price', 502);
+    throw new FmpError('FMP returned no usable current price', 502);
   }
   const metrics: StockData = {
     marketCap: numberOrNull(quote.marketCap),
@@ -117,9 +122,7 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
     roce: null,
     roe: null,
     companyIntroduction: null,
-    news: [],
     peers: [],
-    analystConsensus: null,
   };
 
   try {
@@ -142,6 +145,20 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
     metrics.roe = returns.roe;
   } catch (err) {
     console.error(`[upstream error] ${ticker} financial statements: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  try {
+    const profile = (await fmpGet<FmpProfile[]>('/profile', symbol, {}, fetcher))?.[0];
+    const name = profile?.companyName?.trim();
+    if (name) {
+      metrics.companyIntroduction = {
+        name,
+        industry: profile?.industry?.trim() || null,
+        description: profile?.description?.trim().slice(0, 500) || null,
+      };
+    }
+  } catch (err) {
+    console.error(`[upstream error] ${ticker} profile: ${err instanceof Error ? err.message : String(err)}`);
   }
   return metrics;
 }

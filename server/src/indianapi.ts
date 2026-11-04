@@ -4,7 +4,6 @@ import { PromoterHolding } from './redFlags.js';
 import { PeerRatios } from './strengths.js';
 
 const DEFAULT_INDIANAPI_URL = 'https://stock.indianapi.in';
-const LIVEMINT_URL = 'https://www.livemint.com';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -12,13 +11,6 @@ export interface CompanyIntroduction {
   name: string;
   industry: string | null;
   description: string | null;
-}
-
-export interface StockNewsItem {
-  headline: string;
-  publishedAt: string;
-  source: string | null;
-  url: string;
 }
 
 export interface StockPeer {
@@ -33,18 +25,6 @@ export interface StockPeer {
   dividendYield: number | null;
 }
 
-export interface AnalystConsensus {
-  source: 'IndianAPI';
-  recommendation: string | null;
-  counts: {
-    strongBuy: number | null;
-    buy: number | null;
-    hold: number | null;
-    sell: number | null;
-    strongSell: number | null;
-  };
-}
-
 export interface StockData {
   marketCap: number | null;
   currentPrice: number | null;
@@ -56,9 +36,7 @@ export interface StockData {
   roce: number | null;
   roe: number | null;
   companyIntroduction: CompanyIntroduction | null;
-  news: StockNewsItem[];
   peers: StockPeer[];
-  analystConsensus: AnalystConsensus | null;
 }
 
 export class IndianApiError extends Error {}
@@ -219,48 +197,6 @@ function promoterHolding(shareholding: unknown): PromoterHolding[] | undefined {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function normalizeNews(value: unknown): StockNewsItem[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  const items = value.flatMap((entry) => {
-    const article = record(entry);
-    const headline = stringValue(article.headline, article.title);
-    const publishedAt = stringValue(article.publishedAt, article.pub_date, article.publishDate, article.date);
-    const rawUrl = stringValue(article.url, article.link);
-    if (!headline || !publishedAt || !Number.isFinite(Date.parse(publishedAt)) || !rawUrl) {
-      return [];
-    }
-
-    let url: URL;
-    try {
-      if (/^https?:\/\//i.test(rawUrl)) {
-        url = new URL(rawUrl);
-      } else if (!/^[a-z][a-z\d+.-]*:/i.test(rawUrl) && !rawUrl.startsWith('//')) {
-        url = new URL(rawUrl, LIVEMINT_URL);
-      } else {
-        return [];
-      }
-    } catch {
-      return [];
-    }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return [];
-    }
-
-    return [{
-      headline,
-      publishedAt,
-      source: stringValue(article.source),
-      url: url.toString(),
-    }];
-  });
-
-  return items
-    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
-    .slice(0, 5);
-}
-
 function normalizePeers(value: unknown): StockPeer[] {
   if (!Array.isArray(value)) {
     return [];
@@ -293,57 +229,6 @@ function normalizePeers(value: unknown): StockPeer[] {
     })
     .slice(0, 5)
     .map(({ value }) => value);
-}
-
-const RATING_KEYS: Record<string, keyof AnalystConsensus['counts']> = {
-  strongbuy: 'strongBuy',
-  buy: 'buy',
-  hold: 'hold',
-  sell: 'sell',
-  strongsell: 'strongSell',
-};
-
-function ratingKey(item: JsonRecord): keyof AnalystConsensus['counts'] | null {
-  const label = stringValue(item.ratingName)?.toLowerCase().replace(/[\s_-]+/g, '');
-  return label ? RATING_KEYS[label] ?? null : null;
-}
-
-function normalizeConsensus(
-  analystView: unknown,
-  recosBar: unknown,
-  averageRating: unknown
-): AnalystConsensus | null {
-  const bar = record(recosBar);
-  if (bar.isDataPresent === false) {
-    return null;
-  }
-  const barRatings = Array.isArray(bar.stockAnalyst) ? bar.stockAnalyst.map(record) : [];
-  const viewRatings = Array.isArray(analystView) ? analystView.map(record) : [];
-  const counts: AnalystConsensus['counts'] = {
-    strongBuy: null,
-    buy: null,
-    hold: null,
-    sell: null,
-    strongSell: null,
-  };
-  for (const [ratings, countKey] of [[barRatings, 'numberOfAnalysts'], [viewRatings, 'numberOfAnalystsLatest']] as const) {
-    for (const item of ratings) {
-      const key = ratingKey(item);
-      if (key && counts[key] == null) {
-        counts[key] = numberValue(item[countKey]);
-      }
-    }
-  }
-
-  const tickerRating = numberValue(bar.tickerRatingValue);
-  const recommendation = stringValue(
-    barRatings.find((item) => tickerRating != null && numberValue(item.ratingValue) === tickerRating)?.ratingName,
-    averageRating
-  );
-  if (!recommendation && Object.values(counts).every((count) => count == null)) {
-    return null;
-  }
-  return { source: 'IndianAPI', recommendation, counts };
 }
 
 interface VerifiedStock {
@@ -467,9 +352,7 @@ export async function fetchIndianApiStock(
       industry,
       description: description?.slice(0, 500) ?? null,
     },
-    news: normalizeNews(response.recentNews),
     peers,
-    analystConsensus: normalizeConsensus(response.analystView, response.recosBar, details.averageRating),
   };
 }
 

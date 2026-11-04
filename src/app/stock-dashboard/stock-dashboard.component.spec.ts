@@ -25,9 +25,7 @@ function emptyMetrics(overrides: Partial<StockMetrics> = {}): StockMetrics {
         roce: null,
         roe: null,
         companyIntroduction: null,
-        news: [],
         peers: [],
-        analystConsensus: null,
         ...overrides
     };
 }
@@ -416,20 +414,6 @@ describe('StockDashboardComponent', () => {
             fixture.detectChanges();
             expect(notes(fixture.nativeElement)).toBeGreaterThan(0);
         });
-    });
-
-    it('shows no Analyst consensus or Recent news even when the provider sends them', () => {
-        search('ACME');
-        httpMock.expectOne(`${STOCK_URL}ACME`).flush(emptyMetrics({
-            news: [{ headline: 'Acme expands production', publishedAt: '2026-10-20T10:00:00Z', source: null, url: 'https://www.livemint.com/news/acme' }],
-            analystConsensus: { source: 'IndianAPI', recommendation: 'Buy', counts: { strongBuy: 1, buy: 0, hold: 0, sell: 0, strongSell: 0 } }
-        }));
-        expectQuant('ACME').flush(quant());
-
-        const content = text();
-        expect(content).not.toContain('Analyst consensus');
-        expect(content).not.toContain('Recent news');
-        expect(content).not.toContain('Acme expands production');
     });
 
     it('keeps optional sections empty when the provider has no supplemental data', () => {

@@ -13,12 +13,6 @@ export interface StockMetrics {
         industry: string | null;
         description: string | null;
     } | null;
-    news: {
-        headline: string;
-        publishedAt: string;
-        source: string | null;
-        url: string;
-    }[];
     peers: {
         name: string;
         price: number | null;
@@ -30,17 +24,6 @@ export interface StockMetrics {
         profitMargin: number | null;
         dividendYield: number | null;
     }[];
-    analystConsensus: {
-        source: 'IndianAPI';
-        recommendation: string | null;
-        counts: {
-            strongBuy: number | null;
-            buy: number | null;
-            hold: number | null;
-            sell: number | null;
-            strongSell: number | null;
-        };
-    } | null;
 }
 
 export type PeerRow = StockMetrics['peers'][number] & { current: boolean };
