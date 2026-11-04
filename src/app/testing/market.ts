@@ -9,7 +9,9 @@ export const INDIA_TEST_MARKET: MarketDescriptor = {
     unitLabel: '₹ crore',
     unitSuffix: ' cr',
     marketCapNotation: 'standard',
-    marketCapSuffix: ' Cr'
+    marketCapSuffix: ' Cr',
+    tickerLabel: 'NSE',
+    exampleTickers: ['TCS', 'RELIANCE', 'INFY', 'ITC', 'HDFCBANK']
 };
 
 export const US_TEST_MARKET: MarketDescriptor = {
@@ -20,7 +22,9 @@ export const US_TEST_MARKET: MarketDescriptor = {
     unitLabel: '$ millions',
     unitSuffix: 'M',
     marketCapNotation: 'compact',
-    marketCapSuffix: ''
+    marketCapSuffix: '',
+    tickerLabel: 'US',
+    exampleTickers: ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN']
 };
 
 /** A MarketService with the given edition already applied, for specs. */

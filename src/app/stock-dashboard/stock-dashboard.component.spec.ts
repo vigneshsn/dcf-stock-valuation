@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MarketService } from '../services/market.service';
-import { marketServiceFor } from '../testing/market';
+import { US_TEST_MARKET, marketServiceFor } from '../testing/market';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
@@ -174,6 +174,17 @@ describe('StockDashboardComponent', () => {
         fixture.detectChanges();
         return fixture.nativeElement.textContent as string;
     }
+
+    it('offers the Market edition\'s own example tickers, not a fixed Indian list', () => {
+        const chips = () => Array.from(fixture.nativeElement.querySelectorAll('.chip')).map((c) => (c as HTMLElement).textContent?.trim());
+        fixture.detectChanges();
+        expect(chips()).toEqual(['TCS', 'RELIANCE', 'INFY', 'ITC', 'HDFCBANK']);
+
+        TestBed.inject(MarketService).apply(US_TEST_MARKET);
+        fixture.detectChanges();
+        expect(chips()).toEqual(['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN']);
+        expect(fixture.nativeElement.querySelector('input[name="ticker"]').placeholder).toBe('Search a US ticker: AAPL, MSFT, NVDA…');
+    });
 
     it('loads fundamentals and the Quantitative analysis together for one normalised ticker', () => {
         search('  tcs ');

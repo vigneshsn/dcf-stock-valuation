@@ -12,6 +12,10 @@ export interface MarketDescriptor {
   unitSuffix: string;
   marketCapNotation: 'standard' | 'compact';
   marketCapSuffix: string;
+  /** What a ticker is called in the UI, e.g. 'NSE' or 'US'. */
+  tickerLabel: string;
+  /** Well-known tickers offered as one-click examples. */
+  exampleTickers: string[];
 }
 
 const INDIA: MarketDescriptor = {
@@ -23,6 +27,8 @@ const INDIA: MarketDescriptor = {
   unitSuffix: ' cr',
   marketCapNotation: 'standard',
   marketCapSuffix: ' Cr',
+  tickerLabel: 'NSE',
+  exampleTickers: ['TCS', 'RELIANCE', 'INFY', 'ITC', 'HDFCBANK'],
 };
 
 const US: MarketDescriptor = {
@@ -34,6 +40,8 @@ const US: MarketDescriptor = {
   unitSuffix: 'M',
   marketCapNotation: 'compact',
   marketCapSuffix: '',
+  tickerLabel: 'US',
+  exampleTickers: ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN'],
 };
 
 export function marketDescriptor(provider: StockDataProvider): MarketDescriptor {

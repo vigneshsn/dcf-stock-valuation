@@ -136,7 +136,9 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
     readonly readingMode = inject(ReadingModeService);
 
-    readonly suggestions = ['TCS', 'RELIANCE', 'INFY', 'ITC', 'HDFCBANK'];
+    get suggestions(): string[] {
+        return this.market.descriptor.exampleTickers;
+    }
 
     query = '';
     ticker = '';

@@ -8,6 +8,8 @@ export interface MarketDescriptor {
     unitSuffix: string;
     marketCapNotation: 'standard' | 'compact';
     marketCapSuffix: string;
+    tickerLabel: string;
+    exampleTickers: string[];
 }
 
 /** Formats money and market-cap figures for one Market edition. */

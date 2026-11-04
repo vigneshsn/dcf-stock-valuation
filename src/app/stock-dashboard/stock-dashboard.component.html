@@ -9,12 +9,13 @@
     <form class="search" (ngSubmit)="search()" role="search">
         <span class="material-icons search-icon" aria-hidden="true">search</span>
         <input type="text" name="ticker" [(ngModel)]="query" autocomplete="off" spellcheck="false"
-               aria-label="NSE ticker" placeholder="Search an NSE ticker: TCS, RELIANCE, ITC…"/>
+               [attr.aria-label]="market.descriptor.tickerLabel + ' ticker'"
+               [placeholder]="'Search a ' + market.descriptor.tickerLabel + ' ticker: ' + suggestions.slice(0, 3).join(', ') + '…'"/>
         <button type="submit" class="btn">Analyse <span class="material-icons" aria-hidden="true">arrow_forward</span></button>
     </form>
 
     <div class="chips">
-        <span class="chips-label">Trending</span>
+        <span class="chips-label">Popular</span>
         @for (s of suggestions; track s) {
             <button type="button" class="chip" [class.active]="s === ticker" (click)="pick(s)">{{ s }}</button>
         }
@@ -65,7 +66,7 @@
                                         <div class="empty error-message">
                                             <span class="big-emoji" aria-hidden="true">{{ stockError === 'Ticker not found' ? '🫥' : '📡' }}</span>
                                             <h3>{{ stockError }}</h3>
-                                            <p class="muted">Double-check the NSE symbol (e.g. <strong>TCS</strong>, <strong>RELIANCE</strong>) and try again.</p>
+                                            <p class="muted">Double-check the {{ market.descriptor.tickerLabel }} symbol (e.g. <strong>{{ suggestions[0] }}</strong>, <strong>{{ suggestions[1] }}</strong>) and try again.</p>
                                             <button type="button" class="btn btn-ghost" (click)="loadStock()">
                                                 <span class="material-icons" aria-hidden="true">refresh</span> Retry
                                             </button>
