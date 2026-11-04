@@ -34,6 +34,8 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     environment: production
+    outputs:
+      api_url: ${{ vars.API_URL }}
     steps:
       - name: Trigger Render deploy of the tagged commit
         env:
@@ -54,7 +56,7 @@ jobs:
 
   build-frontend:
     name: Build frontend
-    needs: ci
+    needs: deploy-backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +67,7 @@ jobs:
       - run: npm ci
       - name: Inject API URL
         env:
-          API_URL: ${{ vars.API_URL }}
+          API_URL: ${{ needs.deploy-backend.outputs.api_url }}
         run: |
           test -n "$API_URL" || { echo "Variable API_URL is not set" >&2; exit 1; }
           sed -i "s#__API_URL__#${API_URL%/}#" src/environments/environment.prod.ts
