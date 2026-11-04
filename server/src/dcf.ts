@@ -223,7 +223,7 @@ function sensitivityGrid(history: YearFinancials[], base: DcfAssumptions, shares
 
 type ImpliedGrowthSolution = { growth: number } | { bound: number } | null;
 
-const SOLVE_TOLERANCE = 0.01; // ₹ per share
+const SOLVE_TOLERANCE = 0.01; // currency units per share
 const SOLVE_MAX_ITERATIONS = 100;
 
 // Bisection over growth, holding discount and terminal growth at the base values.

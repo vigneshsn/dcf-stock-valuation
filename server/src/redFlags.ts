@@ -53,8 +53,6 @@ export interface RedFlagInputs {
   promoterHolding?: PromoterHolding[];
   /** Percentage of promoter holding that is pledged. */
   promoterPledged?: number | null;
-  /** Locale for digit grouping in evidence text; defaults to en-IN. */
-  locale?: string;
 }
 
 type YearMetric = 'operatingCashFlow' | 'receivables' | 'totalDebt' | 'totalEquity';
@@ -89,7 +87,7 @@ const isoYearsBefore = (date: string, years: number): string => {
 };
 
 // Pure rules over the annual history and latest shareholding; never scored.
-export function redFlagScan(inputs: RedFlagInputs): { flags: RedFlag[]; skipped: SkippedRule[] } {
+export function redFlagScan(inputs: RedFlagInputs, locale: string): { flags: RedFlag[]; skipped: SkippedRule[] } {
   const T = RED_FLAG_THRESHOLDS;
   const flags: RedFlag[] = [];
   const skipped: SkippedRule[] = [];
@@ -209,7 +207,7 @@ export function redFlagScan(inputs: RedFlagInputs): { flags: RedFlag[]; skipped:
         'negative-free-cash-flow',
         'warning',
         'Negative free cash flow in each of the last 3 years',
-        `FCF (net income + non-cash − capex) ${fcf.map((v) => v.toLocaleString(inputs.locale ?? 'en-IN', { maximumFractionDigits: 0 })).join(', ')} (${run.map((y) => fy(y.year)).join(', ')})`
+        `FCF (net income + non-cash − capex) ${fcf.map((v) => v.toLocaleString(locale, { maximumFractionDigits: 0 })).join(', ')} (${run.map((y) => fy(y.year)).join(', ')})`
       );
     }
   });

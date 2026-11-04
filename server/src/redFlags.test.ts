@@ -19,8 +19,8 @@ const year = (y: number, overrides: Partial<YearFinancials> = {}): YearFinancial
 
 const healthy = (): YearFinancials[] => [2025, 2024, 2023, 2022, 2021].map((y) => year(y));
 
-const scan = (history: YearFinancials[], extra: Partial<RedFlagInputs> = {}) =>
-  redFlagScan({ history, promoterHolding: [], promoterPledged: null, ...extra });
+const scan = (history: YearFinancials[], extra: Partial<RedFlagInputs> = {}, locale = 'en-IN') =>
+  redFlagScan({ history, promoterHolding: [], promoterPledged: null, ...extra }, locale);
 
 const ids = (r: ReturnType<typeof redFlagScan>) => r.flags.map((f) => f.id);
 
@@ -189,7 +189,7 @@ test('promoter pledging: more than 20% of promoter holding pledged', () => {
 
 test('rules whose data the provider does not supply are listed as skipped with a reason', () => {
   const bare = healthy().map(({ year, revenue, netIncome, capex, nonCashExpense }) => ({ year, revenue, netIncome, capex, nonCashExpense }));
-  const r = redFlagScan({ history: bare });
+  const r = redFlagScan({ history: bare }, 'en-IN');
   const notProvided = 'not provided by data source';
   assert.deepEqual(r.skipped, [
     { id: 'profit-not-backed-by-cash', reason: notProvided },
@@ -216,9 +216,8 @@ test('promoter history shorter than 2 years, or none reported, is skipped with a
 
 test('free-cash-flow evidence groups digits by the Market edition locale', () => {
   const burn = [2025, 2024, 2023].map((y) => year(y, { netIncome: -1234567, nonCashExpense: 0, capex: 0 }));
-  const evidence = (locale?: string) =>
-    scan([...burn, year(2022), year(2021)], { locale }).flags.find((f) => f.id === 'negative-free-cash-flow')?.evidence;
+  const evidence = (locale: string) =>
+    scan([...burn, year(2022), year(2021)], {}, locale).flags.find((f) => f.id === 'negative-free-cash-flow')?.evidence;
   assert.match(evidence('en-US')!, /-1,234,567, -1,234,567, -1,234,567/);
   assert.match(evidence('en-IN')!, /-12,34,567/);
-  assert.match(evidence()!, /-12,34,567/);
 });

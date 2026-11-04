@@ -8,7 +8,10 @@ export interface MarketDescriptor {
   /** Divides raw provider statement amounts into the reporting unit. */
   statementDivisor: number;
   unitLabel: string;
-  unitShort: string;
+  /** Appended to a currency amount in running text, e.g. ' cr' or 'M'. */
+  unitSuffix: string;
+  marketCapNotation: 'standard' | 'compact';
+  marketCapSuffix: string;
 }
 
 const INDIA: MarketDescriptor = {
@@ -17,7 +20,9 @@ const INDIA: MarketDescriptor = {
   locale: 'en-IN',
   statementDivisor: 1,
   unitLabel: '₹ crore',
-  unitShort: '₹ cr',
+  unitSuffix: ' cr',
+  marketCapNotation: 'standard',
+  marketCapSuffix: ' Cr',
 };
 
 const US: MarketDescriptor = {
@@ -26,7 +31,9 @@ const US: MarketDescriptor = {
   locale: 'en-US',
   statementDivisor: 1e6,
   unitLabel: '$ millions',
-  unitShort: '$M',
+  unitSuffix: 'M',
+  marketCapNotation: 'compact',
+  marketCapSuffix: '',
 };
 
 export function marketDescriptor(provider: StockDataProvider): MarketDescriptor {

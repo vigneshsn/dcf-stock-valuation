@@ -287,7 +287,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     try {
       const f = await loadQuantitativeInputs(ticker);
       res.json(f.history.length
-        ? { ticker, status: 'ok', message: null, ...redFlagScan({ ...f, locale: market.locale }) }
+        ? { ticker, status: 'ok', message: null, ...redFlagScan(f, market.locale) }
         : { ticker, status: 'unavailable', message: 'No annual financials available to scan', flags: [], skipped: [] });
     } catch (err) {
       sendUpstreamError(res, ticker, err);

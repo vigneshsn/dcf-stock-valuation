@@ -4,35 +4,18 @@ export interface MarketDescriptor {
     locale: string;
     statementDivisor: number;
     unitLabel: string;
-    unitShort: string;
+    /** Appended to a currency amount in running text, e.g. ' cr' or 'M'. */
+    unitSuffix: string;
+    marketCapNotation: 'standard' | 'compact';
+    marketCapSuffix: string;
 }
-
-/** Fallback used until the server's descriptor arrives. */
-export const INDIA_MARKET: MarketDescriptor = {
-    edition: 'india',
-    currencySymbol: '₹',
-    locale: 'en-IN',
-    statementDivisor: 1,
-    unitLabel: '₹ crore',
-    unitShort: '₹ cr'
-};
-
-const RUPEES_PER_CRORE = 1e7;
 
 /** Formats money and market-cap figures for one Market edition. */
 export class MarketFormat {
     constructor(private readonly market: MarketDescriptor) {}
 
-    get unitLabel(): string {
-        return this.market.unitLabel;
-    }
-
     get unitShort(): string {
-        return this.market.unitShort;
-    }
-
-    get currencySymbol(): string {
-        return this.market.currencySymbol;
+        return this.market.currencySymbol + this.market.unitSuffix;
     }
 
     number(value: number, maxFractionDigits = 0): string {
@@ -47,24 +30,20 @@ export class MarketFormat {
         return `${value < 0 ? '−' : ''}${this.market.currencySymbol}${this.number(Math.abs(value))}`;
     }
 
-    /** A statement amount with its short unit, e.g. ₹1,000 cr or $1,000M. */
+    /** A statement amount with its unit suffix, e.g. ₹1,000 cr or $1,000M. */
     statementAmount(value: number): string {
-        return this.money(value) + this.market.unitShort.slice(this.market.currencySymbol.length);
+        return this.money(value) + this.market.unitSuffix;
     }
 
     marketCap(value: number | null | undefined): string {
         if (value == null) {
             return 'N/A';
         }
-        if (this.market.edition === 'us') {
-            const compact = new Intl.NumberFormat(this.market.locale, {
-                notation: 'compact',
-                maximumFractionDigits: 2
-            }).format(value);
-            return `${this.market.currencySymbol}${compact}`;
-        }
-        // IndianAPI reports crores while raw-rupee sources report rupees; normalise to crores.
-        const crores = value >= 1e8 ? value / RUPEES_PER_CRORE : value;
-        return `${this.market.currencySymbol}${this.number(crores)} Cr`;
+        const compact = this.market.marketCapNotation === 'compact';
+        const formatted = new Intl.NumberFormat(this.market.locale, {
+            notation: this.market.marketCapNotation,
+            maximumFractionDigits: compact ? 2 : 0
+        }).format(value);
+        return `${this.market.currencySymbol}${formatted}${this.market.marketCapSuffix}`;
     }
 }

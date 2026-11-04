@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MarketService } from '../services/market.service';
+import { US_TEST_MARKET, marketServiceFor } from '../testing/market';
 import { DecisionSummaryComponent } from './decision-summary.component';
 import { EvidenceSources, decisionEvidence } from './decision-evidence';
 import {
@@ -84,9 +86,11 @@ const ALL: EvidenceSources = {
 
 const NONE: EvidenceSources = { metrics: null, statements: null, strengths: null, redFlags: null, quant: null, reverseDcf: null };
 
+const evidence = (s: EvidenceSources) => decisionEvidence(s, marketServiceFor().format);
+
 describe('decisionEvidence', () => {
     it('lays out every row of evidence side by side, in reading order', () => {
-        expect(decisionEvidence(ALL)).toEqual([
+        expect(evidence(ALL)).toEqual([
             { label: 'Business', text: 'Paints. Acme makes decorative paints for Indian homes.' },
             { label: 'Growth', text: 'Revenue grew 6.3% a year from FY2021 to FY2025; it fell 4.0% in FY2025' },
             { label: 'Profitability', text: 'ROCE 22.4%; ROE 18.1%; net margin 9.0% in FY2025 (FY2021–FY2025 average 10.1%)' },
@@ -99,25 +103,25 @@ describe('decisionEvidence', () => {
     });
 
     it('never repeats the Quantitative score or adds a verdict', () => {
-        const text = decisionEvidence(ALL).map((r) => r.text).join(' ').toLowerCase();
+        const text = evidence(ALL).map((r) => r.text).join(' ').toLowerCase();
         for (const word of ['score', '/5', 'undervalued', 'overvalued', 'buy', 'sell', 'upside', 'downside']) {
             expect(text).withContext(word).not.toContain(word);
         }
     });
 
     it('leaves a row empty when its source has not arrived', () => {
-        expect(decisionEvidence(NONE).map((r) => r.text)).toEqual(Array(8).fill(null));
+        expect(evidence(NONE).map((r) => r.text)).toEqual(Array(8).fill(null));
     });
 
     it('does not present the absence of Red flags as a positive', () => {
-        const rows = decisionEvidence({ ...ALL, redFlags: { ...RED_FLAGS, flags: [] } });
+        const rows = evidence({ ...ALL, redFlags: { ...RED_FLAGS, flags: [] } });
         expect(rows.find((r) => r.label === 'Red flags')!.text).toBe('None raised on available data; 1 rule could not run');
-        const clean = decisionEvidence({ ...ALL, redFlags: { ...RED_FLAGS, flags: [], skipped: [] } });
+        const clean = evidence({ ...ALL, redFlags: { ...RED_FLAGS, flags: [], skipped: [] } });
         expect(clean.find((r) => r.label === 'Red flags')!.text).toBe('None raised on available data');
     });
 
     it('states why a source is unavailable', () => {
-        const rows = decisionEvidence({
+        const rows = evidence({
             ...ALL,
             strengths: { ...STRENGTHS, status: 'unavailable', message: 'No financials' },
             reverseDcf: { ...REVERSE, status: 'not-applicable', impliedGrowth: null, message: 'Loss-making' },
@@ -128,19 +132,26 @@ describe('decisionEvidence', () => {
     });
 
     it('keeps every valuation item visible while the DCF is loading or after it failed', () => {
-        const rows = decisionEvidence({ ...NONE, metrics: METRICS });
+        const rows = evidence({ ...NONE, metrics: METRICS });
         expect(rows.find((r) => r.label === 'Valuation')!.text).toBe('Price ₹2,410 · Fair value — · Scenario range — · Implied growth —');
+    });
+
+    it('formats amounts in the US edition', () => {
+        const rows = decisionEvidence(ALL, marketServiceFor(US_TEST_MARKET).format);
+        expect(rows.find((r) => r.label === 'Cash')!.text).toContain('free cash flow $50M in FY2025');
     });
 
     it('shows negative free cash flow with a leading minus', () => {
         const years = [...YEARS.slice(0, 4), { ...YEARS[4], freeCashFlow: -1234 }];
-        expect(decisionEvidence({ ...ALL, statements: years }).find((r) => r.label === 'Cash')!.text)
+        expect(evidence({ ...ALL, statements: years }).find((r) => r.label === 'Cash')!.text)
             .toBe('Cash from operations positive in 5 of 5 years; free cash flow −₹1,234 cr in FY2025');
     });
 });
 
 describe('DecisionSummaryComponent', () => {
     let fixture: ComponentFixture<DecisionSummaryComponent>;
+
+    beforeEach(() => TestBed.configureTestingModule({ providers: [{ provide: MarketService, useValue: marketServiceFor() }] }));
 
     function render(inputs: Partial<{ ticker: string; sources: EvidenceSources; loading: boolean; dense: boolean }> = {}): HTMLElement {
         fixture = TestBed.createComponent(DecisionSummaryComponent);

@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MarketService } from '../services/market.service';
+import { US_TEST_MARKET, marketServiceFor } from '../testing/market';
 import { FinancialStatementsComponent } from './financial-statements.component';
 import { StatementYear } from '../models/analysis';
 
@@ -31,6 +33,15 @@ const YEARS: StatementYear[] = [
 
 describe('FinancialStatementsComponent', () => {
     let fixture: ComponentFixture<FinancialStatementsComponent>;
+
+    beforeEach(() => TestBed.configureTestingModule({ providers: [{ provide: MarketService, useValue: marketServiceFor() }] }));
+
+    it('labels amounts in the US reporting unit', () => {
+        TestBed.overrideProvider(MarketService, { useValue: marketServiceFor(US_TEST_MARKET) });
+        const labels = Array.from(render(YEARS).querySelectorAll('.trend-label')).map((e) => e.textContent?.trim());
+        expect(labels).toContain('Revenue ($M)');
+        expect(labels.join(' ')).not.toContain('₹');
+    });
 
     function render(years: StatementYear[], dense = false): HTMLElement {
         fixture = TestBed.createComponent(FinancialStatementsComponent);

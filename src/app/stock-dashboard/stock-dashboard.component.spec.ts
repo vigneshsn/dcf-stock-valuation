@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MarketService } from '../services/market.service';
+import { marketServiceFor } from '../testing/market';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
@@ -137,7 +139,7 @@ describe('StockDashboardComponent', () => {
         localStorage.removeItem(READING_MODE_KEY);
         await TestBed.configureTestingModule({
             imports: [StockDashboardComponent],
-            providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()]
+            providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: MarketService, useValue: marketServiceFor() }]
         }).compileComponents();
 
         fixture = TestBed.createComponent(StockDashboardComponent);
@@ -267,7 +269,7 @@ describe('StockDashboardComponent', () => {
         expect(rows[0].cells[0].textContent).toContain('Acme Industries');
         expect(rows[0].cells[0].textContent).toContain('This stock');
         expect(Array.from(rows[0].cells).slice(1).map((c) => c.textContent?.trim())).toEqual([
-            '321.5', '₹1,25,000 Cr', '18.5', '3.4', '14%', '', '', '1.2%'
+            '₹321.5', '₹1,25,000 Cr', '18.5', '3.4', '14%', '', '', '1.2%'
         ]);
         expect(rows[1].classList).not.toContain('current');
     });
@@ -853,6 +855,7 @@ describe('StockDashboardComponent deep link', () => {
                 provideRouter([]),
                 provideHttpClient(),
                 provideHttpClientTesting(),
+                { provide: MarketService, useValue: marketServiceFor() },
                 { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({ q: 'itc' })) } }
             ]
         }).compileComponents();

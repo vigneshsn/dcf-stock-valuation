@@ -1,8 +1,6 @@
 import {NgModule, inject, provideAppInitializer} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
-import {HttpClient, HttpClientModule} from '@angular/common/http';
-import {firstValueFrom} from 'rxjs';
-import {MarketDescriptor} from './models/market';
+import {HttpClientModule} from '@angular/common/http';
 import {MarketService} from './services/market.service';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {FormsModule} from '@angular/forms';
@@ -44,13 +42,7 @@ import {AppRoutingModule} from "./app-routing.module";
         CsvService,
         XlsxService,
         DcfHelperService,
-        provideAppInitializer(() => {
-            const http = inject(HttpClient);
-            const market = inject(MarketService);
-            return firstValueFrom(http.get<MarketDescriptor>('http://localhost:3000/api/market'))
-                .then((descriptor) => market.apply(descriptor))
-                .catch(() => undefined);
-        })
+        provideAppInitializer(() => inject(MarketService).load())
     ],
     bootstrap: [AppComponent]
 })

@@ -22,7 +22,7 @@
                             <span class="pill pill-ticker you">This stock</span>
                         }
                     </th>
-                    <td>{{ peer.price | number:'1.0-2' }}</td>
+                    <td>{{ peer.price == null ? '' : market.format.price(peer.price) }}</td>
                     <td>{{ peer.marketCap == null ? '' : market.format.marketCap(peer.marketCap) }}</td>
                     <td>{{ peer.peRatio | number:'1.0-2' }}</td>
                     <td>{{ peer.pbRatio | number:'1.0-2' }}</td>

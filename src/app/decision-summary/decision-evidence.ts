@@ -6,7 +6,7 @@ import {
     StatementYear,
     StrengthsWeaknesses
 } from '../models/analysis';
-import { INDIA_MARKET, MarketFormat } from '../models/market';
+import { MarketFormat } from '../models/market';
 import { StockMetrics } from '../models/stock-metrics';
 
 /** Everything the Decision summary draws on; null while a source is loading or after it failed. */
@@ -30,7 +30,7 @@ export interface EvidenceRow {
  * The Decision summary's evidence, one neutral sentence per row. Facts only: no verdict, no nudging wording,
  * and the Quantitative score is not repeated (docs/adr/0001-evidence-without-verdict.md).
  */
-export function decisionEvidence(s: EvidenceSources, format: MarketFormat = new MarketFormat(INDIA_MARKET)): EvidenceRow[] {
+export function decisionEvidence(s: EvidenceSources, format: MarketFormat): EvidenceRow[] {
     const years = s.statements ?? [];
     return [
         { label: 'Business', text: business(s.metrics) },

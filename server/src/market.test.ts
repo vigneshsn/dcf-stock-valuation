@@ -18,7 +18,9 @@ test('indianapi provider serves the India edition in rupees and crore', () => {
     locale: 'en-IN',
     statementDivisor: 1,
     unitLabel: '₹ crore',
-    unitShort: '₹ cr',
+    unitSuffix: ' cr',
+    marketCapNotation: 'standard',
+    marketCapSuffix: ' Cr',
   });
 });
 
@@ -29,7 +31,9 @@ test('fmp provider serves the US edition in dollars and millions', () => {
     locale: 'en-US',
     statementDivisor: 1e6,
     unitLabel: '$ millions',
-    unitShort: '$M',
+    unitSuffix: 'M',
+    marketCapNotation: 'compact',
+    marketCapSuffix: '',
   });
 });
 

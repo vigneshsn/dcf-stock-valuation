@@ -142,14 +142,14 @@
                                             <span class="label">P/B</span>
                                             <span class="value">{{ quant?.ratios?.pb == null ? 'N/A' : (quant?.ratios?.pb | number:'1.1-1') }}</span>
                                             @if (explain) {
-                                                <span class="hint" data-explain>Price ÷ book value per share: what you pay for each rupee of net assets.</span>
+                                                <span class="hint" data-explain>Price ÷ book value per share: what you pay for each unit of net assets.</span>
                                             }
                                         </div>
                                         <div class="stat">
                                             <span class="label">Book value</span>
                                             <span class="value">{{ metrics?.bookValue ?? 'N/A' }}</span>
                                             @if (explain) {
-                                                <span class="hint" data-explain>Net assets (what the company owns minus what it owes) per share, in {{ market.format.currencySymbol }}.</span>
+                                                <span class="hint" data-explain>Net assets (what the company owns minus what it owes) per share, in {{ market.descriptor.currencySymbol }}.</span>
                                             }
                                         </div>
                                         <div class="stat">
@@ -170,7 +170,7 @@
                                             <span class="label">ROE</span>
                                             <span class="value">{{ metrics?.roe == null ? 'N/A' : (metrics?.roe | number:'1.0-2') + '%' }}</span>
                                             @if (explain) {
-                                                <span class="hint" data-explain>Net profit ÷ shareholder equity: what each rupee of the owners’ money earns.</span>
+                                                <span class="hint" data-explain>Net profit ÷ shareholder equity: what each unit of the owners’ money earns.</span>
                                             }
                                         </div>
                                         <div class="stat">
@@ -197,7 +197,7 @@
                                 <header class="tile-head">
                                     <div>
                                         <h3>Financial statements</h3>
-                                        <span class="tile-sub">Up to five fiscal years from the annual accounts, {{ market.format.unitLabel }}</span>
+                                        <span class="tile-sub">Up to five fiscal years from the annual accounts, {{ market.descriptor.unitLabel }}</span>
                                     </div>
                                 </header>
                                 @if (statementsLoading) {
