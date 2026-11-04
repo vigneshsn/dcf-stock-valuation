@@ -83,7 +83,7 @@
                                                 <h3 class="company-name">{{ companyName }}</h3>
                                             </div>
                                             <div class="price-block">
-                                                <span class="price">{{ price == null ? 'N/A' : '₹' + (price | number:'1.0-2') }}</span>
+                                                <span class="price">{{ market.format.price(price) }}</span>
                                                 <span class="label">Current price</span>
                                             </div>
                                         </div>
@@ -94,8 +94,8 @@
                                                     <span class="range-marker" [style.left.%]="rangePosition"></span>
                                                 </div>
                                                 <div class="range-labels">
-                                                    <span>52W low ₹{{ metrics?.week52Low | number:'1.0-2' }}</span>
-                                                    <span>52W high ₹{{ metrics?.week52High | number:'1.0-2' }}</span>
+                                                    <span>52W low {{ market.format.price(metrics?.week52Low) }}</span>
+                                                    <span>52W high {{ market.format.price(metrics?.week52High) }}</span>
                                                 </div>
                                             </div>
                                         }
@@ -126,7 +126,7 @@
                                     <div class="stat-grid">
                                         <div class="stat">
                                             <span class="label">Market cap</span>
-                                            <span class="value">{{ metrics?.marketCap == null ? 'N/A' : '₹' + (marketCapCrores(metrics?.marketCap) | number:'1.0-0') + ' Cr' }}</span>
+                                            <span class="value">{{ market.format.marketCap(metrics?.marketCap) }}</span>
                                             @if (explain) {
                                                 <span class="hint" data-explain>Share price × number of shares: what the market values the whole company at.</span>
                                             }
@@ -149,7 +149,7 @@
                                             <span class="label">Book value</span>
                                             <span class="value">{{ metrics?.bookValue ?? 'N/A' }}</span>
                                             @if (explain) {
-                                                <span class="hint" data-explain>Net assets (what the company owns minus what it owes) per share, in ₹.</span>
+                                                <span class="hint" data-explain>Net assets (what the company owns minus what it owes) per share, in {{ market.format.currencySymbol }}.</span>
                                             }
                                         </div>
                                         <div class="stat">
@@ -197,7 +197,7 @@
                                 <header class="tile-head">
                                     <div>
                                         <h3>Financial statements</h3>
-                                        <span class="tile-sub">Up to five fiscal years from the annual accounts, ₹ crore</span>
+                                        <span class="tile-sub">Up to five fiscal years from the annual accounts, {{ market.format.unitLabel }}</span>
                                     </div>
                                 </header>
                                 @if (statementsLoading) {
@@ -593,11 +593,11 @@
                                             <div class="fv-grid">
                                                 <div>
                                                     <span class="label">Fair value</span>
-                                                    <span class="fv">₹{{ q.fairValue | number:'1.0-2' }}</span>
+                                                    <span class="fv">{{ market.format.price(q.fairValue) }}</span>
                                                 </div>
                                                 <div>
                                                     <span class="label">Price</span>
-                                                    <span class="fv">₹{{ q.price | number:'1.0-2' }}</span>
+                                                    <span class="fv">{{ market.format.price(q.price) }}</span>
                                                 </div>
                                                 @if (upside !== null) {
                                                     <div>

@@ -4,6 +4,7 @@ import { fmpGet, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, reverseDcf, reverseDcfUnavailable, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
+import { marketDescriptor } from '../market.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
 import { saveUpload, listReports } from '../reports.js';
 import { LlmError, llmConfig } from '../llm.js';
@@ -17,8 +18,6 @@ import { strengthsWeaknesses } from '../strengths.js';
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
 const MAX_PDF_BYTES = 100 * 1024 * 1024;
-// IndianAPI statements are already in ₹ crore; FMP reports raw rupees.
-const RUPEES_PER_CRORE = 1e7;
 
 interface FmpFinancials extends QuantitativeInputs {
   marketCap: number;
@@ -196,6 +195,7 @@ function sendCacheHit(res: express.Response, key: string): boolean {
 
 export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Router {
   const provider = configuredProvider(options.provider);
+  const market = marketDescriptor(provider);
   const loadQuantitativeInputs = (ticker: string): Promise<QuantitativeInputs> =>
     provider === 'indianapi' ? loadIndianApiFinancials(ticker, options) : loadFmpFinancials(ticker, options.fetcher);
   const router = Router();
@@ -287,7 +287,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     try {
       const f = await loadQuantitativeInputs(ticker);
       res.json(f.history.length
-        ? { ticker, status: 'ok', message: null, ...redFlagScan(f) }
+        ? { ticker, status: 'ok', message: null, ...redFlagScan({ ...f, locale: market.locale }) }
         : { ticker, status: 'unavailable', message: 'No annual financials available to scan', flags: [], skipped: [] });
     } catch (err) {
       sendUpstreamError(res, ticker, err);
@@ -310,7 +310,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     const ticker = req.params.ticker;
     try {
       const f = await loadQuantitativeInputs(ticker);
-      res.json({ ticker, years: financialStatements(f.history, provider === 'fmp' ? RUPEES_PER_CRORE : 1) });
+      res.json({ ticker, years: financialStatements(f.history, market.statementDivisor) });
     } catch (err) {
       sendUpstreamError(res, ticker, err);
     }

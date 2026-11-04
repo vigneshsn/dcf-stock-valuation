@@ -8,7 +8,8 @@ import { Subscription } from 'rxjs';
 import { StockService } from '../services/stock.service';
 import { AnalysisService } from '../services/analysis.service';
 import { ReadingModeService } from '../services/reading-mode.service';
-import { PeerRow, StockMetrics, marketCapCrores } from '../models/stock-metrics';
+import { PeerRow, StockMetrics } from '../models/stock-metrics';
+import { MarketService } from '../services/market.service';
 import { PeerComparisonComponent } from '../peer-comparison/peer-comparison.component';
 import { ScoreRingComponent } from '../score-ring/score-ring.component';
 import { ScenarioRangeComponent } from '../scenario-range/scenario-range.component';
@@ -291,7 +292,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         return Math.min(100, Math.max(0, ((price - low) / (high - low)) * 100));
     }
 
-    readonly marketCapCrores = marketCapCrores;
+    readonly market = inject(MarketService);
 
     // ---- Blocks -----------------------------------------------------------------
 

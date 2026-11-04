@@ -4,7 +4,7 @@
         <tr>
             <th scope="col">Company</th>
             <th scope="col">Price</th>
-            <th scope="col">Market cap (Cr)</th>
+            <th scope="col">Market cap</th>
             <th scope="col">P/E</th>
             <th scope="col">P/B</th>
             <th scope="col">ROE (TTM)</th>
@@ -23,7 +23,7 @@
                         }
                     </th>
                     <td>{{ peer.price | number:'1.0-2' }}</td>
-                    <td>{{ marketCapCrores(peer.marketCap) | number:'1.0-0' }}</td>
+                    <td>{{ peer.marketCap == null ? '' : market.format.marketCap(peer.marketCap) }}</td>
                     <td>{{ peer.peRatio | number:'1.0-2' }}</td>
                     <td>{{ peer.pbRatio | number:'1.0-2' }}</td>
                     <td>{{ peer.roe == null ? '' : (peer.roe | number:'1.0-2') + '%' }}</td>

@@ -267,7 +267,7 @@ describe('StockDashboardComponent', () => {
         expect(rows[0].cells[0].textContent).toContain('Acme Industries');
         expect(rows[0].cells[0].textContent).toContain('This stock');
         expect(Array.from(rows[0].cells).slice(1).map((c) => c.textContent?.trim())).toEqual([
-            '321.5', '125,000', '18.5', '3.4', '14%', '', '', '1.2%'
+            '321.5', '₹1,25,000 Cr', '18.5', '3.4', '14%', '', '', '1.2%'
         ]);
         expect(rows[1].classList).not.toContain('current');
     });
@@ -438,12 +438,6 @@ describe('StockDashboardComponent', () => {
         const content = text();
         expect(content).toContain('No peer comparison data available.');
         expect(fixture.nativeElement.querySelector('[data-testid="peers"] tbody')).toBeNull();
-    });
-
-    it('normalises market cap to crores for both providers', () => {
-        expect(component.marketCapCrores(327900.15)).toBe(327900.15);
-        expect(component.marketCapCrores(3279001500000)).toBeCloseTo(327900.15, 2);
-        expect(component.marketCapCrores(null)).toBeNull();
     });
 
     it('shows the Quantitative score, verdict and upside side by side with the MD&A insights panel', () => {

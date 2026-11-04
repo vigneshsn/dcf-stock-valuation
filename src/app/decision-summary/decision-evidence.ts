@@ -6,6 +6,7 @@ import {
     StatementYear,
     StrengthsWeaknesses
 } from '../models/analysis';
+import { INDIA_MARKET, MarketFormat } from '../models/market';
 import { StockMetrics } from '../models/stock-metrics';
 
 /** Everything the Decision summary draws on; null while a source is loading or after it failed. */
@@ -29,23 +30,22 @@ export interface EvidenceRow {
  * The Decision summary's evidence, one neutral sentence per row. Facts only: no verdict, no nudging wording,
  * and the Quantitative score is not repeated (docs/adr/0001-evidence-without-verdict.md).
  */
-export function decisionEvidence(s: EvidenceSources): EvidenceRow[] {
+export function decisionEvidence(s: EvidenceSources, format: MarketFormat = new MarketFormat(INDIA_MARKET)): EvidenceRow[] {
     const years = s.statements ?? [];
     return [
         { label: 'Business', text: business(s.metrics) },
         { label: 'Growth', text: growth(years) },
         { label: 'Profitability', text: profitability(s.metrics, years) },
         { label: 'Financial health', text: health(years) },
-        { label: 'Cash', text: cash(years) },
+        { label: 'Cash', text: cash(years, format) },
         { label: 'Strengths / Weaknesses', text: strengths(s.strengths) },
         { label: 'Red flags', text: redFlags(s.redFlags) },
-        { label: 'Valuation', text: valuation(s) }
+        { label: 'Valuation', text: valuation(s, format) }
     ];
 }
 
 const pct = (v: number) => `${v.toFixed(1)}%`;
 const ratio = (v: number) => `${v.toFixed(2)}×`;
-const rupees = (v: number) => `${v < 0 ? '−' : ''}₹${Math.abs(Math.round(v)).toLocaleString('en-IN')}`;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const joined = (parts: (string | null)[]) => {
     const kept = parts.filter((p): p is string => !!p);
@@ -120,12 +120,12 @@ function health(years: StatementYear[]): string | null {
     return text;
 }
 
-function cash(years: StatementYear[]): string | null {
+function cash(years: StatementYear[], format: MarketFormat): string | null {
     const cfo = years.filter((y) => y.operatingCashFlow != null);
     const lastFcf = years.filter((y) => y.freeCashFlow != null).at(-1);
     return joined([
         cfo.length ? `Cash from operations positive in ${cfo.filter((y) => y.operatingCashFlow! > 0).length} of ${plural(cfo.length, 'year')}` : null,
-        lastFcf ? `free cash flow ${rupees(lastFcf.freeCashFlow!)} cr in FY${lastFcf.year}` : null
+        lastFcf ? `free cash flow ${format.statementAmount(lastFcf.freeCashFlow!)} in FY${lastFcf.year}` : null
     ]);
 }
 
@@ -155,7 +155,7 @@ function redFlags(scan: RedFlagScan | null): string | null {
 }
 
 /** Always names all four items, with "—" for any not yet loaded or unavailable, so none silently drops out. */
-function valuation({ metrics, quant, reverseDcf }: EvidenceSources): string | null {
+function valuation({ metrics, quant, reverseDcf }: EvidenceSources, format: MarketFormat): string | null {
     const price = quant?.price ?? metrics?.currentPrice ?? null;
     if (price == null && !quant && !reverseDcf) {
         return null;
@@ -166,7 +166,7 @@ function valuation({ metrics, quant, reverseDcf }: EvidenceSources): string | nu
     if (quant && !quant.scenarios) {
         range = 'Scenario range not applicable';
     } else if (bear != null && bull != null) {
-        range = `Scenario range ${rupees(bear)}–${rupees(bull)}`;
+        range = `Scenario range ${format.money(bear)}–${format.money(bull)}`;
     }
     let implied = 'Implied growth —';
     if (reverseDcf?.status === 'ok' && reverseDcf.impliedGrowth != null) {
@@ -175,8 +175,8 @@ function valuation({ metrics, quant, reverseDcf }: EvidenceSources): string | nu
         implied = `Implied growth: ${reverseDcf.message}`;
     }
     return [
-        `Price ${price != null ? rupees(price) : '—'}`,
-        `Fair value ${quant ? rupees(quant.fairValue) : '—'}`,
+        `Price ${price != null ? format.money(price) : '—'}`,
+        `Fair value ${quant ? format.money(quant.fairValue) : '—'}`,
         range,
         implied
     ].join(' · ');

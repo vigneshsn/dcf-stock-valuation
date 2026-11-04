@@ -1,4 +1,5 @@
-import { Component, computed, input, linkedSignal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal } from '@angular/core';
+import { MarketService } from '../services/market.service';
 import { EvidenceSources, decisionEvidence } from './decision-evidence';
 
 const SELF_CHECK = [
@@ -53,7 +54,8 @@ export class DecisionSummaryComponent {
     readonly dense = input(false);
 
     readonly items = SELF_CHECK;
-    readonly rows = computed(() => decisionEvidence(this.sources()));
+    private readonly market = inject(MarketService);
+    readonly rows = computed(() => decisionEvidence(this.sources(), this.market.format));
 
     /** Indexes of ticked items; starts empty for each stock. */
     readonly ticked = linkedSignal<string, ReadonlySet<number>>({ source: this.ticker, computation: () => new Set() });

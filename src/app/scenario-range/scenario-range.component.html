@@ -3,7 +3,7 @@
         @for (c of scenarioList; track c.name) {
             <div class="scenario" [title]="'Growth ' + c.scenario.growthRate + '%, discount ' + c.scenario.discountRate + '%'">
                 <span class="label">{{ c.name }}</span>
-                <span class="fv">{{ c.scenario.fairValuePerShare == null ? 'N/A' : '₹' + (c.scenario.fairValuePerShare | number:'1.0-0') }}</span>
+                <span class="fv">{{ c.scenario.fairValuePerShare == null ? 'N/A' : market.format.price(c.scenario.fairValuePerShare, 0) }}</span>
             </div>
         }
     </div>
@@ -43,7 +43,7 @@
                         <th scope="row">{{ g | number:'1.0-2' }}%</th>
                         @for (v of scenarios.grid.values[i]; track $index) {
                             <td data-testid="sensitivity-cell" [attr.data-tone]="tone(v)">
-                                {{ v == null ? '—' : '₹' + (v | number:'1.0-0') }}
+                                {{ v == null ? '—' : market.format.price(v, 0) }}
                             </td>
                         }
                     </tr>

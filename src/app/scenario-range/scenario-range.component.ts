@@ -1,6 +1,7 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Scenario, Scenarios } from '../models/analysis';
+import { MarketService } from '../services/market.service';
 
 type CellTone = 'good' | 'neutral' | 'bad' | 'none';
 
@@ -16,6 +17,7 @@ export class ScenarioRangeComponent {
     @Input({ required: true }) scenarios!: Scenarios;
     @Input({ required: true }) price = 0;
 
+    readonly market = inject(MarketService);
     showSensitivity = false;
 
     get scenarioList(): { name: string; scenario: Scenario }[] {

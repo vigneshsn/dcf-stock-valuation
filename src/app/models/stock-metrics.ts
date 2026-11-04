@@ -44,11 +44,3 @@ export interface StockMetrics {
 }
 
 export type PeerRow = StockMetrics['peers'][number] & { current: boolean };
-
-/** IndianAPI reports market cap in crores while FMP reports raw rupees; normalise to crores. */
-export function marketCapCrores(value: number | null | undefined): number | null {
-    if (value == null) {
-        return null;
-    }
-    return value >= 1e8 ? value / 1e7 : value;
-}

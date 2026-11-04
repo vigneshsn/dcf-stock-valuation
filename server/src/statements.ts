@@ -1,6 +1,6 @@
 import { YearFinancials } from './dcf.js';
 
-/** One fiscal year of the curated income statement, balance sheet and cash flow. Amounts in ₹ crore. */
+/** One fiscal year of the curated income statement, balance sheet and cash flow. Amounts in the Market edition's reporting unit. */
 export interface StatementYear {
   year: number;
   revenue: number | null;
@@ -21,15 +21,15 @@ export interface StatementYear {
 
 const MAX_YEARS = 5;
 
-// Pure: the latest five fiscal years, oldest first. `toCrores` divides amounts (1e7 for raw rupees).
-export function financialStatements(history: YearFinancials[], toCrores = 1): StatementYear[] {
+// Pure: the latest five fiscal years, oldest first. `divisor` converts raw provider amounts into the reporting unit.
+export function financialStatements(history: YearFinancials[], divisor = 1): StatementYear[] {
   const seen = new Set<number>();
   const latest = [...history]
     .sort((a, b) => b.year - a.year)
     .filter(({ year }) => !seen.has(year) && seen.add(year))
     .slice(0, MAX_YEARS)
     .reverse();
-  const amount = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? null : v / toCrores);
+  const amount = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? null : v / divisor);
 
   return latest.map((y) => {
     const revenue = amount(y.revenue);

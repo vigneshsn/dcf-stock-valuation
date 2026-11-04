@@ -213,3 +213,12 @@ test('promoter history shorter than 2 years, or none reported, is skipped with a
     reason: 'no promoter holding reported',
   });
 });
+
+test('free-cash-flow evidence groups digits by the Market edition locale', () => {
+  const burn = [2025, 2024, 2023].map((y) => year(y, { netIncome: -1234567, nonCashExpense: 0, capex: 0 }));
+  const evidence = (locale?: string) =>
+    scan([...burn, year(2022), year(2021)], { locale }).flags.find((f) => f.id === 'negative-free-cash-flow')?.evidence;
+  assert.match(evidence('en-US')!, /-1,234,567, -1,234,567, -1,234,567/);
+  assert.match(evidence('en-IN')!, /-12,34,567/);
+  assert.match(evidence()!, /-12,34,567/);
+});

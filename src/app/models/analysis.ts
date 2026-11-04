@@ -124,7 +124,7 @@ export interface RedFlagScan {
     skipped: { id: RedFlagId; reason: string }[];
 }
 
-/** One fiscal year of the curated statements. Amounts in ₹ crore; margin and cash conversion in percent. */
+/** One fiscal year of the curated statements. Amounts in the Market edition's reporting unit; margin and cash conversion in percent. */
 export interface StatementYear {
     year: number;
     revenue: number | null;

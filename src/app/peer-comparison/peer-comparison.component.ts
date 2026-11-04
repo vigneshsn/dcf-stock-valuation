@@ -1,6 +1,7 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { PeerRow, marketCapCrores } from '../models/stock-metrics';
+import { PeerRow } from '../models/stock-metrics';
+import { MarketService } from '../services/market.service';
 
 /** Peer comparison table; the row flagged `current` is the stock being analysed and is highlighted. */
 @Component({
@@ -13,5 +14,5 @@ import { PeerRow, marketCapCrores } from '../models/stock-metrics';
 export class PeerComparisonComponent {
     @Input({ required: true }) rows: PeerRow[] = [];
 
-    readonly marketCapCrores = marketCapCrores;
+    readonly market = inject(MarketService);
 }

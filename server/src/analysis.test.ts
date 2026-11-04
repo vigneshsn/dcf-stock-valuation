@@ -423,7 +423,7 @@ test('runs the quantitative DCF on FMP data when FMP is the configured provider'
   }
 });
 
-test('statements: FMP amounts are converted from rupees to crores', async () => {
+test('statements: FMP amounts are converted from dollars to millions', async () => {
   const previousApiKey = process.env.FMP_API_KEY;
   process.env.FMP_API_KEY = 'test-key';
   try {
@@ -453,17 +453,17 @@ test('statements: FMP amounts are converted from rupees to crores', async () => 
     assert.equal(response.status, 200);
     assert.deepEqual(body.years, [{
       year: 2025,
-      revenue: 1000,
-      ebitda: 200,
-      netProfit: 100,
+      revenue: 10000,
+      ebitda: 2000,
+      netProfit: 1000,
       netMargin: 10,
-      totalAssets: 3000,
-      borrowings: 200,
-      equity: 1000,
+      totalAssets: 30000,
+      borrowings: 2000,
+      equity: 10000,
       debtToEquity: 0.2,
-      operatingCashFlow: 150,
-      capex: 50,
-      freeCashFlow: 100,
+      operatingCashFlow: 1500,
+      capex: 500,
+      freeCashFlow: 1000,
       cashConversion: 150,
     }]);
   } finally {
