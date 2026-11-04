@@ -459,7 +459,7 @@ test('uses FMP only when explicitly selected and leaves IndianAPI sections empty
         fmpRequests.push(url);
         if (url.pathname.endsWith('/quote')) {
           return new Response(JSON.stringify([{
-            symbol: 'ACME.NS',
+            symbol: 'ACME',
             price: 100,
             marketCap: 500,
             yearHigh: 120,
@@ -497,7 +497,7 @@ test('uses FMP only when explicitly selected and leaves IndianAPI sections empty
     assert.deepEqual(body.peers, []);
     assert.equal(body.analystConsensus, null);
     assert.equal(fmpRequests.length, 4);
-    assert.ok(fmpRequests.every((url) => url.searchParams.get('symbol') === 'ACME.NS'));
+    assert.ok(fmpRequests.every((url) => url.searchParams.get('symbol') === 'ACME'));
   } finally {
     if (previousApiKey === undefined) {
       delete process.env.FMP_API_KEY;
@@ -517,7 +517,7 @@ test('returns an upstream error when the explicitly selected FMP quote has no cu
       fetcher: async () => {
         requests += 1;
         return new Response(JSON.stringify([{
-          symbol: 'NOPRICE.NS',
+          symbol: 'NOPRICE',
           price: null,
           marketCap: 200,
         }]));
@@ -538,7 +538,7 @@ test('returns an upstream error when the explicitly selected FMP quote has no cu
   }
 });
 
-test('does not query FMP with a non-NSE exchange suffix', async () => {
+test('does not query FMP with an exchange suffix (US edition)', async () => {
   const previousApiKey = process.env.FMP_API_KEY;
   process.env.FMP_API_KEY = 'test-key';
   let requests = 0;
@@ -551,7 +551,7 @@ test('does not query FMP with a non-NSE exchange suffix', async () => {
       },
     });
 
-    const response = await requestStock(router, 'ACME.BO');
+    const response = await requestStock(router, 'ACME.NS');
 
     assert.equal(response.status, 404);
     assert.deepEqual(await response.json(), { error: 'Ticker not found' });
@@ -589,7 +589,7 @@ test('rejects zero and negative prices as unusable NSE quotes', async () => {
     const fmpRouter = createStockRouter({
       provider: 'fmp',
       fetcher: async () => new Response(JSON.stringify([{
-        symbol: 'NEGATIVE.NS',
+        symbol: 'NEGATIVE',
         price: -1,
         marketCap: 100,
       }])),

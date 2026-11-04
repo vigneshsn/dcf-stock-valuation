@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { get, set, CACHE_TTL_MS } from '../cache.js';
-import { fmpGet, FmpError } from '../fmp.js';
+import { fmpGet, fmpFiscalYear, FmpError } from '../fmp.js';
 import {
   fetchIndianApiStock,
   IndianApiError,
@@ -56,18 +56,12 @@ function numberOrNull(value: number | null | undefined): number | null {
   return value != null && Number.isFinite(value) ? value : null;
 }
 
-function fmpYear(row: { fiscalYear?: string | number; calendarYear?: string | number; date?: string }): number | null {
-  const value = row.fiscalYear ?? row.calendarYear ?? row.date?.slice(0, 4);
-  const year = Number(value);
-  return Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : null;
-}
-
 function alignedFmpReturns(
   incomeStatements: FmpIncomeStatement[],
   balanceSheets: FmpBalanceSheet[]
 ): { roce: number | null; roe: number | null } {
   const annualYear = (statement: FmpIncomeStatement | FmpBalanceSheet): number | null =>
-    /^Q[1-4]$/i.test(statement.period ?? '') ? null : fmpYear(statement);
+    /^Q[1-4]$/i.test(statement.period ?? '') ? null : fmpFiscalYear(statement);
   const annualIncome = mapAnnualStatements(incomeStatements, annualYear, (statement) => ({
     ebit: numberOrNull(statement.ebit ?? statement.operatingIncome),
     netIncome: numberOrNull(statement.netIncome),
@@ -85,15 +79,12 @@ function isUnknownFmpSymbol(err: unknown): boolean {
     ((err.status === 404) || (err.status === 402 && /symbol.*not available|invalid.*symbol/i.test(err.message)));
 }
 
-function fmpTicker(ticker: string): string {
-  return ticker.endsWith('.NS') ? ticker : `${ticker}.NS`;
-}
-
 async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<StockData> {
-  if (ticker.includes('.') && !ticker.endsWith('.NS')) {
-    throw new StockNotFoundError('Only NSE tickers are supported');
+  // US edition: bare US symbols (class shares use a dash, e.g. BRK-B); exchange suffixes such as .NS are not US tickers.
+  if (ticker.includes('.')) {
+    throw new StockNotFoundError('Only US tickers are supported');
   }
-  const symbol = fmpTicker(ticker);
+  const symbol = ticker;
   const quotes = await fmpGet<FmpQuote[]>('/quote', symbol, {}, fetcher);
   const quote = quotes?.[0];
   if (!quote || (quote.marketCap == null && quote.price == null)) {
@@ -104,7 +95,7 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
   }
   const currentPrice = numberOrNull(quote.price);
   if (currentPrice == null || currentPrice <= 0) {
-    throw new FmpError('FMP returned no usable NSE current price', 502);
+    throw new FmpError('FMP returned no usable current price', 502);
   }
   const metrics: StockData = {
     marketCap: numberOrNull(quote.marketCap),

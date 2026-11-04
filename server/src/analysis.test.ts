@@ -382,7 +382,7 @@ test('runs the quantitative DCF on FMP data when FMP is the configured provider'
       fetcher: async (input) => {
         const url = new URL(String(input));
         assert.equal(url.hostname, 'financialmodelingprep.com');
-        assert.equal(url.searchParams.get('symbol'), 'FMPQUANT.NS');
+        assert.equal(url.searchParams.get('symbol'), 'FMPQUANT');
         paths.push(url.pathname);
         if (url.pathname.endsWith('/quote')) {
           return new Response(JSON.stringify([{ price: 50, marketCap: 5000, pe: 12 }]));
@@ -406,7 +406,7 @@ test('runs the quantitative DCF on FMP data when FMP is the configured provider'
       },
     });
 
-    const response = await requestAnalysis(router, 'FMPQUANT.NS');
+    const response = await requestAnalysis(router, 'FMPQUANT');
     const body = await response.json();
 
     assert.equal(response.status, 200);
@@ -447,7 +447,7 @@ test('statements: FMP amounts are converted from dollars to millions', async () 
       },
     });
 
-    const response = await requestAnalysis(router, 'FMPSTMT.NS', 'statements');
+    const response = await requestAnalysis(router, 'FMPSTMT', 'statements');
     const body = await response.json();
 
     assert.equal(response.status, 200);

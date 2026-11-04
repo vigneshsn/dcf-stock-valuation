@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { del, get, set } from '../cache.js';
-import { fmpGet, FmpError } from '../fmp.js';
+import { fmpGet, fmpFiscalYear, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, reverseDcf, reverseDcfUnavailable, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
@@ -65,7 +65,7 @@ async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promis
     fmpGet<any[]>('/balance-sheet-statement', ticker, { limit: 5 }, fetcher),
     fmpGet<any[]>('/ratios-ttm', ticker, {}, fetcher).catch(() => [] as any[]),
   ]);
-  const yearOf = (row: any) => Number(row.fiscalYear ?? row.calendarYear ?? String(row.date ?? '').slice(0, 4));
+  const yearOf = (row: any) => fmpFiscalYear(row) ?? NaN;
   const cashByYear = new Map<number, any>((cash ?? []).map((c) => [yearOf(c), c]));
   const balanceByYear = new Map<number, any>((balance ?? []).map((b) => [yearOf(b), b]));
   const metric = (v: unknown) => (v == null || !Number.isFinite(Number(v)) ? null : Number(v));
