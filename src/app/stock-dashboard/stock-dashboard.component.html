@@ -394,25 +394,9 @@
                                     <p class="alert alert-bad" role="alert">
                                         <span class="material-icons" aria-hidden="true">error_outline</span> {{ insightsError }}
                                     </p>
-                                    @if (!insightsNeedsUpload) {
-                                        <button type="button" class="btn btn-ghost btn-sm" (click)="loadInsights()">
-                                            <span class="material-icons" aria-hidden="true">refresh</span> Try again
-                                        </button>
-                                    }
-                                }
-
-                                @if (insightsNeedsUpload) {
-                                    <div class="upload" data-testid="insights-upload">
-                                        <label>Year <input type="number" name="insightsUploadYear" [(ngModel)]="uploadYear"/></label>
-                                        <label class="file-drop">
-                                            <span class="material-icons" aria-hidden="true">upload_file</span>
-                                            Upload annual report PDF
-                                            <input type="file" accept="application/pdf" (change)="onFileSelected($event)"/>
-                                        </label>
-                                        @if (uploadMessage) {
-                                            <p class="small">{{ uploadMessage }}</p>
-                                        }
-                                    </div>
+                                    <button type="button" class="btn btn-ghost btn-sm" (click)="loadInsights()">
+                                        <span class="material-icons" aria-hidden="true">refresh</span> Try again
+                                    </button>
                                 }
 
                                 @if (insights && !insightsLoading) {

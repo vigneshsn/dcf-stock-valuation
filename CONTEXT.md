@@ -45,7 +45,7 @@ The companies from the same industry used as the benchmark for Strength / Weakne
 _Avoid_: Competitors, comparables
 
 **Latest annual report**:
-The most recent annual report available for the stock (uploaded or fetched; the 10-K in the US edition), covering the latest completed fiscal year. Not trailing-twelve-month data.
+The most recent annual report available for the stock (fetched from the data source; the 10-K in the US edition), covering the latest completed fiscal year. Not trailing-twelve-month data.
 _Avoid_: Last year's report, current report
 
 **Implied growth**:

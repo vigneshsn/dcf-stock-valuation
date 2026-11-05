@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { filterRelevant, reportToText } from './mdna.js';
 import { INDIA_REPORTS, ReportProfile } from './reportProfiles.js';
@@ -191,16 +191,6 @@ async function storedInsightYears(ticker: string, model: string): Promise<number
     .filter((y) => Number.isInteger(y));
 }
 
-// Drops every stored result for the year (all models and versions); called when a report is uploaded.
-export async function forgetStoredInsights(ticker: string, year: number): Promise<void> {
-  const prefix = `${tickerPrefix(ticker)}${year}__`;
-  await Promise.all(
-    (await listCacheFiles())
-      .filter((f) => f.startsWith(prefix))
-      .map((f) => unlink(path.join(insightsCacheDir(), f)).catch(() => undefined))
-  );
-}
-
 // ---- Latest annual report → insights --------------------------------------
 
 export interface ReportInsightsDeps {
@@ -217,7 +207,7 @@ export interface ReportInsightsResult {
 
 const inflight = new Map<string, Promise<ReportInsightsResult>>();
 
-// A stored result is reused unless a fetched-report result is superseded by an upload; LLM failures are not stored.
+// A stored result is reused; LLM failures are not stored.
 export async function latestReportInsights(ticker: string, model: string, deps: ReportInsightsDeps): Promise<ReportInsightsResult> {
   const listed = (await deps.listReports(ticker, 1)).sort((a, b) => b.year - a.year)[0];
   const storedLatest = Math.max(-Infinity, ...(await storedInsightYears(ticker, model)));
@@ -234,7 +224,7 @@ export async function latestReportInsights(ticker: string, model: string, deps: 
   }
   const work = (async (): Promise<ReportInsightsResult> => {
     const stored = await readStoredInsights(ticker, listed.year, model);
-    if (stored && !(listed.source === 'upload' && stored.source !== 'upload')) {
+    if (stored) {
       console.log(`[insights cache HIT] ${key}`);
       return { entry: stored, cached: true };
     }

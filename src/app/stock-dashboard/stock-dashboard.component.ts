@@ -179,13 +179,9 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     insights: MdnaInsights | null = null;
     insightsLoading = false;
     insightsError = '';
-    insightsNeedsUpload = false;
     /** Wall-clock time of the last insights request as seen by the browser, including network and cache lookups. */
     insightsElapsedMs: number | null = null;
     readonly insightSections = INSIGHT_SECTIONS;
-
-    uploadYear = new Date().getFullYear() - 1;
-    uploadMessage = '';
 
     guidance: GuidanceScorecard | null = null;
     guidanceLoading = false;
@@ -239,7 +235,6 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.query = ticker;
         this.showFullDescription = false;
         this.collapsedBlocks.clear();
-        this.uploadMessage = '';
         this.resetGuidance();
         this.loadStock();
         this.quant = null;
@@ -482,7 +477,6 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
         this.insights = null;
         this.insightsLoading = true;
         this.insightsError = '';
-        this.insightsNeedsUpload = false;
         this.insightsElapsedMs = null;
         const started = this.now();
         this.insightsSub = this.analysis.getInsights(this.ticker).subscribe({
@@ -494,7 +488,6 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
             error: (err: HttpErrorResponse) => {
                 this.insightsLoading = false;
                 this.insightsElapsedMs = this.now() - started;
-                this.insightsNeedsUpload = err.error?.error === 'no-reports';
                 this.insightsError = err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
             }
         });
@@ -514,21 +507,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     get insightsReportLabel(): string | null {
         const i = this.insights;
-        return i ? `FY${i.year} · ${i.source === 'upload' ? 'uploaded' : 'fetched'}` : null;
-    }
-
-    onFileSelected(event: Event): void {
-        const file = (event.target as HTMLInputElement).files?.[0];
-        if (!file) {
-            return;
-        }
-        this.analysis.uploadReport(this.ticker, this.uploadYear, file).subscribe({
-            next: (r) => {
-                this.uploadMessage = `Uploaded the FY${r.year} annual report`;
-                this.loadInsights();
-            },
-            error: (err: HttpErrorResponse) => (this.uploadMessage = err.error?.error ?? 'Upload failed')
-        });
+        return i ? `FY${i.year} report` : null;
     }
 
     moatTone(rating: MoatRating): Tone {

@@ -86,7 +86,7 @@ FMP_API_KEY=your_financial_modeling_prep_api_key
 SEC_USER_AGENT="Your Name your@email.com"
 ```
 
-In the US edition (FMP) annual reports are the latest 10-Ks from SEC EDGAR, so `SEC_USER_AGENT` is required (SEC rejects anonymous clients); MD&A insights and the Guidance scorecard return an explicit error without it. EDGAR requests are throttled to 10 per second and cached. Uploaded PDFs still take precedence.
+In the US edition (FMP) annual reports are the latest 10-Ks from SEC EDGAR, so `SEC_USER_AGENT` is required (SEC rejects anonymous clients); MD&A insights and the Guidance scorecard return an explicit error without it. EDGAR requests are throttled to 10 per second and cached.
 
 The selected provider is used for the entire stock response and for the quantitative (DCF) analysis; the server does not automatically fall back or combine provider data. The Peer set still comes from FMP, so set `FMP_API_KEY` if you rely on it. Get an IndianAPI key at https://indianapi.in/ or an FMP key at https://site.financialmodelingprep.com/.
 

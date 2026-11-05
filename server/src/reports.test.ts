@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { listReports, parseAnnualReportLinks, saveUpload } from './reports.js';
+import { listReports, parseAnnualReportLinks } from './reports.js';
 
-test('listReports lists years without downloading PDFs; uploads take precedence', async () => {
+test('listReports lists years without downloading PDFs', async () => {
   const requested: string[] = [];
   const fetcher = (async (input: string | URL | Request) => {
     const url = String(input);
@@ -15,13 +15,11 @@ test('listReports lists years without downloading PDFs; uploads take precedence'
     }
     return new Response('%PDF-1.7 fetched');
   }) as typeof fetch;
-  saveUpload('LISTTEST', 2025, Buffer.from('%PDF-1.7 uploaded'));
 
   const refs = await listReports('LISTTEST', 3, fetcher);
-  assert.deepStrictEqual(refs.map((r) => [r.year, r.source]), [[2026, 'screener'], [2025, 'upload'], [2024, 'screener']]);
+  assert.deepStrictEqual(refs.map((r) => [r.year, r.source]), [[2026, 'screener'], [2025, 'screener'], [2024, 'screener']]);
   assert.strictEqual(requested.filter((u) => u.endsWith('.pdf')).length, 0);
 
-  assert.strictEqual((await refs[1].load())!.toString(), '%PDF-1.7 uploaded');
   assert.strictEqual((await refs[0].load())!.toString(), '%PDF-1.7 fetched');
   assert.deepStrictEqual(requested.filter((u) => u.endsWith('.pdf')), ['https://b/a26.pdf']);
 });

@@ -7,7 +7,6 @@ import {
   Insights,
   InsightsJudge,
   MAX_INSIGHT_ITEMS,
-  forgetStoredInsights,
   insightsFromReportText,
   insightsInput,
   judgeInsights,
@@ -133,18 +132,11 @@ test('latestReportInsights: analyses only the newest report once and reuses the 
   assert.equal(second.cached, true);
   assert.equal(loads, 1);
 
-  // An uploaded report supersedes a stored result from a fetched one.
-  const uploaded = await latestReportInsights('ABC', 'm', { ...deps, listReports: async () => [ref(2025, 'upload')] });
-  assert.equal(uploaded.entry?.source, 'upload');
-  assert.equal(judged, 2);
-
   // Listing unavailable: the stored year still answers.
   const offline = await latestReportInsights('ABC', 'm', { ...deps, listReports: async () => [] });
   assert.equal(offline.entry?.year, 2025);
   assert.equal(offline.cached, true);
 
-  await forgetStoredInsights('ABC', 2025);
-  assert.deepEqual(await latestReportInsights('ABC', 'm', { ...deps, listReports: async () => [] }), { entry: null, cached: false });
 });
 
 test('latestReportInsights: an LLM failure is not stored', async () => {

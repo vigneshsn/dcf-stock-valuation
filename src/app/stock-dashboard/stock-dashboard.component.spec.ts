@@ -647,7 +647,7 @@ describe('StockDashboardComponent', () => {
         fixture.detectChanges();
 
         const panel: HTMLElement = fixture.nativeElement.querySelector('[data-testid="insights-panel"]');
-        expect(panel.querySelector('[data-testid="insights-report"]')?.textContent).toContain('FY2025 · fetched');
+        expect(panel.querySelector('[data-testid="insights-report"]')?.textContent).toContain('FY2025 report');
         expect(panel.querySelector('h3')?.textContent).toContain('What does management say?');
         expect(panel.textContent).not.toContain('Moat');
         const keyPoints = panel.querySelector('[data-testid="insights-keyPoints"]')!;
@@ -681,27 +681,6 @@ describe('StockDashboardComponent', () => {
         expect(now).toHaveBeenCalledTimes(4);
     });
 
-    it('offers a PDF upload when the latest report cannot be fetched and reloads insights after uploading', () => {
-        search('TCS');
-        httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
-        expectQuant('TCS').flush(quant());
-        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(
-            { error: 'no-reports', message: 'The latest annual report could not be fetched. Upload it as a PDF.' },
-            { status: 422, statusText: 'Unprocessable' }
-        );
-        expect(component.insightsNeedsUpload).toBeTrue();
-        fixture.detectChanges();
-        expect(fixture.nativeElement.querySelector('[data-testid="insights-upload"]')).not.toBeNull();
-
-        component.uploadYear = 2025;
-        const file = new File(['%PDF-'], 'ar.pdf', { type: 'application/pdf' });
-        component.onFileSelected({ target: { files: [file] } } as unknown as Event);
-        httpMock.expectOne(`${ANALYSIS_URL}TCS/reports?year=2025`).flush({ year: 2025, bytes: 5 });
-        httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(mdnaInsights({ source: 'upload' }));
-
-        expect(component.insightsNeedsUpload).toBeFalse();
-        expect(component.insightsReportLabel).toBe('FY2025 · uploaded');
-    });
 
     it('explains a quota or model outage and offers a retry', () => {
         search('TCS');

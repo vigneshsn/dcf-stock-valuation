@@ -46,14 +46,6 @@ export class AnalysisService {
     getPeers(ticker: string): Observable<{ ticker: string; peers: Peer[] }> {
         return this.http.get<{ ticker: string; peers: Peer[] }>(`${this.baseUrl}/${encodeURIComponent(ticker)}/peers`);
     }
-
-    uploadReport(ticker: string, year: number, file: File): Observable<{ year: number; bytes: number }> {
-        return this.http.post<{ year: number; bytes: number }>(
-            `${this.baseUrl}/${encodeURIComponent(ticker)}/reports?year=${year}`,
-            file,
-            { headers: { 'Content-Type': 'application/pdf' } }
-        );
-    }
 }
 
 function overrideParams(overrides: Record<string, number | null | undefined>): HttpParams {

@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { YearFinancials } from './dcf.js';
 import { LlmError, generateJson } from './llm.js';
@@ -260,16 +260,6 @@ async function storedGuidanceYears(ticker: string, model: string): Promise<numbe
     .filter((y) => Number.isInteger(y));
 }
 
-// Drops every stored result for the year (all models and versions); called when a report is uploaded.
-export async function forgetStoredGuidance(ticker: string, year: number): Promise<void> {
-  const prefix = `${tickerPrefix(ticker)}${year}__`;
-  await Promise.all(
-    (await listCacheFiles())
-      .filter((f) => f.startsWith(prefix))
-      .map((f) => unlink(path.join(guidanceCacheDir(), f)).catch(() => undefined))
-  );
-}
-
 // ---- Reports → claims --------------------------------------------------------
 
 export interface GuidanceDeps {
@@ -298,8 +288,7 @@ function yearGuidance(ticker: string, model: string, ref: AnnualReportRef, isLat
   }
   const work = (async (): Promise<GuidanceYear> => {
     const stored = await readStoredGuidance(ticker, ref.year, model);
-    // An uploaded report replaces claims derived from a fetched one.
-    if (stored && !(ref.source === 'upload' && stored.source !== 'upload')) {
+    if (stored) {
       console.log(`[guidance cache HIT] ${key}`);
       return yearResult(ref.year, stored.claims, true);
     }

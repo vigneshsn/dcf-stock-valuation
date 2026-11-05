@@ -10,7 +10,6 @@ import {
   GuidanceClaim,
   GuidanceExtractor,
   collectGuidance,
-  forgetStoredGuidance,
   guidanceInput,
   guidanceScorecard,
   parseGuidanceClaims,
@@ -141,12 +140,6 @@ test('collectGuidance: one extraction per report ever, shared latest-year claims
   // listing unavailable: stored years still answer
   const offline = await collectGuidance('ABC', 'm', 3, { ...deps, listReports: async () => { throw new Error('down'); } });
   assert.deepEqual(offline.map((y) => y.year), [2023, 2022]);
-
-  // an upload supersedes claims from a fetched report; forgetting drops them
-  await collectGuidance('ABC', 'm', 3, { ...deps, listReports: async () => [ref(2023, 'upload')] });
-  assert.deepEqual(extracted.sort(), [2022, 2023, 2023]);
-  await forgetStoredGuidance('ABC', 2023);
-  assert.deepEqual((await collectGuidance('ABC', 'm', 3, { ...deps, listReports: async () => [] })).map((y) => y.year), [2022]);
 
   const noReport = await collectGuidance('NOPE', 'm', 3, { ...deps, listReports: async () => [ref(2023, 'screener', false)] });
   assert.equal(noReport[0].status, 'no-report');

@@ -33,14 +33,12 @@ flowchart LR
         analysisRoute["routes/analysis.ts<br/>/api/analysis"]
         provider["provider.ts<br/>STOCK_DATA_PROVIDER"]
         cache[("cache.ts<br/>in-memory TTL Map")]
-        uploads[("reports.ts<br/>in-memory PDF uploads")]
 
         idx --> stockRoute & analysisRoute
         stockRoute --> provider
         analysisRoute --> provider
         stockRoute --> cache
         analysisRoute --> cache
-        analysisRoute --> uploads
     end
 
     subgraph ext["External services"]
@@ -70,7 +68,7 @@ flowchart LR
 | Quantitative analysis (DCF Fair value + score) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/quantitative` | IndianAPI or FMP |
 | Financial statements (5 fiscal years: income, balance sheet, cash flow; unscored) | `FinancialStatementsComponent`, `AnalysisService` | `GET /api/analysis/:ticker/statements` | IndianAPI or FMP (cached financials, amounts in ₹ crore) |
 | Strength / Weakness findings (ROCE, ROE, net margin, revenue growth, debt / equity, cash conversion vs own history or Peer set median; ≥20% gaps only; unscored) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/strengths-weaknesses` | IndianAPI or FMP (cached financials); peer ROE and net margin from IndianAPI only |
-| MD&A insights ("What does management say?" and the Moat, management's own view; loads automatically) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/insights` | Latest annual report (Screener.in / upload), one LLM call |
+| MD&A insights ("What does management say?" and the Moat, management's own view; loads automatically) | `StockDashboardComponent`, `AnalysisService` | `GET /api/analysis/:ticker/insights` | Latest annual report (Screener.in), one LLM call |
 | Guidance scorecard ("Do they deliver?"; met / near / missed / pending counts, no trust score; see [spec](spec-guidance-scorecard.md)) | `StockDashboardComponent`, `AnalysisService` | `POST /api/analysis/:ticker/guidance` | Up to 3 past annual reports, one cached LLM call each, IndianAPI or FMP financials |
 | Decision summary (evidence side by side, uncoloured, no verdict or Quantitative score; Self-check ticked by the user, not saved) | `DecisionSummaryComponent` | — (built in the browser from the responses above) | — |
 | Peer set (benchmark for Strength / Weakness; not yet shown) | `AnalysisService.getPeers` | `GET /api/analysis/:ticker/peers` | FMP |
@@ -88,7 +86,7 @@ flowchart TB
     subgraph adapters["Upstream adapters"]
         indianapi["indianapi.ts<br/>fetchIndianApiStock<br/>fetchIndianApiQuantitativeInputs"]
         fmpA["fmp.ts<br/>fmpGet"]
-        reports["reports.ts<br/>listReports · saveUpload"]
+        reports["reports.ts<br/>listReports"]
         llmA["llm.ts<br/>generate · generateJson<br/>provider fallback + retries"]
     end
 
@@ -183,7 +181,7 @@ sequenceDiagram
         API-->>UI: cached insights, no report or LLM calls
     end
     API->>I: latestReportInsights(ticker, model)
-    I->>R: listReports(ticker, 1) → newest year (uploads win)
+    I->>R: listReports(ticker, 1) → newest year
     I->>D: stored insights for ticker/year/model?
     opt miss
         I->>R: load() downloads the PDF
@@ -192,7 +190,7 @@ sequenceDiagram
         I->>I: keep quotes that appear verbatim in the input
         I->>D: store result (LLM failures are not stored)
     end
-    API-->>UI: insights | 422 no-reports (upload a PDF) | 503 llm-unavailable
+    API-->>UI: insights | 422 no-reports | 503 llm-unavailable
 ```
 
 The ~20k-character budget (~5k tokens) keeps the single request inside free-tier per-minute token limits. Bump `INSIGHTS_VERSION` in `insights.ts` when input selection or the prompt changes.
@@ -240,7 +238,7 @@ The frontend services hard-code the proxy at `http://localhost:3000`.
 - **Proxy, not direct calls.** Keeps API keys out of the browser and lets the provider be swapped (`provider.ts`) without frontend changes.
 - **NSE only.** Tickers are bare NSE symbols (an optional `.NS` suffix is accepted). Other exchange suffixes are rejected as not found.
 - **Peer selection always uses FMP**, regardless of `STOCK_DATA_PROVIDER`.
-- **Derived state is in process memory.** The derived-response cache (raw FMP responses are on disk, see [spec-fmp-caching.md](spec-fmp-caching.md)) and uploaded PDFs are lost on restart and are not shared between instances.
+- **Derived state is in process memory.** The derived-response cache (raw FMP responses are on disk, see [spec-fmp-caching.md](spec-fmp-caching.md)) is lost on restart and is not shared between instances.
 - **One score.** The Quantitative score is the only score. MD&A insights, the Moat (management's own view) and the Guidance scorecard are unscored evidence; there is no Qualitative score or trust score (see [ADR 0001](adr/0001-evidence-without-verdict.md)).
 - **Free-tier LLM budget.** MD&A insights use one LLM call per annual report and load automatically; the Guidance scorecard uses one cached call per past report and runs on demand.
 - **Swappable LLM.** `llm.ts` tries Gemini, Groq and local Ollama in the configured order, retrying rate limits before falling back; an answer that is not valid JSON (or is cut off at `max_tokens`) also falls back. Disk and memory caches are keyed on the first provider's model, so a fallback answer is cached under the same key. If every provider fails, the insights and guidance endpoints return `503 llm-unavailable` and the rest of the app keeps working.

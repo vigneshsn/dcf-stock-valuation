@@ -1,25 +1,24 @@
 import express, { Router } from 'express';
-import { del, get, set } from '../cache.js';
+import { get, set } from '../cache.js';
 import { fmpGet, fmpFiscalYear, fmpRefreshRequested, fmpRequestContext, fmpServedStale, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, reverseDcf, reverseDcfUnavailable, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
 import { marketDescriptor } from '../market.js';
 import { configuredProvider, StockDataProvider } from '../provider.js';
-import { saveUpload, listReports } from '../reports.js';
+import { listReports } from '../reports.js';
 import { EdgarSetupError } from '../edgar.js';
 import { reportProfile } from '../reportProfiles.js';
 import { LlmError, llmConfig } from '../llm.js';
 import { Peer, listedInMarket, selectPeers } from '../peers.js';
-import { ReportInsightsDeps, forgetStoredInsights, latestReportInsights, readStoredInsights } from '../insights.js';
-import { GuidanceDeps, GuidanceYear, collectGuidance, forgetStoredGuidance, guidanceScorecard } from '../guidance.js';
+import { ReportInsightsDeps, latestReportInsights, readStoredInsights } from '../insights.js';
+import { GuidanceDeps, GuidanceYear, collectGuidance, guidanceScorecard } from '../guidance.js';
 import { redFlagScan } from '../redFlags.js';
 import { financialStatements } from '../statements.js';
 import { strengthsWeaknesses } from '../strengths.js';
 
 const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 24 * 60 * 60 * 1000;
 const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 24 * 60 * 60 * 1000;
-const MAX_PDF_BYTES = 100 * 1024 * 1024;
 
 interface FmpFinancials extends QuantitativeInputs {
   marketCap: number;
@@ -352,30 +351,6 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
     return selectPeers({ symbol: ticker, name: ticker, marketCap: f.marketCap }, candidates);
   }
 
-  router.post(
-    '/:ticker/reports',
-    express.raw({ type: ['application/pdf', 'application/octet-stream'], limit: MAX_PDF_BYTES }),
-    async (req, res) => {
-      const year = Number(req.query.year);
-      if (!Number.isInteger(year) || year < 1990 || year > 2100) {
-        return res.status(400).json({ error: 'year query parameter is required' });
-      }
-      const body = req.body;
-      if (!Buffer.isBuffer(body) || body.length === 0 || body.subarray(0, 5).toString() !== '%PDF-') {
-        return res.status(400).json({ error: 'Body must be a PDF (Content-Type: application/pdf)' });
-      }
-      saveUpload(req.params.ticker, year, body);
-      const { model } = llmConfig();
-      del(insightsKey(req.params.ticker, model));
-      del(guidanceKey(req.params.ticker, model));
-      await Promise.all([
-        forgetStoredInsights(req.params.ticker, year),
-        forgetStoredGuidance(req.params.ticker, year),
-      ]);
-      res.status(201).json({ ticker: req.params.ticker, year, bytes: body.length });
-    }
-  );
-
   // One LLM call on the Latest annual report; repeat requests are served from memory, then disk.
   router.get('/:ticker/insights', async (req, res) => {
     const ticker = req.params.ticker;
@@ -396,7 +371,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       if (!entry) {
         return res.status(422).json({
           error: 'no-reports',
-          message: 'The latest annual report could not be fetched. Upload it as a PDF.',
+          message: 'The latest annual report could not be fetched.',
         });
       }
       const body = {
@@ -447,7 +422,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
       if (!years.length) {
         return res.status(422).json({
           error: 'no-reports',
-          message: 'Annual reports could not be fetched. Upload them as PDFs via POST /api/analysis/:ticker/reports?year=YYYY.',
+          message: 'Annual reports could not be fetched.',
         });
       }
       const financials = await loadQuantitativeInputs(ticker);

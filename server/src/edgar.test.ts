@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { listReports, saveUpload } from './reports.js';
+import { listReports } from './reports.js';
 import { US_REPORTS } from './reportProfiles.js';
 import { EdgarConfigError, EdgarRejectedError, resetEdgarCache } from './edgar.js';
 
@@ -152,14 +152,5 @@ test('a slow filing download does not hold up other EDGAR requests, and concurre
     assert.ok(Date.now() - started < 600, 'second filing is not queued behind the first download');
     await slow;
     assert.strictEqual(downloads, 2, 'two loads of one filing, plus one other filing');
-  });
-});
-
-// Uploads are process-wide, so this runs last.
-test('US edition lets an uploaded 10-K take precedence over EDGAR for the same year', async () => {
-  await withUserAgent('DCF Tester test@example.com', async () => {
-    saveUpload('AAPL', 2024, Buffer.from('%PDF-1.7 uploaded'));
-    const refs = await listReports('AAPL', 3, edgarFetcher(), US_REPORTS);
-    assert.deepStrictEqual(refs.map((r) => [r.year, r.source]), [[2025, 'edgar'], [2024, 'upload'], [2023, 'edgar']]);
   });
 });

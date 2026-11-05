@@ -15,7 +15,7 @@ A per-claim, checkable answer to "Do they deliver?" in the Management & annual r
 | 7 | Scoring is deterministic code: compare the target with the actual from `history` for the horizon year. Verdict per claim: *met* (≥ target), *near* (within 10% of target), *missed*. Ranges: met inside or above, missed below. |
 | 8 | Needs the next year's actuals; claims whose horizon year has no financials yet are shown as **pending**. |
 | 9 | Fewer than 3 reports → lower-confidence flag. |
-| 10 | Own endpoint and "Run" button; reuses uploaded/fetched reports. Labelled **experimental**. |
+| 10 | Own endpoint and "Run" button; reuses the fetched reports. Labelled **experimental**. |
 | 11 | Degraded modes return a partial result with a status: `llm-unavailable` still returns cached years. |
 
 ## API

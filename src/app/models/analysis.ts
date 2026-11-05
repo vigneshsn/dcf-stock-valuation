@@ -75,7 +75,7 @@ export interface MdnaInsights {
     model: string;
     experimental: boolean;
     year: number;
-    source: 'screener' | 'edgar' | 'upload';
+    source: 'screener' | 'edgar';
     status: 'ok' | 'no-mdna';
     message: string | null;
     insights: (Record<InsightListKey, InsightItem[]> & { moat: { rating: MoatRating; reasoning: string; quote: string | null } }) | null;
