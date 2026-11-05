@@ -436,6 +436,12 @@ input.editable {
     margin-top: 2px;
 }
 
+.learn-link {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.85rem;
+}
+
 /* Range sliders */
 input[type=range] {
     -webkit-appearance: none;

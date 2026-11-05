@@ -1,6 +1,6 @@
 # Stock Analysis
 
-Fundamental analysis of listed stocks from live financial data and annual reports, producing scores and a fair value shown on a dashboard. Runs as one Market edition per deployment (India or US).
+Fundamental analysis of listed stocks from recent financial data and annual reports, producing scores and a fair value shown on a dashboard. Runs as one Market edition per deployment (India or US).
 
 ## Language
 

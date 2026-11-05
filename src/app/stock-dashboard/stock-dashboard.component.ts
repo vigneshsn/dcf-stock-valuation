@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, inject } from '@a
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { StockService } from '../services/stock.service';
@@ -124,7 +124,7 @@ const GUIDANCE_METRICS: Record<GuidanceMetric, string> = {
     selector: 'app-stock-dashboard',
     templateUrl: './stock-dashboard.component.html',
     styleUrls: ['./stock-dashboard.component.css'],
-    imports: [CommonModule, FormsModule, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent, ReverseDcfComponent, FinancialStatementsComponent, DecisionSummaryComponent],
+    imports: [CommonModule, FormsModule, RouterLink, ScoreRingComponent, PeerComparisonComponent, ScenarioRangeComponent, ReverseDcfComponent, FinancialStatementsComponent, DecisionSummaryComponent],
     standalone: true
 })
 export class StockDashboardComponent implements OnInit, OnDestroy {

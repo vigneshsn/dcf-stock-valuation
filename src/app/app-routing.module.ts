@@ -6,7 +6,8 @@ import {PageNotFound} from "./page-not-found/page-not-found";
 import {StockDashboardComponent} from "./stock-dashboard/stock-dashboard.component";
 
 const routes: Routes = [
-    {path: '', component: DcfCalculatorComponent},
+    {path: '', redirectTo: 'stock', pathMatch: 'full'},
+    {path: 'dcf-calculator', component: DcfCalculatorComponent},
     {path: 'feedback', component: FeedbackComponent},
     {path: 'stock', component: StockDashboardComponent},
     // Fundamentals and Analysis used to be separate pages; both now live on /stock.

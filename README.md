@@ -134,7 +134,7 @@ npm start
 npm test
 ```
 
-The server starts on `http://localhost:3000` by default. Run it alongside `npm start` in the project root (Angular dev server) when you need live stock data in the UI.
+The server starts on `http://localhost:3000` by default. Run it alongside `npm start` in the project root (Angular dev server) when you need real stock data in the UI.
 
 ### Manual stock-data UAT
 

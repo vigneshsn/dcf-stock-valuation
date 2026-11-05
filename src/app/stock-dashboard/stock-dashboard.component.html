@@ -2,7 +2,7 @@
     @if (!ticker) {
         <span class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span> Fundamentals · DCF · annual-report AI</span>
         <h1>Is it a <span class="grad-text">steal</span> or just hype?</h1>
-        <p class="lead">Drop a ticker and get the whole picture on one page: live fundamentals, a DCF fair value
+        <p class="lead">Drop a ticker and get the whole picture on one page: up-to-date fundamentals, a DCF fair value
             and an AI read of the annual reports.</p>
     }
 
@@ -561,6 +561,7 @@
                                     <div>
                                         <h3>Quantitative analysis</h3>
                                         <span class="tile-sub">DCF fair value vs market price</span>
+                                        <a class="learn-link" routerLink="/dcf-calculator" data-testid="dcf-calculator-link">Learn how a DCF works: try the DCF calculator</a>
                                     </div>
                                     @if (quant?.cached) {
                                         <span class="tag" title="Served from cache">cached</span>
