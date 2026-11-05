@@ -390,7 +390,25 @@ describe('StockDashboardComponent', () => {
             fixture.detectChanges();
         });
 
-        it('defaults to Explain with a plain-language note on every block and Key stat', () => {
+        it('defaults to Dense with no explanations', () => {
+            expect(modeButton('Dense').getAttribute('aria-pressed')).toBe('true');
+            expect(notes(fixture.nativeElement)).toBe(0);
+        });
+
+        it('hides the toggle and every explanation on mobile, even when Explain is remembered', () => {
+            TestBed.inject(ReadingModeService).set('explain');
+            fixture.detectChanges();
+            expect(notes(fixture.nativeElement)).toBeGreaterThan(0);
+
+            component.isMobile.set(true);
+            fixture.detectChanges();
+            expect(fixture.nativeElement.querySelector('[data-testid="reading-mode"]')).toBeNull();
+            expect(notes(fixture.nativeElement)).toBe(0);
+        });
+
+        it('shows a plain-language note on every block and Key stat in Explain', () => {
+            modeButton('Explain').click();
+            fixture.detectChanges();
             expect(modeButton('Explain').getAttribute('aria-pressed')).toBe('true');
             expect(modeButton('Dense').getAttribute('aria-pressed')).toBe('false');
 
@@ -411,6 +429,7 @@ describe('StockDashboardComponent', () => {
         });
 
         it('Dense drops every explanation but keeps the numbers, and is remembered', () => {
+            modeButton('Explain').click();
             modeButton('Dense').click();
             fixture.detectChanges();
 
@@ -728,6 +747,7 @@ describe('StockDashboardComponent', () => {
     });
 
     it('shows the Moat as management\'s own view from the latest annual report, with its quote', () => {
+        TestBed.inject(ReadingModeService).set('explain');
         search('TCS');
         httpMock.expectOne(`${STOCK_URL}TCS`).flush(emptyMetrics());
         expectQuant('TCS').flush(quant());

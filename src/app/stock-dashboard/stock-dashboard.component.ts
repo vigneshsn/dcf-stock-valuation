@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -135,6 +135,19 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
     private readonly destroyRef = inject(DestroyRef);
     private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
     readonly readingMode = inject(ReadingModeService);
+    /** Phones always get Dense mode; the Explain toggle is hidden there. */
+    readonly isMobile = signal(false);
+
+    constructor() {
+        if (typeof matchMedia !== 'function') {
+            return;
+        }
+        const query = matchMedia('(max-width: 560px)');
+        this.isMobile.set(query.matches);
+        const onChange = (e: MediaQueryListEvent) => this.isMobile.set(e.matches);
+        query.addEventListener('change', onChange);
+        this.destroyRef.onDestroy(() => query.removeEventListener('change', onChange));
+    }
 
     get suggestions(): string[] {
         return this.market.descriptor.exampleTickers;
@@ -305,7 +318,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
 
     /** True in Explain mode: plain-language notes are shown next to the numbers. */
     get explain(): boolean {
-        return this.readingMode.mode() === 'explain';
+        return !this.isMobile() && this.readingMode.mode() === 'explain';
     }
 
     scrollToBlock(id: BlockId): void {

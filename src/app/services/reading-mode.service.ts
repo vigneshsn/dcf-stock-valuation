@@ -21,9 +21,9 @@ export class ReadingModeService {
 
     private stored(): ReadingMode {
         try {
-            return localStorage.getItem(READING_MODE_KEY) === 'dense' ? 'dense' : 'explain';
+            return localStorage.getItem(READING_MODE_KEY) === 'explain' ? 'explain' : 'dense';
         } catch {
-            return 'explain';
+            return 'dense';
         }
     }
 }

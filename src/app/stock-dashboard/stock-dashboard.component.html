@@ -27,12 +27,14 @@
         @for (b of blocks; track b.id; let i = $index) {
             <button type="button" (click)="scrollToBlock(b.id)"><span class="num" aria-hidden="true">{{ i + 1 }}</span>{{ b.title }}</button>
         }
+        @if (!isMobile()) {
         <div class="reading-mode" data-testid="reading-mode" role="group" aria-label="Reading mode">
             <button type="button" [attr.aria-pressed]="explain" (click)="readingMode.set('explain')"
                     title="Plain-language notes on every block and ratio">Explain</button>
             <button type="button" [attr.aria-pressed]="!explain" (click)="readingMode.set('dense')"
                     title="Numbers only, no explanations">Dense</button>
         </div>
+        }
     </nav>
 
     @for (b of blocks; track b.id; let i = $index) {
