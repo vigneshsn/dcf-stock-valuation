@@ -211,7 +211,7 @@ describe('StockDashboardComponent', () => {
         httpMock.expectOne(`${STOCK_URL}RELIANCE`).flush('Bad gateway', { status: 502, statusText: 'Bad Gateway' });
         expectQuant('RELIANCE').flush(quant());
 
-        expect(component.stockError).toBe('Upstream data source failed, please retry');
+        expect(component.stockError).toBe("We couldn't load the data right now. Please try again");
     });
 
     it('renders N/A for missing metrics on a partial payload', () => {
@@ -691,7 +691,7 @@ describe('StockDashboardComponent', () => {
             { status: 503, statusText: 'Service Unavailable' }
         );
 
-        expect(text()).toContain('The language model is unavailable: quota exceeded');
+        expect(text()).toContain('This summary is temporarily unavailable');
         component.loadInsights();
         httpMock.expectOne(`${ANALYSIS_URL}TCS/insights`).flush(mdnaInsights());
         expect(component.insightsError).toBe('');
@@ -808,7 +808,7 @@ describe('StockDashboardComponent', () => {
         expect(year.textContent?.replace(/\s+/g, ' ')).toContain('Revenue growth · target 15% for FY2024 · actual 9%');
         expect(year.querySelector('[data-tone="bad"]')?.textContent).toContain('missed');
         expect(year.textContent).toContain('Strong growth ahead for our business');
-        expect(panel.querySelector('[data-testid="guidance-year-2022"]')?.textContent).toContain('language model is unavailable');
+        expect(panel.querySelector('[data-testid="guidance-year-2022"]')?.textContent).toContain('temporarily unavailable');
     });
 
     it('records the ticker in the URL so the page can be shared', () => {

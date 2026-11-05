@@ -362,14 +362,11 @@
                                 <header class="tile-head">
                                     <div>
                                         <h3>What does management say?</h3>
-                                        <span class="tile-sub">MD&amp;A insights: the latest annual report's management discussion, read by a language model</span>
+                                        <span class="tile-sub">Key points from the management discussion in the latest annual report</span>
                                     </div>
                                     <div class="pills">
                                         @if (insightsReportLabel) {
                                             <span class="pill" data-testid="insights-report">{{ insightsReportLabel }}</span>
-                                        }
-                                        @if (insights?.cached) {
-                                            <span class="tag">cached</span>
                                         }
                                         @if (insightsTimeLabel && !insightsLoading) {
                                             <span class="pill" data-testid="insights-time" title="Time taken to load these insights">
@@ -380,13 +377,13 @@
                                     </div>
                                 </header>
                                 @if (explain) {
-                                    <p class="hint" data-explain>Management’s own view of the business, summarised by a language model from the latest annual report. Open a point to read the quote it comes from. Tailwinds help the business today; Investment risks may or may not happen.</p>
+                                    <p class="hint" data-explain>Management’s own view of the business, summarised from the latest annual report. Open a point to read the quote it comes from. Tailwinds help the business today; Investment risks may or may not happen.</p>
                                 }
 
                                 @if (insightsLoading) {
                                     <div class="thinking">
                                         <div class="orb" aria-hidden="true"></div>
-                                        <p>Reading the latest annual report's MD&amp;A...</p>
+                                        <p>Reading the latest annual report...</p>
                                     </div>
                                 }
 
@@ -480,11 +477,11 @@
                                 @if (guidance && !guidanceLoading) {
                                     @for (y of guidance.years; track y.year) {
                                         <section class="guidance-year" [attr.data-testid]="'guidance-year-' + y.year">
-                                            <h4>FY{{ y.year }} report @if (y.cached) { <span class="tag">cached</span> }</h4>
+                                            <h4>FY{{ y.year }} report</h4>
                                             @switch (y.status) {
                                                 @case ('no-report') { <p class="muted small">The report could not be fetched. Upload it as a PDF.</p> }
                                                 @case ('no-guidance') { <p class="muted small">No forward-looking targets found.</p> }
-                                                @case ('llm-unavailable') { <p class="alert alert-warn small">The language model is unavailable; retry later.</p> }
+                                                @case ('llm-unavailable') { <p class="alert alert-warn small">This summary is temporarily unavailable. Please try again later.</p> }
                                                 @case ('failed') { <p class="alert alert-warn small">This report could not be analysed.</p> }
                                             }
                                             @if (y.claims.length) {
@@ -547,9 +544,6 @@
                                         <span class="tile-sub">DCF fair value vs market price</span>
                                         <a class="learn-link" routerLink="/dcf-calculator" data-testid="dcf-calculator-link">Learn how a DCF works: try the DCF calculator</a>
                                     </div>
-                                    @if (quant?.cached) {
-                                        <span class="tag" title="Served from cache">cached</span>
-                                    }
                                 </header>
                                 @if (explain) {
                                     <p class="hint" data-explain>Fair value is an estimate from a discounted cash flow (DCF) model: what the cash the business may generate in future is worth today. Small changes in the assumptions move it a lot. The Quantitative score only says how far the price sits from Fair value.</p>
@@ -658,11 +652,8 @@
                                 <header class="tile-head">
                                     <div>
                                         <h3>What the price implies</h3>
-                                        <span class="tile-sub">Reverse DCF: Implied growth vs history</span>
+                                        <span class="tile-sub">Growth the price implies vs past growth</span>
                                     </div>
-                                    @if (reverseDcf?.cached) {
-                                        <span class="tag" title="Served from cache">cached</span>
-                                    }
                                 </header>
                                 @if (explain) {
                                     <p class="hint" data-explain>Runs the DCF backwards: the yearly growth the current price assumes (Implied growth), set against the growth the company has actually delivered.</p>

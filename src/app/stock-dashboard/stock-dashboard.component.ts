@@ -95,7 +95,7 @@ const BLOCKS: { id: BlockId; title: string; explain: string }[] = [
     {
         id: 'management',
         title: 'Management & annual report',
-        explain: 'What management says in its annual report, read by a language model, and whether its past targets came true. Quotes let you check the source.'
+        explain: 'What management says in its annual report, and whether its past targets came true. Quotes let you check the source.'
     },
     {
         id: 'valuation',
@@ -264,7 +264,7 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
                 this.stockError = err.status === 404
                     ? 'Ticker not found'
                     : err.status === 502
-                        ? 'Upstream data source failed, please retry'
+                        ? "We couldn't load the data right now. Please try again"
                         : 'Network error, please retry';
             }
         });
@@ -488,7 +488,9 @@ export class StockDashboardComponent implements OnInit, OnDestroy {
             error: (err: HttpErrorResponse) => {
                 this.insightsLoading = false;
                 this.insightsElapsedMs = this.now() - started;
-                this.insightsError = err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
+                this.insightsError = err.error?.error === 'llm-unavailable'
+                    ? 'This summary is temporarily unavailable. Please try again later.'
+                    : err.error?.message ?? err.error?.error ?? (err.status === 0 ? 'Network error, please retry' : 'Request failed');
             }
         });
     }
