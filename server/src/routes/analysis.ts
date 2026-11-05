@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { del, get, set } from '../cache.js';
-import { fmpGet, fmpFiscalYear, FmpError } from '../fmp.js';
+import { fmpGet, fmpFiscalYear, fmpRefreshRequested, fmpRequestContext, fmpServedStale, FmpError } from '../fmp.js';
 import { calculateROCE, calculateROE } from '../finance.js';
 import { YearFinancials, deriveDefaults, computeFairValue, computeScenarios, quantitativeScore, reverseDcf, reverseDcfUnavailable, DcfAssumptions, QuantitativeInputs } from '../dcf.js';
 import { fetchIndianApiQuantitativeInputs, StockNotFoundError } from '../indianapi.js';
@@ -17,8 +17,8 @@ import { redFlagScan } from '../redFlags.js';
 import { financialStatements } from '../statements.js';
 import { strengthsWeaknesses } from '../strengths.js';
 
-const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 60 * 60 * 1000;
-const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 6 * 60 * 60 * 1000;
+const FINANCIALS_TTL_MS = Number(process.env.FINANCIALS_TTL_MS) || 24 * 60 * 60 * 1000;
+const ANALYSIS_TTL_MS = Number(process.env.ANALYSIS_TTL_MS) || 24 * 60 * 60 * 1000;
 const MAX_PDF_BYTES = 100 * 1024 * 1024;
 
 interface FmpFinancials extends QuantitativeInputs {
@@ -39,20 +39,24 @@ interface Stamped<T> {
   cachedAt: number;
 }
 
+// Derived results are recomputed on a refresh, and never kept when built from stale FMP data.
 function cacheGet<T>(key: string): Stamped<T> | undefined {
-  return get<Stamped<T>>(key);
+  return fmpRefreshRequested() ? undefined : get<Stamped<T>>(key);
 }
 
 const insightsKey = (ticker: string, model: string) => `analysis:insights:${ticker.trim().toUpperCase()}:${model}`;
 const guidanceKey = (ticker: string, model: string) => `analysis:guidance:${ticker.trim().toUpperCase()}:${model}`;
 
 function cachePut<T>(key: string, value: T): void {
+  if (fmpServedStale()) {
+    return;
+  }
   set<Stamped<T>>(key, { value, cachedAt: Date.now() }, ANALYSIS_TTL_MS);
 }
 
 async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promise<FmpFinancials> {
   const key = `financials:fmp:${ticker}`;
-  const hit = get<FmpFinancials>(key);
+  const hit = fmpRefreshRequested() ? undefined : get<FmpFinancials>(key);
   if (hit) {
     return hit;
   }
@@ -113,7 +117,9 @@ async function loadFmpFinancials(ticker: string, fetcher?: typeof fetch): Promis
         : null,
     history,
   };
-  set(key, financials, FINANCIALS_TTL_MS);
+  if (!fmpServedStale()) {
+    set(key, financials, FINANCIALS_TTL_MS);
+  }
   return financials;
 }
 
@@ -205,6 +211,7 @@ export function createAnalysisRouter(options: AnalysisRouterOptions = {}): Route
   const loadQuantitativeInputs = (ticker: string): Promise<QuantitativeInputs> =>
     provider === 'indianapi' ? loadIndianApiFinancials(ticker, options) : loadFmpFinancials(ticker, options.fetcher);
   const router = Router();
+  router.use(fmpRequestContext);
 
   router.get('/:ticker/quantitative', async (req, res) => {
     const ticker = req.params.ticker;

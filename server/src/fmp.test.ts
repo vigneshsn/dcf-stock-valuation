@@ -1,8 +1,52 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
+import { FmpError, fmpGet } from './fmp.js';
 import { fmpFiscalYear } from './fmp.js';
 import { financialStatements } from './statements.js';
 import { scoreClaim } from './guidance.js';
+
+function freshCache(env: Record<string, string> = {}) {
+  process.env.FMP_CACHE_DIR = mkdtempSync(path.join(tmpdir(), 'fmp-test-'));
+  process.env.FMP_API_KEY = 'k';
+  process.env.FMP_DAILY_LIMIT = env.FMP_DAILY_LIMIT ?? '240';
+  process.env.FMP_QUOTE_TTL_MS = env.FMP_QUOTE_TTL_MS ?? '';
+  let calls = 0;
+  let status = 200;
+  const fetcher = (async () => {
+    calls++;
+    return new Response(JSON.stringify([{ price: calls }]), { status });
+  }) as typeof fetch;
+  return { fetcher, calls: () => calls, failWith: (s: number) => { status = s; } };
+}
+
+test('fmpGet serves repeat requests from the disk cache and shares concurrent fetches', async () => {
+  const fmp = freshCache();
+  const [a, b] = await Promise.all([fmpGet('/quote', 'AAPL', {}, fmp.fetcher), fmpGet('/quote', 'AAPL', {}, fmp.fetcher)]);
+  assert.deepEqual(a, b);
+  assert.deepEqual(await fmpGet('/quote', 'AAPL', {}, fmp.fetcher), [{ price: 1 }]);
+  assert.equal(fmp.calls(), 1);
+});
+
+test('fmpGet falls back to an expired entry when FMP is rate limited, but not for an unknown symbol', async () => {
+  const fmp = freshCache({ FMP_QUOTE_TTL_MS: '1' });
+  await fmpGet('/quote', 'AAPL', {}, fmp.fetcher);
+  await new Promise((r) => setTimeout(r, 5));
+  fmp.failWith(429);
+  assert.deepEqual(await fmpGet('/quote', 'AAPL', {}, fmp.fetcher), [{ price: 1 }]);
+  await assert.rejects(fmpGet('/quote', 'MSFT', {}, fmp.fetcher), (e: FmpError) => e.status === 429);
+});
+
+test('fmpGet stops calling FMP at the daily budget and serves stale data instead', async () => {
+  const fmp = freshCache({ FMP_DAILY_LIMIT: '1', FMP_QUOTE_TTL_MS: '1' });
+  await fmpGet('/quote', 'AAPL', {}, fmp.fetcher);
+  await new Promise((r) => setTimeout(r, 5));
+  assert.deepEqual(await fmpGet('/quote', 'AAPL', {}, fmp.fetcher), [{ price: 1 }]);
+  await assert.rejects(fmpGet('/quote', 'MSFT', {}, fmp.fetcher), (e: FmpError) => e.status === 429);
+  assert.equal(fmp.calls(), 1);
+});
 
 test('fmpFiscalYear uses the company fiscal-year label over calendar year and date', () => {
   // AAPL: year ends late September; MSFT: year ends 30 June.

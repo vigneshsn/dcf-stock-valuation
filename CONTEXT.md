@@ -95,3 +95,15 @@ _Avoid_: Milestone, alert
 **Release**:
 A `vX.Y.Z` tag on `master` that ships the frontend and backend together, after approval, to the single production deployment (one Market edition). There are no separate frontend or backend versions.
 _Avoid_: Version, build
+
+**Data freshness**:
+How old the financial data behind an Analysis may be. The audience is long-term investors, so freshness is measured in days, not seconds; only the price is kept near-current. Data older than its allowed age is **stale** and is still shown, labelled with the date it was fetched, when fresh data cannot be obtained.
+_Avoid_: Real-time, live data
+
+**Call budget**:
+The number of paid data-source requests the app may make per day (FMP: 250). Spending it is a scarce resource, so the same data is never fetched twice and near the limit only stale data is served.
+_Avoid_: Quota, rate limit
+
+**Refresh**:
+A user's explicit request to refetch one stock's data now, ignoring Data freshness (for example after earnings). Still subject to the Call budget.
+_Avoid_: Reload, invalidate

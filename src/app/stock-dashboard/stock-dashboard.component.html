@@ -86,6 +86,9 @@
                                             <div class="price-block">
                                                 <span class="price">{{ market.format.price(price) }}</span>
                                                 <span class="label">Current price</span>
+                                                @if (metrics?.stale && metrics?.dataAsOf) {
+                                                    <span class="label">Data as of {{ metrics?.dataAsOf | date: 'mediumDate' }}</span>
+                                                }
                                             </div>
                                         </div>
 

@@ -13,6 +13,9 @@ export interface StockMetrics {
         industry: string | null;
         description: string | null;
     } | null;
+    /** Set by the server when expired FMP data was served because the API was unavailable or the daily call budget was spent. */
+    stale?: boolean;
+    dataAsOf?: number;
     peers: {
         name: string;
         price: number | null;

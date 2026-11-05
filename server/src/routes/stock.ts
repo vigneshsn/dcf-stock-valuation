@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { get, set, CACHE_TTL_MS } from '../cache.js';
-import { fmpGet, fmpFiscalYear, FmpError } from '../fmp.js';
+import { fmpGet, fmpFiscalYear, fmpRefreshRequested, fmpRequestContext, fmpServedStale, FmpError } from '../fmp.js';
 import {
   fetchIndianApiStock,
   IndianApiError,
@@ -160,6 +160,7 @@ async function fetchFmpStock(ticker: string, fetcher?: typeof fetch): Promise<St
 export function createStockRouter(options: StockRouterOptions = {}): Router {
   const router = Router();
   const provider = configuredProvider(options.provider);
+  router.use(fmpRequestContext);
 
   router.get('/:ticker', async (req, res) => {
     const requested = req.params.ticker.trim().toUpperCase();
@@ -170,7 +171,7 @@ export function createStockRouter(options: StockRouterOptions = {}): Router {
     }
 
     const cacheKey = `stock:${provider}:${ticker}`;
-    const cached = get<StockData>(cacheKey);
+    const cached = fmpRefreshRequested() ? undefined : get<StockData>(cacheKey);
     if (cached) {
       console.log(`[cache HIT] ${provider}:${ticker}`);
       return res.status(200).json(cached);
@@ -186,7 +187,9 @@ export function createStockRouter(options: StockRouterOptions = {}): Router {
           options.indianApiBaseUrl
         )
         : await fetchFmpStock(ticker, options.fetcher);
-      set(cacheKey, data, CACHE_TTL_MS);
+      if (!fmpServedStale()) {
+        set(cacheKey, data, CACHE_TTL_MS);
+      }
       console.log(`[upstream success] ${provider}:${ticker}`);
       return res.status(200).json(data);
     } catch (err) {

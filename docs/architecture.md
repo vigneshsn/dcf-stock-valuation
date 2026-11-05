@@ -126,7 +126,7 @@ sequenceDiagram
 
     UI->>API: GET /api/stock/RELIANCE
     API->>C: get("stock:{provider}:{ticker}")
-    alt cache hit (5 min TTL)
+    alt cache hit (disk-backed FMP cache, 5 min derived TTL)
         C-->>API: StockData
     else cache miss
         API->>P: fetch quote, ratios, statements
@@ -149,11 +149,11 @@ sequenceDiagram
     participant D as dcf.ts
 
     UI->>API: GET .../quantitative?growth=&discount=&terminal=
-    API->>C: analysis cache (6 h TTL, keyed by overrides)
+    API->>C: analysis cache (24 h TTL, keyed by overrides)
     alt hit
         C-->>API: cached result
     else miss
-        API->>C: financials cache (1 h TTL)
+        API->>C: financials cache (24 h TTL; raw FMP data on disk, see spec-fmp-caching.md)
         opt miss
             API->>P: quote + 5y income / cash-flow / balance sheet
             P-->>API: QuantitativeInputs
@@ -179,7 +179,7 @@ sequenceDiagram
     participant L as LLM (Gemini → Groq → Ollama)
 
     UI->>API: GET .../insights (automatically, with every ticker)
-    opt response cached in memory (6 h)
+    opt response cached in memory (24 h)
         API-->>UI: cached insights, no report or LLM calls
     end
     API->>I: latestReportInsights(ticker, model)
@@ -209,8 +209,13 @@ Server environment variables are loaded from `server/.env` via `dotenv`.
 | `INDIANAPI_BASE_URL` | `https://stock.indianapi.in` | IndianAPI base URL |
 | `FMP_API_KEY` | — | FMP key (also required for the Peer set) |
 | `SEC_USER_AGENT` | — | Required in the US edition: `Your Name your@email.com`, sent to SEC EDGAR for 10-K downloads |
-| `FINANCIALS_TTL_MS` | `3600000` (1 h) | Cache TTL for raw financials |
-| `ANALYSIS_TTL_MS` | `21600000` (6 h) | Cache TTL for computed analyses |
+| `FINANCIALS_TTL_MS` | `86400000` (24 h) | In-memory cache TTL for derived financials (and IndianAPI financials) |
+| `ANALYSIS_TTL_MS` | `86400000` (24 h) | In-memory cache TTL for computed analyses and LLM responses |
+| `FMP_CACHE_DIR` | `server/.cache/fmp` | Disk cache of raw FMP responses and the daily call counter |
+| `FMP_STATEMENTS_TTL_MS` | `2592000000` (30 days) | Freshness of FMP income, balance sheet and cash flow statements |
+| `FMP_PROFILE_TTL_MS` | `604800000` (7 days) | Freshness of FMP ratios, profile and peers |
+| `FMP_QUOTE_TTL_MS` | `86400000` (24 h) | Freshness of the FMP quote (price) |
+| `FMP_DAILY_LIMIT` | `240` | FMP calls per UTC day before only cached data is served (FMP's cap is 250) |
 | `LLM_PROVIDERS` | keyed cloud providers, then `ollama` | Comma-separated order of `gemini`, `groq`, `ollama`; the next is tried when one fails |
 | `LLM_CONCURRENCY` | `4` (or `OLLAMA_CONCURRENCY`) | Max in-flight LLM requests from the proxy; use 1–2 on free cloud tiers, pair with Ollama's `OLLAMA_NUM_PARALLEL` locally |
 | `LLM_MAX_RETRIES` | `2` | Retries per provider on 429 / 5xx before falling back |
@@ -235,7 +240,7 @@ The frontend services hard-code the proxy at `http://localhost:3000`.
 - **Proxy, not direct calls.** Keeps API keys out of the browser and lets the provider be swapped (`provider.ts`) without frontend changes.
 - **NSE only.** Tickers are bare NSE symbols (an optional `.NS` suffix is accepted). Other exchange suffixes are rejected as not found.
 - **Peer selection always uses FMP**, regardless of `STOCK_DATA_PROVIDER`.
-- **All state is in process memory.** The response cache and uploaded PDFs are lost on restart and are not shared between instances.
+- **Derived state is in process memory.** The derived-response cache (raw FMP responses are on disk, see [spec-fmp-caching.md](spec-fmp-caching.md)) and uploaded PDFs are lost on restart and are not shared between instances.
 - **One score.** The Quantitative score is the only score. MD&A insights, the Moat (management's own view) and the Guidance scorecard are unscored evidence; there is no Qualitative score or trust score (see [ADR 0001](adr/0001-evidence-without-verdict.md)).
 - **Free-tier LLM budget.** MD&A insights use one LLM call per annual report and load automatically; the Guidance scorecard uses one cached call per past report and runs on demand.
 - **Swappable LLM.** `llm.ts` tries Gemini, Groq and local Ollama in the configured order, retrying rate limits before falling back; an answer that is not valid JSON (or is cut off at `max_tokens`) also falls back. Disk and memory caches are keyed on the first provider's model, so a fallback answer is cached under the same key. If every provider fails, the insights and guidance endpoints return `503 llm-unavailable` and the rest of the app keeps working.
